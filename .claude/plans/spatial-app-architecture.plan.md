@@ -173,7 +173,7 @@ tiPG endpoints consumed (paths are verified against the pinned tiPG version in P
 | Single feature | `GET /tiles/collections/{cid}/items/{fid}` | GeoJSON Feature |
 
 Frontend rules:
-- The **MVT source-layer is the collection id without the `pub.` prefix** (tiPG 1.6.1 with `TIPG_SET_MVT_LAYERNAME=TRUE` names tile layers by table name, while its tilejson/style.json wrongly use the full id; see ADR 0002). The adapter derives `source-layer` from `source.collection`; authors never type it, and the adapter never reads layer ids from tiPG's tilejson.
+- The **MVT source-layer is always `default`** (`TIPG_SET_MVT_LAYERNAME=FALSE`). tiPG 1.6.1 with TRUE names tile layers by table name while its tilejson/style.json use the full `pub.` id, which breaks rendering; with FALSE both agree. Each tiPG source carries one collection, so `default` is unambiguous. The adapter sets `source-layer: "default"`; authors never type it (ADR 0002).
 - Cache busting: every tile URL carries `&v={layer.dataVersion}`. `dataVersion` is bumped by core-api when a layer's view or underlying data is refreshed.
 - `tipg-geojson` is used only for small layers (feature count below a threshold, default 5k). The manifest validator warns when a GeoJSON layer's collection exceeds this.
 

@@ -1,0 +1,17 @@
+# Everything executed inside Linux containers must keep LF line endings,
+# even if the repo is ever checked out or edited from Windows.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+Makefile text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf
+
+*.zip binary
+*.gpkg binary
+*.tif binary
+*.dump binary
+*.png binary

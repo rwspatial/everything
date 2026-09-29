@@ -1,0 +1,32 @@
+{
+	# Local-only proxy. In Phase 6 this role moves to CloudFront + ALB.
+	admin off
+	auto_https off
+}
+
+:80 {
+	encode zstd gzip
+
+	# OGC API Features + Tiles. Prefix is stripped; tiPG knows it via TIPG_ROOT_PATH.
+	handle_path /tiles/* {
+		reverse_proxy tipg:8000
+	}
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# Phase 2 replaces this with the Svelte frontend.
+	handle {
+		header Content-Type "text/plain; charset=utf-8"
+		respond <<TEXT
+			Spatial app: Phase 1 stack is running.
+
+			  Collections:  /tiles/collections
+			  Map viewer:   /tiles/collections/{collectionId}/viewer.html
+			  API docs:     /tiles/api.html
+
+			The Svelte frontend arrives in Phase 2.
+			TEXT 200
+	}
+}

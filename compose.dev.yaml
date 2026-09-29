@@ -1,0 +1,22 @@
+# Dev overlay (enabled by default via COMPOSE_FILE in .env).
+# - Publishes PostGIS on 127.0.0.1 only, for QGIS / host psql / host R or Python.
+# - tiPG debug mode (/tiles/rawcatalog shows what tiPG sees) and a 30 s catalog TTL,
+#   so new pub views appear within ~30 s. `make refresh` (restarts tipg) is the certain way.
+services:
+  postgis:
+    ports:
+      - "127.0.0.1:${PG_HOST_PORT:-5433}:5432"
+    networks: [data, devhost]
+
+  tipg:
+    environment:
+      TIPG_DEBUG: "TRUE"
+      TIPG_CATALOG_TTL: "30"
+      # Default is "public, max-age=3600": browsers would keep stale tiles/styles for an hour
+      # after data or config changes. Dev revalidates every time.
+      TIPG_CACHECONTROL: "no-cache"
+
+networks:
+  # The data network is internal (no published ports possible), so PostGIS
+  # joins this extra bridge network in dev to make the host port work.
+  devhost: {}

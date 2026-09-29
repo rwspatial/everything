@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Data: raw inputs, downloads, generated outputs, backups
+data/incoming/*
+data/cache/*
+data/cog/*
+data/backups/*
+!data/**/.gitkeep
+
+# Local analysis scratch output
+analysis/**/output/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Python / R
+__pycache__/
+*.pyc
+.Rhistory
+.RData
+.Rproj.user/

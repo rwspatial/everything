@@ -1,0 +1,136 @@
+# Spatial app stack: Phase 1 (PostGIS + tiPG + proxy + geotools).
+# Operate it through the Makefile (`make help`). See docs/setup/.
+name: spatial
+
+services:
+  postgis:
+    image: postgis/postgis:${POSTGIS_TAG:?set in .env}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [data]
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  # One-shot: applies db/migrations with dbmate, then sets role passwords.
+  # Also runs seed SQL on demand (`make seed`).
+  migrator:
+    image: ghcr.io/amacneil/dbmate:${DBMATE_TAG:?set in .env}
+    entrypoint: ["/bin/sh", "/migrator/entrypoint.sh"]
+    command: ["migrate"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgis:5432/${POSTGRES_DB}?sslmode=disable
+      DBMATE_MIGRATIONS_DIR: /db/migrations
+      DBMATE_NO_DUMP_SCHEMA: "true"
+      TIPG_DB_PASSWORD: ${TIPG_DB_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      LOADER_DB_PASSWORD: ${LOADER_DB_PASSWORD}
+      WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD}
+      ANALYST_DB_PASSWORD: ${ANALYST_DB_PASSWORD}
+    volumes:
+      - ./db:/db:ro
+      - ./services/migrator:/migrator:ro
+    networks: [data]
+    depends_on:
+      postgis:
+        condition: service_healthy
+    restart: "no"
+
+  tipg:
+    image: ghcr.io/developmentseed/tipg:${TIPG_TAG:?set in .env}
+    environment:
+      DATABASE_URL: postgresql://tipg_ro:${TIPG_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
+      PORT: "8000"
+      WEB_CONCURRENCY: "2"
+      TIPG_NAME: "Spatial tiles"
+      TIPG_ROOT_PATH: /tiles
+      TIPG_DB_SCHEMAS: '["pub"]'
+      TIPG_CATALOG_TTL: ${TIPG_CATALOG_TTL:-300}
+      # FALSE on purpose: with TRUE, tiPG 1.6.1 names tile layers by table name but its
+      # style.json/tilejson say "pub.<table>", which breaks its own viewer. With FALSE both
+      # say "default" (ADR 0002). One collection per tile, so the name is unambiguous.
+      TIPG_SET_MVT_LAYERNAME: "FALSE"
+      TIPG_DEFAULT_FEATURES_LIMIT: "1000"
+      TIPG_MAX_FEATURES_PER_QUERY: "10000"
+      TIPG_CORS_ORIGIN: http://localhost:${HTTP_PORT:-8080}
+    networks: [api, data]
+    depends_on:
+      postgis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:${CADDY_TAG:?set in .env}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./services/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge, api]
+    depends_on:
+      tipg:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  # On-demand toolbox: GDAL CLI + R + Python 3, all on one GDAL/PROJ build.
+  # Never started by `docker compose up`; used via `make import`, `make r`, `make py` ...
+  geotools:
+    profiles: [tools]
+    build:
+      context: ./services/geotools
+      args:
+        ROCKER_TAG: ${ROCKER_TAG:?set in .env}
+    image: spatial/geotools:${ROCKER_TAG}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /tmp/home
+      PGHOST: postgis
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB}
+      LOADER_DB_PASSWORD: ${LOADER_DB_PASSWORD}
+      ANALYST_DB_PASSWORD: ${ANALYST_DB_PASSWORD}
+      TIPG_DB_PASSWORD: ${TIPG_DB_PASSWORD}
+    volumes:
+      - ./:/work
+      - ./data/incoming:/data:ro
+    working_dir: /work
+    networks: [data, egress]
+    depends_on:
+      postgis:
+        condition: service_healthy
+
+networks:
+  edge: {}                # proxy (host-published) <-> frontend (Phase 2)
+  api:
+    internal: true        # proxy <-> tipg / core-api / titiler
+  data:
+    internal: true        # anything that talks to PostGIS; no internet
+  egress: {}              # outbound internet for geotools (dataset downloads)
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

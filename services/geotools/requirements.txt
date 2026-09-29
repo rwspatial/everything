@@ -1,0 +1,15 @@
+# Python stack for geotools. Conservative pins on purpose:
+# the system GDAL is 3.8.x / PROJ 9.4 (Ubuntu 24.04), and GDAL 3.8's Python
+# bindings predate NumPy 2 support, so numpy stays <2.
+# pyogrio, rasterio, pyproj, shapely are built from source against system libs (see Dockerfile).
+numpy<2
+pandas~=2.2
+shapely~=2.0
+pyproj~=3.7.0
+pyogrio~=0.10.0
+rasterio~=1.4.3
+geopandas~=1.0.1
+psycopg[binary]~=3.2
+sqlalchemy~=2.0
+geoalchemy2~=0.15
+pyyaml~=6.0
