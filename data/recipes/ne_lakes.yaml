@@ -1,0 +1,11 @@
+name: ne_lakes
+description: Lakes, Natural Earth 1:10m (hydrology-sketch placeholder project)
+source:
+  url: https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip
+target: src_ne.lakes
+srs: EPSG:4326
+mode: overwrite
+fix_invalid: true
+license: Public domain (Natural Earth, naturalearthdata.com)
+notes: A few 1:10m lake polygons can be invalid; fix_invalid repairs them with ST_MakeValid.
+enabled: true

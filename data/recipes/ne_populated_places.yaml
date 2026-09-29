@@ -1,0 +1,10 @@
+name: ne_populated_places
+description: Populated places (simple), Natural Earth 1:110m (world-overview placeholder project)
+source:
+  url: https://naciscdn.org/naturalearth/110m/cultural/ne_110m_populated_places_simple.zip
+target: src_ne.populated_places
+srs: EPSG:4326
+mode: overwrite
+license: Public domain (Natural Earth, naturalearthdata.com)
+notes: Point layer; stays Point (not promoted to MultiPoint).
+enabled: true

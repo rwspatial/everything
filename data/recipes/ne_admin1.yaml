@@ -1,0 +1,14 @@
+name: ne_admin1
+description: States/provinces, Natural Earth 1:50m (world-overview todo layer "admin-1 boundaries")
+source:
+  url: https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_1_states_provinces.zip
+target: src_ne.admin1
+srs: EPSG:4326
+mode: overwrite
+license: Public domain (Natural Earth, naturalearthdata.com)
+notes: Deliberately disabled so world-overview stays an incomplete placeholder.
+enabled: false
+todo: >-
+  To complete the world-overview admin-1 layer: set enabled: true, run
+  `make import-recipe r=ne_admin1`, add a pub.world_overview__admin1 view to
+  db/seed/010_world_overview.sql, then `make seed && make refresh`.

@@ -1,0 +1,10 @@
+name: ne_rivers
+description: Rivers and lake centerlines, Natural Earth 1:10m (hydrology-sketch placeholder project)
+source:
+  url: https://naciscdn.org/naturalearth/10m/physical/ne_10m_rivers_lake_centerlines.zip
+target: src_ne.rivers
+srs: EPSG:4326
+mode: overwrite
+license: Public domain (Natural Earth, naturalearthdata.com)
+notes: scalerank drives the pub.hydrology_sketch__rivers_by_rank function layer.
+enabled: true
