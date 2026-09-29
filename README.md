@@ -11,7 +11,7 @@ Adding a map project means registering database views plus a manifest. No fronte
 
 | Phase | Scope | State |
 |---|---|---|
-| 1 | Docker, PostGIS, tiPG, proxy, geotools, data import, setup guide | built, awaiting first `make verify` |
+| 1 | Docker, PostGIS, tiPG, proxy, geotools, data import, setup guide | done: exit gate passed 2026-09-29 |
 | 2 | Svelte + MapLibre UI shell, placeholder projects | – |
 | 3 | Project creator (`mapgen`, core-api) | – |
 | 4 | MCP servers | – |
