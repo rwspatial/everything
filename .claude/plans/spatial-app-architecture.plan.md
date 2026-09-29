@@ -1,6 +1,6 @@
 # Spatial App Generator — Architecture Plan
 
-Status: **DRAFT rev 3 — decisions confirmed; awaiting go-ahead for Phase 1**
+Status: **rev 3 — Phase 1 built (2026-09-29); awaiting first `make verify` on Docker before Phase 2**
 Date: 2026-09-29
 Repo state at planning time: greenfield (README + empty .gitignore)
 
@@ -173,7 +173,7 @@ tiPG endpoints consumed (paths are verified against the pinned tiPG version in P
 | Single feature | `GET /tiles/collections/{cid}/items/{fid}` | GeoJSON Feature |
 
 Frontend rules:
-- The **MVT source-layer name is whatever tiPG emits** (collection-derived). The adapter injects `source-layer` from the spec; authors never type it. Confirmed during the Phase 1 spike.
+- The **MVT source-layer is the collection id without the `pub.` prefix** (tiPG 1.6.1 with `TIPG_SET_MVT_LAYERNAME=TRUE` names tile layers by table name, while its tilejson/style.json wrongly use the full id; see ADR 0002). The adapter derives `source-layer` from `source.collection`; authors never type it, and the adapter never reads layer ids from tiPG's tilejson.
 - Cache busting: every tile URL carries `&v={layer.dataVersion}`. `dataVersion` is bumped by core-api when a layer's view or underlying data is refreshed.
 - `tipg-geojson` is used only for small layers (feature count below a threshold, default 5k). The manifest validator warns when a GeoJSON layer's collection exceeds this.
 
@@ -257,7 +257,7 @@ Scope: an **operator** (you) loads datasets by hand. App users do not upload dat
 
 **DB role `loader`:** `CREATE` + ownership on `src_*` schemas, `INSERT/UPDATE` on `app.datasets`, and nothing on `pub`/`app` otherwise. Credentials come from `.env` via libpq env vars/`pg_service.conf` mounted in the container, so passwords never appear on the command line or in shell history.
 
-**Standard ogr2ogr invocation** (wrapped by `scripts/import.sh`, exposed as `make import`):
+**Standard ogr2ogr invocation** (wrapped by `scripts/geoimport.py`, exposed as `make import`):
 ```
 ogr2ogr -f PostgreSQL PG:"service=loader" /data/<file> [<source layer>]
   -nln <schema>.<table>
@@ -320,7 +320,7 @@ Behavior by status:
 ├─ docs/
 │  ├─ setup/                    # operator guide, grows each phase (§3.1)
 │  └─ decisions/                # ADRs incl. Phase 1 spike results
-├─ scripts/                     # import.sh, backup.sh, reset.sh (LF line endings enforced)
+├─ scripts/                     # geoimport.py, ops.sh (backup/restore/reset/nuke), verify (LF enforced)
 ├─ projects/
 │  ├─ world-overview/           # placeholder (§2.8)
 │  ├─ hydrology-sketch/         # placeholder
@@ -391,7 +391,7 @@ Each phase ends with an **exit gate**: acceptance criteria that must pass before
 **Deliverables**
 1. `compose.yaml` with `proxy`, `postgis`, `migrator`, `tipg`, and the three networks (§1.2). Pinned image tags. Healthchecks on all services.
 2. DB bootstrap migrations: extensions (`postgis`; `postgis_raster` off by default), schemas (`app`, `pub`, `src_ne`, `src_hydro`, `ml_out`), roles (`tipg_ro`, `app_rw`, `loader`, `worker_rw`) with least-privilege grants and default privileges, and the `app.datasets` provenance table.
-3. **Data ingestion (§2.7)**: `geotools` image (GDAL + R + Python 3), `scripts/import.sh`, recipe format, and Natural Earth recipes (countries, populated places, rivers, lakes) that load into `src_ne`. The seed is loaded *through* the import path, not a separate SQL dump, so ingestion is exercised from day one.
+3. **Data ingestion (§2.7)**: `geotools` image (GDAL + R + Python 3), `scripts/geoimport.py`, recipe format, and Natural Earth recipes (countries, populated places, rivers, lakes) that load into `src_ne`. The seed is loaded *through* the import path, not a separate SQL dump, so ingestion is exercised from day one.
 4. Seed SQL: `pub` views for the three placeholder projects (§2.8), including one **function collection** for the parametrized-layer spike.
 5. tiPG configured for `pub` only. Proxy routes `/tiles/*`.
 6. `Makefile` with the Phase 1 targets (§3.1), `.env.example`, `.gitattributes` enforcing LF on scripts. Secrets are never committed.
@@ -449,7 +449,7 @@ Each phase ends with an **exit gate**: acceptance criteria that must pass before
 4. Style presets: `single`, `categorical`, `choropleth` (quantile/equal/jenks via `/stats`), `graduated-circle`, `heatmap`.
 5. The frontend swaps the static loader for the core-api `ProjectRepository`. `/new` becomes a wizard: pick `pub` source → choose preset → preview live → save manifest. The wizard emits the **same YAML/JSON** the CLI consumes, so there is one path, not two.
 6. `mapgen` templates (`blank`, `vector-basic`, `hydro`, `analysis`). The placeholder projects are regenerated from them and the diff against the Phase 2 hand-built versions is empty. Status-aware validation (§2.8).
-7. `mapgen` also exposes the import path: `mapgen import` is a thin alias over `scripts/import.sh`, so project and data work share one CLI. Setup guide `06-projects.md`, including "complete a placeholder: import → view → flip layer to ready".
+7. `mapgen` also exposes the import path: `mapgen import` is a thin alias over `scripts/geoimport.py`, so project and data work share one CLI. Setup guide `06-projects.md`, including "complete a placeholder: import → view → flip layer to ready".
 
 **Exit gate**
 - `mapgen new demo-x && <write one SQL view> && mapgen apply demo-x` puts a working project in the Hub with no restarts beyond the documented refresh.
@@ -638,6 +638,6 @@ No open decisions block Phase 1. Version pins (PostGIS, tiPG, rocker/geospatial,
 **STOP. Awaiting confirmation before executing Phase 1.** On approval, Phase 1 runs in this order:
 1. `compose.yaml` + networks + `Makefile` skeleton + `docs/setup/01-02`
 2. DB migrations (schemas, roles, `app.datasets`)
-3. `geotools` image (GDAL + R + Python 3, version-match check) + `scripts/import.sh` + Natural Earth recipes + `docs/setup/04`
+3. `geotools` image (GDAL + R + Python 3, version-match check) + `scripts/geoimport.py` + Natural Earth recipes + `docs/setup/04`
 4. Placeholder `pub` views + tiPG + proxy + the tiPG spike (ADR in `docs/decisions/`)
 5. Backup/reset/nuke targets + `docs/setup/03` + `99`, then the clean-clone walkthrough and `make verify`
