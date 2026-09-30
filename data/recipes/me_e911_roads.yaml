@@ -1,0 +1,17 @@
+name: me_e911_roads
+title: E911 road centerlines (Maine)
+description: NG911 road centerlines from the Maine E911 FGDB bundle (roads, addresses, structures, PSAPs)
+agency: Maine GeoLibrary / Maine Emergency Services Communication Bureau
+vintage: { label: "Maine E911 FGDB bundle (continuously maintained)" }
+source:
+  url: https://www.arcgis.com/sharing/rest/content/items/f0f136a298534f5e87f8829c003bf12f/data
+  filename: E911Agol.gdb.zip
+  layer: NG_ROADS
+target: src_e911.roads
+license: "Public (Maine GeoLibrary). Use: user assumes risk."
+attribution: Maine GeoLibrary, Maine E911
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

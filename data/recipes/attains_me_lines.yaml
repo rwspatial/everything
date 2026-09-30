@@ -1,0 +1,15 @@
+name: attains_me_lines
+title: Assessed waters, streams and rivers (EPA ATTAINS, Maine)
+description: Maine DEP integrated-report assessment units (lines) with impairment status and causes
+agency: U.S. EPA ATTAINS / Maine DEP
+source:
+  arcgis: { url: "https://gispub.epa.gov/arcgis/rest/services/OW/ATTAINS_Assessment/MapServer/1", where: "state = 'ME'", page_size: 20,
+            params: { geometryPrecision: 6 } }  # EPA server errors on large pages of heavy river lines
+target: src_attains.assessment_lines
+license: Public domain (U.S. EPA)
+attribution: U.S. EPA ATTAINS; Maine Department of Environmental Protection
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

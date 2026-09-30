@@ -1,14 +1,19 @@
 name: ne_admin1
-description: States/provinces, Natural Earth 1:50m (world-overview todo layer "admin-1 boundaries")
+description: States and provinces, Natural Earth 1:50m (world-overview admin-1 layer)
+title: States and provinces (1:50m)
+agency: Natural Earth (naturalearthdata.com)
+group: natural-earth
+vintage: { label: "Natural Earth 1:50m cultural vectors, latest release on naciscdn.org" }
+coverage: { extent: world }
+requires_keys: []          # public download, no API key
+freshness: { method: http_head, every: 30d }
 source:
   url: https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_1_states_provinces.zip
 target: src_ne.admin1
 srs: EPSG:4326
 mode: overwrite
+fix_invalid: true
 license: Public domain (Natural Earth, naturalearthdata.com)
-notes: Deliberately disabled so world-overview stays an incomplete placeholder.
-enabled: false
-todo: >-
-  To complete the world-overview admin-1 layer: set enabled: true, run
-  `make import-recipe r=ne_admin1`, add a pub.world_overview__admin1 view to
-  db/seed/010_world_overview.sql, then `make seed && make refresh`.
+attribution: Made with Natural Earth
+notes: World-overview admin-1 layer (was a Phase 1 to-do example; enabled 2026-09-30).
+enabled: true

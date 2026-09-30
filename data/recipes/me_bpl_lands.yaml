@@ -1,0 +1,15 @@
+name: me_bpl_lands
+title: Public lands, BPL interests (Maine)
+description: Conserved lands in which the Bureau of Parks and Lands holds an interest
+agency: Maine Bureau of Parks and Lands (DACF)
+source:
+  arcgis: { url: "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Conserved_Lands_BPL_Interests/FeatureServer/0" }
+target: src_bpl.lands
+fix_invalid: true
+license: Public (Maine DACF / GeoLibrary)
+attribution: Maine Bureau of Parks and Lands
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

@@ -1,0 +1,14 @@
+name: me_dmr_aquaculture_leases
+title: Aquaculture leases (Maine DMR)
+description: Standard aquaculture lease polygons
+agency: Maine Department of Marine Resources
+source:
+  arcgis: { url: "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/DMR_Maine_Aquaculture_Leases/FeatureServer/116" }
+target: src_dmr.aquaculture_leases
+license: Public (Maine DMR)
+attribution: Maine Department of Marine Resources
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

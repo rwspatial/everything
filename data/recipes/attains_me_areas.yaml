@@ -1,0 +1,15 @@
+name: attains_me_areas
+title: Assessed waters, lakes and estuaries (EPA ATTAINS, Maine)
+description: Maine DEP integrated-report assessment units (areas) with impairment status and causes
+agency: U.S. EPA ATTAINS / Maine DEP
+source:
+  arcgis: { url: "https://gispub.epa.gov/arcgis/rest/services/OW/ATTAINS_Assessment/MapServer/2", where: "state = 'ME'", page_size: 100 }  # EPA server errors on large pages
+target: src_attains.assessment_areas
+fix_invalid: true
+license: Public domain (U.S. EPA)
+attribution: U.S. EPA ATTAINS; Maine Department of Environmental Protection
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

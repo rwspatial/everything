@@ -1,0 +1,18 @@
+name: nwi_me
+title: National Wetlands Inventory (Maine)
+description: Wetlands and deepwater habitats (Cowardin classification), USFWS state download
+agency: U.S. Fish and Wildlife Service
+vintage: { label: "NWI state download (Last-Modified 2026-04-29)" }
+source:
+  url: https://documentst.ecosphere.fws.gov/wetlands/data/State-Downloads/ME_geodatabase_wetlands.zip
+  inner: ME_geodatabase_wetlands.gdb
+  layer: ME_Wetlands
+target: src_nwi.wetlands
+fix_invalid: true
+license: Public domain (USFWS)
+attribution: U.S. Fish and Wildlife Service, National Wetlands Inventory
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

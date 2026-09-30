@@ -1,0 +1,17 @@
+name: me_dmr_nssp_2022
+title: Shellfish NSSP classifications 2022 (Maine DMR)
+description: National Shellfish Sanitation Program classifications, 2022 edition (newest hosted)
+agency: Maine Department of Marine Resources
+vintage: { label: "NSSP classifications 2022", year: 2022 }
+source:
+  arcgis: { url: "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MaineDMR_Public_Health_-_2022_NSSP_Classifications/FeatureServer/0" }
+target: src_dmr.nssp_classifications_2022
+fix_invalid: true
+license: Public (Maine DMR)
+attribution: Maine Department of Marine Resources
+notes: Classifications are NOT real-time open/closed status; DMR issues closures daily.
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

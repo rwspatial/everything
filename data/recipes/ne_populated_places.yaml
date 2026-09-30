@@ -1,10 +1,18 @@
 name: ne_populated_places
 description: Populated places (simple), Natural Earth 1:110m (world-overview placeholder project)
+title: Populated places (1:110m)
+agency: Natural Earth (naturalearthdata.com)
+group: natural-earth
+vintage: { label: "Natural Earth 1:110m cultural vectors, latest release on naciscdn.org" }
+coverage: { extent: world }
+requires_keys: []          # public download, no API key
+freshness: { method: http_head, every: 30d }
 source:
   url: https://naciscdn.org/naturalearth/110m/cultural/ne_110m_populated_places_simple.zip
 target: src_ne.populated_places
 srs: EPSG:4326
 mode: overwrite
 license: Public domain (Natural Earth, naturalearthdata.com)
+attribution: Made with Natural Earth
 notes: Point layer; stays Point (not promoted to MultiPoint).
 enabled: true

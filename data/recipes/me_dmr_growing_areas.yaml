@@ -1,0 +1,14 @@
+name: me_dmr_growing_areas
+title: Shellfish growing areas (Maine DMR)
+description: Shellfish growing-area boundaries, Maine DMR Public Health
+agency: Maine Department of Marine Resources
+source:
+  arcgis: { url: "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Growing_Area_Boundary/FeatureServer/0" }
+target: src_dmr.growing_areas
+license: Public (Maine DMR)
+attribution: Maine Department of Marine Resources
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

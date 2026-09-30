@@ -1,0 +1,14 @@
+name: me_boat_launches
+title: Boat launches (Maine)
+description: Public boat launch sites (Maine GeoLibrary structures)
+agency: Maine GeoLibrary
+source:
+  arcgis: { url: "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_GeoLibrary_Structure/FeatureServer/1" }
+target: src_bpl.boat_launches
+license: Public (Maine GeoLibrary)
+attribution: Maine GeoLibrary
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

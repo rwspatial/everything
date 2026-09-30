@@ -1,0 +1,14 @@
+name: me_dmr_lpa_sites
+title: Limited-purpose aquaculture sites (Maine DMR)
+description: Limited Purpose Aquaculture (LPA) license sites
+agency: Maine Department of Marine Resources
+source:
+  arcgis: { url: "https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_DMR_Limited_Purpose_Aquaculture_%28LPA%29_Points/FeatureServer/117" }
+target: src_dmr.lpa_sites
+license: Public (Maine DMR)
+attribution: Maine Department of Marine Resources
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

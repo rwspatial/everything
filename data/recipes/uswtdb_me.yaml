@@ -1,0 +1,16 @@
+name: uswtdb_me
+title: Wind turbines (US Wind Turbine Database, Maine)
+description: Turbine locations and specs (capacity, hub height, rotor diameter), filtered to Maine
+agency: USGS / Lawrence Berkeley National Laboratory / American Clean Power
+source:
+  url: https://energy.usgs.gov/uswtdb/assets/data/uswtdbSHP.zip
+where: "t_state = 'ME'"
+ogr_args: [-fieldTypeToString, Date]   # the shapefile stores blank dates as 0000/00/00
+target: src_energy.wind_turbines
+license: Public domain (USGS)
+attribution: U.S. Wind Turbine Database (USGS, LBNL, ACP)
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true

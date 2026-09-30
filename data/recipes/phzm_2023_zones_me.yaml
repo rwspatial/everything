@@ -1,0 +1,17 @@
+name: phzm_2023_zones_me
+title: Plant hardiness zones 2023 (Maine)
+description: USDA plant hardiness half-zones (vector), clipped to a Maine bounding box
+agency: USDA-ARS / PRISM Climate Group, Oregon State University
+vintage: { label: "USDA PHZM 2023", year: 2023 }
+source:
+  url: https://prism.oregonstate.edu/phzm/data/2023/phzm_us_zones_shp_2023.zip
+spat: [-71.1, 42.95, -66.9, 47.47]
+target: src_climate.hardiness_zones_2023
+fix_invalid: true
+license: USDA-ARS and Oregon State University (cite)
+attribution: USDA Plant Hardiness Zone Map 2023; PRISM Climate Group, Oregon State University
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+mode: overwrite
+enabled: true
