@@ -23,6 +23,43 @@ const osmRaster: StyleSpecification = {
 	layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
 };
 
+/** Marks a basemap layer as a label overlay: project layers are drawn below it (see Viewer). */
+export const LABELS_METADATA = { 'spatial:labels': true };
+
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
+const esriAttribution =
+	'Imagery © <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community';
+
+function aerial(withLabels: boolean): StyleSpecification {
+	return {
+		version: 8,
+		sources: {
+			imagery: {
+				type: 'raster',
+				tiles: [`${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`],
+				tileSize: 256,
+				maxzoom: 19,
+				attribution: esriAttribution
+			},
+			...(withLabels
+				? {
+						labels: {
+							type: 'raster' as const,
+							tiles: [`${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`],
+							tileSize: 256,
+							maxzoom: 19,
+							attribution: 'Boundaries and places © Esri'
+						}
+					}
+				: {})
+		},
+		layers: [
+			{ id: 'imagery', type: 'raster', source: 'imagery' },
+			...(withLabels ? [{ id: 'labels', type: 'raster' as const, source: 'labels', metadata: LABELS_METADATA }] : [])
+		]
+	};
+}
+
 export interface Basemap {
 	label: string;
 	style: string | StyleSpecification;
@@ -31,6 +68,8 @@ export interface Basemap {
 export const basemaps: Record<string, Basemap> = {
 	positron: { label: 'Light (OpenFreeMap)', style: 'https://tiles.openfreemap.org/styles/positron' },
 	liberty: { label: 'Streets (OpenFreeMap)', style: 'https://tiles.openfreemap.org/styles/liberty' },
+	'aerial-labels': { label: 'Aerial + labels (Esri)', style: aerial(true) },
+	aerial: { label: 'Aerial (Esri)', style: aerial(false) },
 	'osm-raster': { label: 'OpenStreetMap (raster)', style: osmRaster },
 	none: { label: 'None (works offline)', style: blank }
 };

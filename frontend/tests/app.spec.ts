@@ -87,6 +87,30 @@ test('switching basemap keeps project layers drawn (and offline basemap works)',
 	expect(await rendered(page, 'countries')).toBeGreaterThan(100);
 });
 
+test('aerial basemap: imagery loads, data stays on top, labels above data', async ({ page }) => {
+	await page.goto('/p/world-overview');
+	await mapIdle(page);
+	await page.getByRole('combobox', { name: 'Basemap' }).selectOption('aerial-labels');
+	await expect(page).toHaveURL(/[?&]b=aerial-labels/);
+	await mapIdle(page);
+	const state = await page.evaluate(() => {
+		const map = window.__spatial!.map!;
+		const ids = map.getStyle().layers.map((l) => l.id);
+		return { ids, imageryLoaded: map.isSourceLoaded('imagery') };
+	});
+	expect(state.imageryLoaded).toBe(true);
+	expect(state.ids.indexOf('imagery')).toBeLessThan(state.ids.indexOf('p:countries:0'));
+	expect(state.ids.indexOf('p:places:0')).toBeLessThan(state.ids.indexOf('labels'));
+	expect(await rendered(page, 'countries')).toBeGreaterThan(100);
+	await page.getByRole('slider', { name: 'Countries by population opacity' }).fill('0.35');
+	await mapIdle(page);
+	await shot(page, '7-aerial');
+	// Survives a reload (basemap is part of the shareable URL).
+	await page.reload();
+	await mapIdle(page);
+	await expect(page.getByRole('combobox', { name: 'Basemap' })).toHaveValue('aerial-labels');
+});
+
 test('layer order can be changed and is kept in the URL', async ({ page }) => {
 	await page.goto('/p/world-overview');
 	await mapIdle(page);

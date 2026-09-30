@@ -72,7 +72,24 @@ function parameters (`pa.<layer>.<param>`) and basemap (`b`). **Copy link** copi
 
 ## Basemaps
 
-`positron` and `liberty` (OpenFreeMap, no API key) and `osm-raster` all need the internet. `none` is a plain background
+| Key (manifest `view.basemap`) | Menu label | Source |
+|---|---|---|
+| `positron` (default) | Light (OpenFreeMap) | OpenFreeMap vector tiles |
+| `liberty` | Streets (OpenFreeMap) | OpenFreeMap vector tiles |
+| `aerial-labels` | Aerial + labels (Esri) | Esri World Imagery + Esri boundaries/places overlay |
+| `aerial` | Aerial (Esri) | Esri World Imagery only (cleanest for analysis) |
+| `osm-raster` | OpenStreetMap (raster) | tile.openstreetmap.org |
+| `none` | None (works offline) | plain background |
+
+Every project gets all of them in the **Basemap** menu. Set `"basemap": "aerial-labels"` in a manifest's `view` to make
+one the project's default. Aerial imagery looks best with semi-transparent fills; use the layer's opacity slider or
+`"opacity": 0.5` in the manifest.
+
+**Esri imagery terms:** attribution is shown automatically and is required. Esri's basemap tiles are fine for development
+and non-commercial use without a key. A public or commercial deployment (Phase 6) needs an ArcGIS Location Platform
+account and API key, or an open alternative such as EOX Sentinel-2 cloudless (10 m, CC BY-NC-SA for 2018+ editions).
+
+All of these except `none` need the internet (OpenFreeMap and Esri need no API key locally). `none` is a plain background
 that works offline. If an online basemap can't be reached, the viewer falls back to `none` automatically and says so.
 Project data is unaffected either way. Project layers are drawn under the basemap's labels so place names stay readable.
 

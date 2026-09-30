@@ -103,7 +103,7 @@ services:
     build:
       context: ./frontend
       args:
-        NODE_TAG: ${NODE_TAG:-24.21.0-alpine}
+        NODE_TAG: ${NODE_TAG:-24.21.0-bookworm-slim}
         CADDY_TAG: ${CADDY_TAG}
     image: spatial/frontend:local
     networks: [edge]
@@ -117,7 +117,7 @@ services:
   # On-demand Node toolbox for frontend work: `make frontend-dev`, `make frontend-check`.
   node:
     profiles: [tools]
-    image: node:${NODE_TAG:-24.21.0-alpine}
+    image: node:${NODE_TAG:-24.21.0-bookworm-slim}
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     environment:
       HOME: /tmp/home

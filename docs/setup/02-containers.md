@@ -9,7 +9,7 @@
 | `tipg` | `ghcr.io/developmentseed/tipg:1.6.1` | Serves `pub.*` as OGC Features + vector tiles | yes |
 | `frontend` | built from `frontend/` (Node build → Caddy) | The Svelte + MapLibre web app | yes |
 | `proxy` | `caddy:2.11.4-alpine` | The only published web port. `/tiles/*` → tipg, `/projects/*` → manifests, everything else → frontend | yes |
-| `node` | `node:24.21.0-alpine` | Frontend toolbox (`make frontend-dev`, `frontend-check`) | no, one-off |
+| `node` | `node:24.21.0-bookworm-slim` | Frontend toolbox (`make frontend-dev`, `frontend-check`) | no, one-off |
 | `e2e` | `mcr.microsoft.com/playwright:v1.63.0-noble` | Browser tests (`make e2e`) | no, one-off |
 | `geotools` | built locally from `services/geotools/` | GDAL + R + Python toolbox for imports and analysis | no, one-off via `make` |
 

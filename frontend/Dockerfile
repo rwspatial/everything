@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Static SvelteKit build, served by Caddy. The main proxy forwards everything that
 # isn't /tiles/* or /projects/* here. In Phase 6 the same build/ goes to S3 + CloudFront.
-ARG NODE_TAG=24.21.0-alpine
+ARG NODE_TAG=24.21.0-bookworm-slim
 ARG CADDY_TAG=2.11.4-alpine
 
 FROM node:${NODE_TAG} AS build

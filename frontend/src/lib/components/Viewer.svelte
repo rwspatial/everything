@@ -86,8 +86,11 @@
 	const active = () => layers.filter((l) => l.spec.status !== 'todo');
 
 	// ---- map lifecycle ----------------------------------------------------------------------
+	/** Basemap label layers (vector symbols, or raster overlays tagged via LABELS_METADATA). */
+	const isLabelLayer = (l: { id: string; type: string; metadata?: unknown }) =>
+		!isProjectId(l.id) && (l.type === 'symbol' || (l.metadata as Record<string, unknown> | undefined)?.['spatial:labels'] === true);
 	/** First basemap label layer: project layers go below it so place names stay readable. */
-	const labelAnchor = () => map?.getStyle().layers.find((l) => l.type === 'symbol' && !isProjectId(l.id))?.id;
+	const labelAnchor = () => map?.getStyle().layers.find(isLabelLayer)?.id;
 
 	function addProjectLayers() {
 		if (!map) return;
@@ -264,7 +267,7 @@
 			// Carry the project's sources and layers (current paint/visibility) onto the new basemap.
 			transformStyle: (prev, next) => {
 				const ours = (prev?.layers ?? []).filter((l) => isProjectId(l.id));
-				const cut = next.layers.findIndex((l) => l.type === 'symbol');
+				const cut = next.layers.findIndex(isLabelLayer);
 				const at = cut === -1 ? next.layers.length : cut;
 				return {
 					...next,
