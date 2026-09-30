@@ -1,6 +1,6 @@
 # Admin Dashboard & Dataset Registry — Plan
 
-Status: **DRAFT — awaiting confirmation. No code written.**
+Status: **Phase A done (2026-09-30): read-only /admin, registry, CLI run history, `make verify` + e2e green. Phase B next.**
 Date: 2026-09-29
 Related plans:
 - `spatial-app-architecture.plan.md`: Phases 1–2 done. This plan **pulls forward** its Phase 3 `core-api` as the admin backend, and its Phase 5 Postgres job queue as the worker.
@@ -500,7 +500,12 @@ Every table gets a denormalized **`areasymbol`** column at load (via `mukey → 
 
 ## 10. Phasing (each phase extends `make verify` and `make e2e`)
 
-### Phase A: read-only dashboard + run history from `make`
+### Phase A: read-only dashboard + run history from `make` (DONE 2026-09-30)
+
+Implemented with two deviations:
+- Auth uses Caddy `forward_auth` → core-api (which checks Basic credentials) instead of Caddy `basic_auth` + bcrypt hash. It's simpler (no hash tooling, no `$` escaping in `.env`) and it's the same hook OIDC will use.
+- The engine is a new `scripts/etl/` package (redact, runs, registry, outputs, health, freshness), but the import ops themselves still live in `geoimport.py`; moving them is left to Phase B.
+
 
 1. Migrations:
    - the registry tables (§2.2)

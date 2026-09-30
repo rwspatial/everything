@@ -36,6 +36,7 @@ services:
       LOADER_DB_PASSWORD: ${LOADER_DB_PASSWORD}
       WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD}
       ANALYST_DB_PASSWORD: ${ANALYST_DB_PASSWORD}
+      ADMIN_API_DB_PASSWORD: ${ADMIN_API_DB_PASSWORD:?run make admin-credentials}
     volumes:
       - ./db:/db:ro
       - ./services/migrator:/migrator:ro
@@ -81,7 +82,9 @@ services:
     ports:
       - "127.0.0.1:${HTTP_PORT:-8080}:80"
     volumes:
-      - ./services/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Directory (not single-file) mount: editors replace files atomically, and Docker Desktop on WSL
+      # loses single-file bind mounts when that happens.
+      - ./services/proxy:/etc/caddy:ro
       - ./projects:/srv/projects:ro
       - caddy_data:/data
       - caddy_config:/config
@@ -91,11 +94,61 @@ services:
         condition: service_healthy
       frontend:
         condition: service_healthy
+      core-api:
+        condition: service_healthy
+      titiler:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/healthz"]
       interval: 10s
       timeout: 5s
       retries: 6
+    restart: unless-stopped
+
+  # Admin API (dashboard backend): read-only over the dataset registry in Phase A.
+  # Never holds external API keys; never touches files. Reached only through the proxy.
+  core-api:
+    build: ./services/core-api
+    image: spatial/core-api:local
+    environment:
+      DATABASE_URL: postgresql://admin_api:${ADMIN_API_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run make admin-credentials}
+    networks: [api, data]
+    depends_on:
+      postgis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/internal/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  # Raster tiles from Cloud Optimized GeoTIFFs in data/cog/ (read-only). Only reachable through the
+  # proxy's named-raster route (/raster/<name>/...), which pins the file path: clients cannot pass their own URL.
+  titiler:
+    image: ghcr.io/developmentseed/titiler:${TITILER_TAG:-2.4.0}
+    environment:
+      PORT: "8000"
+      WEB_CONCURRENCY: "2"
+      GDAL_CACHEMAX: "512"
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+      GDAL_HTTP_MERGE_CONSECUTIVE_RANGES: "YES"
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: ".tif,.tiff"
+      VSI_CACHE: "TRUE"
+    volumes:
+      - ./data/cog:/data/cog:ro
+    networks: [api]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
     restart: unless-stopped
 
   # Svelte + MapLibre app: static build served by its own Caddy (frontend/Dockerfile).
@@ -139,6 +192,8 @@ services:
       HOME: /tmp/home
       BASE_URL: http://proxy
       CI: "1"
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - ./frontend:/app
     working_dir: /app
@@ -163,11 +218,14 @@ services:
       LOADER_DB_PASSWORD: ${LOADER_DB_PASSWORD}
       ANALYST_DB_PASSWORD: ${ANALYST_DB_PASSWORD}
       TIPG_DB_PASSWORD: ${TIPG_DB_PASSWORD}
+      TRIGGERED_BY: cli:${HOST_USER:-unknown}
+      # External API keys: only here (and the Phase B worker). Never in core-api, frontend, proxy or tipg.
+      CENSUS_API_KEY: ${CENSUS_API_KEY:-}
     volumes:
       - ./:/work
       - ./data/incoming:/data:ro
     working_dir: /work
-    networks: [data, egress]
+    networks: [data, egress, api]   # api: health checks reach tipg/titiler
     depends_on:
       postgis:
         condition: service_healthy

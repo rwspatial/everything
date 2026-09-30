@@ -1,6 +1,6 @@
 -- Placeholder project: world-overview (status: draft)
 -- Requires recipes: ne_countries, ne_populated_places  (make import-all)
--- Deliberately missing: admin-1 boundaries (recipe ne_admin1 is disabled; see its todo note).
+-- Also requires recipe ne_admin1 (states and provinces).
 --
 -- Seeds are idempotent (CREATE OR REPLACE). If you change a view's columns,
 -- DROP the view first: CREATE OR REPLACE VIEW cannot remove or retype columns.
@@ -28,3 +28,8 @@ SELECT id,
        geom
 FROM src_ne.populated_places;
 COMMENT ON VIEW pub.world_overview__places IS 'world-overview: populated places (Natural Earth 1:110m, simple)';
+
+CREATE OR REPLACE VIEW pub.world_overview__admin1 AS
+SELECT id, name, admin AS country, type_en AS type, iso_3166_2 AS code, geom
+FROM src_ne.admin1;
+COMMENT ON VIEW pub.world_overview__admin1 IS 'world-overview: states and provinces (Natural Earth 1:50m)';

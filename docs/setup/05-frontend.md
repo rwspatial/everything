@@ -5,7 +5,8 @@ The web app is at **http://localhost:8080/**. It's a static SvelteKit build (Sve
 
 | URL | What |
 |---|---|
-| `/` | Project hub: every project in `projects/index.json`, with status badges and what's missing |
+| `/` | Landing page: identity, services, contact, and projects tagged `maine` as selected work. Copy lives in `src/lib/site.ts` |
+| `/maps` | Project hub: every project in `projects/index.json`, with status badges and what's missing |
 | `/p/<slug>` | Map viewer: layer list (toggle, opacity, order, parameters, legend), hover popups, click-to-inspect drawer |
 | `/new` | How to add a project (the guided creator arrives in Phase 3) |
 | `/projects/...` | The manifests themselves (JSON only, served from the repo's `projects/` folder) |
@@ -54,6 +55,7 @@ Layer `source.type` picks the adapter:
 | `tipg-geojson` | Small layers (< ~5,000 features) fetched whole | `collection`; optional `limit` |
 | `geojson-url` | A GeoJSON file anywhere | `url` |
 | `raster-xyz` | Raster tiles (`{z}/{x}/{y}`) | `tiles: [...]` |
+| `raster-cog` | A COG in `data/cog/` served by titiler | `cog: "maine/dem_10m"` (path without `.tif`); optional `rescale: [min, max]`, `colormap` (e.g. `terrain`, `viridis`, `rdylbu_r`), `bidx`, `units` (clicking the map shows the pixel value, e.g. `-11.4 °F`, in the Inspector) |
 
 Other layer fields:
 - `style.layers`: MapLibre layer definitions without `id`/`source`/`source-layer` (injected). Omit for a default style.
@@ -101,7 +103,7 @@ src/lib/adapters.ts       source.type → MapLibre source/layers (the extension 
 src/lib/projects.ts       ProjectRepository: static JSON now, core-api in Phase 3
 src/lib/basemaps.ts       basemap registry
 src/lib/components/       Viewer, LayerTree, Legend, Inspector, StatusBadge
-src/routes/               / (hub), /p/[slug] (viewer), /new
+src/routes/               / (landing), /maps (hub), /p/[slug] (viewer), /new
 static/config.json        runtime URLs (tiles, projects), swappable without rebuilding
 tests/app.spec.ts         Playwright + axe browser tests
 ```

@@ -10,9 +10,10 @@ Every command here is a `make` target. `make help` prints the same list.
 | [03-reinstall-reset.md](03-reinstall-reset.md) | Backups, restores, and the reset ladder from restart to full reinstall | 1 |
 | [04-data-import.md](04-data-import.md) | Loading data with GDAL/ogr2ogr, recipes, publishing a view, R and Python access | 1 |
 | [05-frontend.md](05-frontend.md) | The web app, adding projects (JSON only), dev server, browser tests | 2 |
-| 06-projects.md | `mapgen`, completing placeholder projects | 3 |
-| 07-mcp.md | MCP servers | 4 |
-| 08-ml-workers.md | R/Python workers | 5 |
+| [06-admin.md](06-admin.md) | Admin dashboard: dataset registry, run history, freshness, health, login | Dashboard A |
+| 07-projects.md | `mapgen`, completing placeholder projects | 3 |
+| 08-mcp.md | MCP servers | 4 |
+| 09-ml-workers.md | R/Python workers | 5 |
 | [99-troubleshooting.md](99-troubleshooting.md) | Known problems and fixes | all |
 
 ## Five-minute version
@@ -23,4 +24,4 @@ make bootstrap    # start, build geotools (slow, once), import Natural Earth, cr
 make verify       # automated checks; expect "ALL CHECKS PASSED"
 ```
 
-Then open **http://localhost:8080/** for the project hub and map viewer.
+Then open **http://localhost:8080/** for the landing page; the project hub and map viewer are at **/maps**.

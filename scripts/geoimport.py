@@ -11,6 +11,11 @@ Normally invoked through make (see `make help` and docs/setup/04-data-import.md)
   geoimport.py all                     # run every enabled recipe
   geoimport.py list [--no-recipe]      # show app.datasets
   geoimport.py cog <file.tif>          # write a Cloud Optimized GeoTIFF to data/cog/
+  geoimport.py sync                    # mirror data/recipes/*.yaml into app.recipes (+ key status)
+  geoimport.py health [name]           # refresh outputs/footprints and run live health checks
+  geoimport.py freshness [name]        # compare loaded data with what upstream offers now
+
+Every import, recipe and cog command is recorded in app.jobs/app.runs (admin dashboard).
 
 <file> is looked up in data/incoming/ (mounted at /data), then relative to the repo.
 Zip files are read in place through /vsizip/.
@@ -18,11 +23,13 @@ Zip files are read in place through /vsizip/.
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
+import json
 import re
 import shlex
-import subprocess
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -30,19 +37,29 @@ import psycopg
 import yaml
 from osgeo import gdal, ogr
 
+from etl import freshness, health, registry, runs
+from etl import outputs as outputs_mod
+from etl.redact import redact
+
 gdal.UseExceptions()
 
 REPO = Path("/work")
 INCOMING = Path("/data")
 DOWNLOADS = REPO / "data" / "cache" / "downloads"
 RECIPES = REPO / "data" / "recipes"
+PROJECTS = REPO / "projects"
 COG_DIR = REPO / "data" / "cog"
 
 LOADER = "service=loader"
 TARGET_RE = re.compile(r"^(src_[a-z][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$")
 CSV_XY = ["X_POSSIBLE_NAMES=lon*,long*,x", "Y_POSSIBLE_NAMES=lat*,y", "AUTODETECT_TYPE=YES"]
 RECIPE_KEYS = {"name", "description", "source", "target", "srs", "src_srs", "mode",
-               "fix_invalid", "clip_web_mercator", "open_options", "license", "notes", "enabled", "todo"}
+               "fix_invalid", "clip_web_mercator", "open_options", "license", "notes", "enabled", "todo",
+               # recipe format v2 (plan: admin-dashboard §3); Phase A reads the descriptive ones
+               "kind", "group", "title", "agency", "attribution", "upstream", "vintage", "coverage", "parts",
+               "requires_keys", "outputs", "steps", "depends_on", "freshness", "retention", "concurrency",
+               "estimate", "rules", "where", "spat", "ogr_args", "analysis_srs", "resolution", "resampling", "nodata"}
+DOWNLOADED_BYTES = 0
 
 
 class ImportError_(Exception):
@@ -51,19 +68,27 @@ class ImportError_(Exception):
 
 # --------------------------------------------------------------------------- sources
 
-def download(url: str) -> Path:
+def download(url: str, filename: str | None = None) -> Path:
     DOWNLOADS.mkdir(parents=True, exist_ok=True)
-    dest = DOWNLOADS / url.rstrip("/").rsplit("/", 1)[-1]
+    dest = DOWNLOADS / (filename or url.rstrip("/").rsplit("/", 1)[-1])
     if dest.exists() and dest.stat().st_size > 0:
         print(f"using cached download {dest.relative_to(REPO)}")
         return dest
-    print(f"downloading {url}")
+    print(f"downloading {redact(url)}")
+    global DOWNLOADED_BYTES
     tmp = dest.with_suffix(dest.suffix + ".part")
     req = urllib.request.Request(url, headers={"User-Agent": "spatial-geoimport/1"})
     with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
+        h = resp.headers
+        markers = {"etag": h.get("ETag"), "last_modified": h.get("Last-Modified"),
+                   "bytes": int(h["Content-Length"]) if h.get("Content-Length") else None}
         while chunk := resp.read(1 << 20):
             out.write(chunk)
+            DOWNLOADED_BYTES += len(chunk)
     tmp.rename(dest)
+    markers = freshness.portal_item_markers(url) or markers
+    # Upstream version markers, compared later by `geoimport.py freshness`.
+    freshness.headers_sidecar(dest).write_text(json.dumps(markers))
     return dest
 
 
@@ -73,6 +98,37 @@ def resolve(path: str) -> Path:
         if candidate.exists():
             return candidate
     raise ImportError_(f"file not found: {path} (looked in data/incoming/ and the repo root)")
+
+
+def esrijson_url(a: dict) -> str:
+    """GDAL ESRIJSON source for an ArcGIS Feature/Map Server layer; GDAL pages through it (resultOffset)."""
+    params = {"where": a.get("where", "1=1"), "outFields": a.get("out_fields", "*"),
+              "outSR": "4326", "returnGeometry": "true", "f": "json"}
+    if a.get("page_size"):  # some servers fail on large pages; GDAL keeps paging with resultOffset
+        params.update(resultRecordCount=str(a["page_size"]), orderByFields=a.get("order_by", "OBJECTID"))
+    params.update({k: str(v) for k, v in (a.get("params") or {}).items()})  # e.g. geometryPrecision
+    q = urllib.parse.urlencode(params)
+    return f"ESRIJSON:{a['url'].rstrip('/')}/query?{q}"
+
+
+def fetch_arcgis(a: dict, target: str) -> Path:
+    """Snapshot an ArcGIS layer to a local GeoPackage, then import that like any file.
+
+    Streaming ESRIJSON straight into PostgreSQL mangles date fields (COPY receives truncated values);
+    the snapshot also gives every run a checksummed, re-importable copy.
+    """
+    global DOWNLOADED_BYTES
+    DOWNLOADS.mkdir(parents=True, exist_ok=True)
+    dest = DOWNLOADS / f"arcgis_{target.replace('.', '__')}.gpkg"
+    tmp = dest.with_name(dest.stem + ".part.gpkg")
+    tmp.unlink(missing_ok=True)
+    print(f"fetching {redact(a['url'])} (where {a.get('where', '1=1')})", flush=True)
+    if runs.run_cmd(["ogr2ogr", "-f", "GPKG", str(tmp), esrijson_url(a), "-nln", "features", "-progress"]) != 0:
+        tmp.unlink(missing_ok=True)
+        raise ImportError_("ArcGIS download failed (see log above)")
+    tmp.replace(dest)
+    DOWNLOADED_BYTES += dest.stat().st_size
+    return dest
 
 
 def gdal_path(p: Path) -> str:
@@ -269,24 +325,29 @@ def post_import(conn, schema: str, table: str, fix: bool, clip: bool = False) ->
 
 
 def record(conn, schema, table, *, source, layer, digest, source_srs, target_srs, stats, recipe, license, notes):
+    """Provenance of the imported table, as its postgis_table output in the dataset registry."""
+    run_id = runs.ACTIVE.run_id if runs.ACTIVE else None
     conn.execute(
         """
-        INSERT INTO app.datasets (table_schema, table_name, source, source_layer, source_sha256,
+        INSERT INTO app.dataset_outputs (recipe_name, kind, locator, source, source_layer, source_sha256,
             source_srs, target_srs, geometry_type, srid, row_count, invalid_geom_count,
-            recipe, license, notes)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (table_schema, table_name) DO UPDATE SET
+            license, notes, checksum, loaded_run_id, imported_at, imported_by)
+        VALUES (%s, 'postgis_table', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), current_user)
+        ON CONFLICT (kind, locator) DO UPDATE SET
+            recipe_name = EXCLUDED.recipe_name,
             source = EXCLUDED.source, source_layer = EXCLUDED.source_layer,
             source_sha256 = EXCLUDED.source_sha256, source_srs = EXCLUDED.source_srs,
             target_srs = EXCLUDED.target_srs, geometry_type = EXCLUDED.geometry_type,
             srid = EXCLUDED.srid, row_count = EXCLUDED.row_count,
-            invalid_geom_count = EXCLUDED.invalid_geom_count, recipe = EXCLUDED.recipe,
-            license = COALESCE(EXCLUDED.license, app.datasets.license),
-            notes = COALESCE(EXCLUDED.notes, app.datasets.notes),
+            invalid_geom_count = EXCLUDED.invalid_geom_count,
+            license = COALESCE(EXCLUDED.license, app.dataset_outputs.license),
+            notes = COALESCE(EXCLUDED.notes, app.dataset_outputs.notes),
+            checksum = EXCLUDED.checksum, loaded_run_id = EXCLUDED.loaded_run_id,
             imported_at = now(), imported_by = current_user
         """,
-        (schema, table, source, layer, digest, source_srs, target_srs, stats["geometry_type"],
-         stats["srid"], stats["row_count"], stats["invalid_geom_count"], recipe, license, notes),
+        (recipe, f"{schema}.{table}", redact(source), layer, digest, source_srs, target_srs,
+         stats["geometry_type"], stats["srid"], stats["row_count"], stats["invalid_geom_count"],
+         license, notes, digest, run_id),
     )
     conn.commit()
 
@@ -294,7 +355,9 @@ def record(conn, schema, table, *, source, layer, digest, source_srs, target_srs
 def do_import(*, target: str, path: str | None = None, url: str | None = None, layer: str | None = None,
               srs: str = "EPSG:4326", src_srs: str | None = None, mode: str = "overwrite", fix: bool = False, clip: bool = False,
               oo: list[str] | None = None, recipe: str | None = None, license: str | None = None,
-              notes: str | None = None) -> dict:
+              notes: str | None = None, arcgis: dict | None = None, filename: str | None = None,
+              where: str | None = None, spat: list[float] | None = None, ogr_args: list[str] | None = None,
+              inner: str | None = None) -> dict:
     m = TARGET_RE.match(target)
     if not m:
         raise ImportError_(f"target must be src_<domain>.<table> in lowercase, got '{target}'")
@@ -302,11 +365,11 @@ def do_import(*, target: str, path: str | None = None, url: str | None = None, l
     if mode not in ("overwrite", "append"):
         raise ImportError_(f"mode must be overwrite or append, got '{mode}'")
 
-    local = download(url) if url else resolve(path)
+    local = download(url, filename) if url else (fetch_arcgis(arcgis, target) if arcgis else resolve(path))
     oo = open_options_for(local, oo or [])
     if is_csv(local) and not src_srs:
         src_srs = "EPSG:4326"  # lon/lat CSVs carry no CRS; override with src_srs=
-    gpath = gdal_path(local)
+    gpath = gdal_path(local) + (f"/{inner}" if inner else "")  # inner: path inside an archive (e.g. a .gdb)
     ds = open_vector(gpath, oo)
     lyr = pick_layer(ds, layer)
     layer_name = lyr.GetName()
@@ -336,6 +399,11 @@ def do_import(*, target: str, path: str | None = None, url: str | None = None, l
     cmd = ["ogr2ogr", "-f", "PostgreSQL", "-nln", f"{schema}.{load_table}"]
     for o in oo:
         cmd += ["-oo", o]
+    cmd += [str(a) for a in ogr_args or []]  # recipe escape hatch, e.g. -fieldTypeToString Date
+    if where:
+        cmd += ["-where", where]
+    if spat:
+        cmd += ["-spat", *[str(v) for v in spat], "-spat_srs", "EPSG:4326"]
     if src_srs:
         cmd += ["-s_srs", src_srs]
     if srs != "native":
@@ -347,13 +415,13 @@ def do_import(*, target: str, path: str | None = None, url: str | None = None, l
             "--config", "PG_USE_COPY", "YES", "-gt", "65536", "-progress",
             "-overwrite" if mode == "overwrite" else "-append",
             f"PG:{LOADER}", gpath, layer_name]
-    print("$ " + shlex.join(cmd), flush=True)
-    result = subprocess.run(cmd)
-    if result.returncode != 0:
+    print("$ " + redact(shlex.join(cmd)), flush=True)
+    returncode = runs.run_cmd(cmd)
+    if returncode != 0:
         if deps:
             with psycopg.connect(LOADER) as conn:
                 conn.execute(f'DROP TABLE IF EXISTS "{schema}"."{load_table}"')
-        raise ImportError_(f"ogr2ogr failed with exit code {result.returncode}"
+        raise ImportError_(f"ogr2ogr failed with exit code {returncode}"
                            + (f" ({schema}.{table} and its views are unchanged)" if deps else ""))
 
     with psycopg.connect(LOADER) as conn:
@@ -366,18 +434,40 @@ def do_import(*, target: str, path: str | None = None, url: str | None = None, l
         if deps:
             swap_in_stage(conn, schema, table, load_table, deps)
         stats = post_import(conn, schema, table, fix, clip)
-        record(conn, schema, table, source=url or str(path), layer=layer_name, digest=sha256(local),
+        digest = sha256(local)
+        record(conn, schema, table, source=url or (arcgis or {}).get("url") or str(path), layer=layer_name, digest=digest,
                source_srs=source_srs, target_srs=srs, stats=stats, recipe=recipe,
                license=license, notes=notes)
+        if recipe and url:
+            freshness.record_loaded_part(conn, recipe, local, runs.ACTIVE.run_id if runs.ACTIVE else None,
+                                         digest, stats["row_count"])
+            conn.commit()
+        elif recipe and arcgis:
+            freshness.record_arcgis_part(conn, recipe, arcgis["url"], runs.ACTIVE.run_id if runs.ACTIVE else None,
+                                         stats["row_count"])
+            conn.commit()
 
     print(f"OK {schema}.{table}: {stats['row_count']} rows, {stats['geometry_type']}, SRID {stats['srid']}"
           + (f", {stats['invalid_geom_count']} INVALID geometries (re-run with fix=1)" if stats["invalid_geom_count"] else ""))
     return stats
 
 
+def finalize(recipe: str | None) -> None:
+    """After an import: refresh outputs, footprints, coverage and health for the dashboard."""
+    with psycopg.connect(LOADER) as conn:
+        touched = outputs_mod.refresh_outputs(conn, recipe, PROJECTS)
+        for name in touched or [recipe]:
+            health.check_outputs(conn, name)
+
+
 def cmd_import(args) -> None:
-    do_import(target=args.target, path=args.file, layer=args.layer, srs=args.srs, src_srs=args.src_srs,
-              mode=args.mode, fix=args.fix, clip=args.clip, oo=args.oo, license=args.license, notes=args.notes)
+    sync_quietly()
+    with runs.RunRecorder("import", params={"file": args.file, "target": args.target}) as run:
+        stats = do_import(target=args.target, path=args.file, layer=args.layer, srs=args.srs, src_srs=args.src_srs,
+                          mode=args.mode, fix=args.fix, clip=args.clip, oo=args.oo, license=args.license,
+                          notes=args.notes)
+        run.rows, run.bytes = stats["row_count"], DOWNLOADED_BYTES
+        finalize(None)
     stub = {
         "name": args.target.split(".", 1)[1],
         "source": {"path": args.file, **({"layer": args.layer} if args.layer else {})},
@@ -406,8 +496,8 @@ def load_recipe(name: str) -> dict:
     if r.get("name") != name:
         raise ImportError_(f"{path.name}: 'name' must equal the file name ({name})")
     src = r.get("source") or {}
-    if bool(src.get("url")) == bool(src.get("path")):
-        raise ImportError_(f"{path.name}: source needs exactly one of url or path")
+    if sum(bool(src.get(k)) for k in ("url", "path", "arcgis")) != 1:
+        raise ImportError_(f"{path.name}: source needs exactly one of url, path or arcgis")
     if "target" not in r:
         raise ImportError_(f"{path.name}: missing target")
     return r
@@ -417,20 +507,124 @@ def run_recipe(r: dict) -> dict:
     src = r["source"]
     print(f"\n=== recipe {r['name']} -> {r['target']}")
     return do_import(target=r["target"], path=src.get("path"), url=src.get("url"), layer=src.get("layer"),
+                     arcgis=src.get("arcgis"), filename=src.get("filename"), where=r.get("where"), spat=r.get("spat"), ogr_args=r.get("ogr_args"), inner=src.get("inner"),
                      srs=r.get("srs", "EPSG:4326"), src_srs=r.get("src_srs"), mode=r.get("mode", "overwrite"),
                      fix=bool(r.get("fix_invalid")), clip=bool(r.get("clip_web_mercator")), oo=r.get("open_options") or [], recipe=r["name"],
                      license=r.get("license"), notes=r.get("notes"))
 
 
+def run_recorded(r: dict, params: dict | None = None) -> dict:
+    """One recipe = one recorded run (CLI and, later, the worker use this same path)."""
+    global DOWNLOADED_BYTES
+    DOWNLOADED_BYTES = 0
+    with runs.RunRecorder("import", recipe=r["name"], params=params or {},
+                          concurrency=r.get("concurrency", "network")) as run:
+        missing = registry.missing_keys(r)
+        if missing:
+            raise ImportError_(f"recipe {r['name']} requires {', '.join(missing)}, which is not configured. "
+                               "Add it to .env (see .env.example) and run the command again.")
+        stats = run_raster_recipe(r) if r.get("kind") == "raster" else run_recipe(r)
+        run.rows, run.bytes = stats.get("row_count"), DOWNLOADED_BYTES
+        run.outcome = "downloaded" if DOWNLOADED_BYTES else "imported from cached download"
+        finalize(r["name"])
+    return stats
+
+
+COG_NAME = re.compile(r"^[a-z0-9_/-]+$")
+
+
+def run_raster_recipe(r: dict) -> dict:
+    """kind: raster -> download, clip + reproject, validated COG in data/cog/, swapped in atomically.
+
+    The previous version is kept in data/cog/.versions/<name>/ (retention.keep_versions, default 1), a
+    provenance sidecar <name>.json is written next to the COG, and the COG + its titiler tile URL are
+    registered as dataset outputs (health-checked by `make health-datasets`).
+    """
+    src, target = r["source"], r["target"]
+    name = target[4:] if target.startswith("cog:") else ""
+    if not COG_NAME.match(name):
+        raise ImportError_(f"raster target must be cog:<lowercase/path>, got '{target}'")
+    print(f"\n=== recipe {r['name']} -> data/cog/{name}.tif")
+    local = download(src["url"], src.get("filename")) if src.get("url") else resolve(src["path"])
+    gsrc = gdal_path(local) + (f"/{src['inner']}" if src.get("inner") else "")
+    dest = COG_DIR / f"{name}.tif"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_name(f".{dest.stem}.tmp.tif")
+    tmp.unlink(missing_ok=True)
+    res = str(r.get("resolution", 100))
+    cmd = ["gdalwarp", "-overwrite", "-t_srs", r.get("srs", "EPSG:26919"), "-tr", res, res,
+           "-r", r.get("resampling", "bilinear"), "-dstnodata", str(r.get("nodata", -9999))]
+    if r.get("spat"):
+        cmd += ["-te_srs", "EPSG:4326", "-te", *[str(v) for v in r["spat"]]]
+    cmd += ["-of", "COG", "-co", "COMPRESS=DEFLATE", "-co", "OVERVIEWS=AUTO", "-co", "BLOCKSIZE=512", gsrc, str(tmp)]
+    print("$ " + redact(shlex.join(cmd)), flush=True)
+    if runs.run_cmd(cmd) != 0:
+        tmp.unlink(missing_ok=True)
+        raise ImportError_("gdalwarp failed")
+
+    # Validate before swapping in: COG layout, CRS, and at least some valid pixels.
+    gdal.SetConfigOption("GDAL_PAM_ENABLED", "NO")  # no .aux.xml side files
+    info = gdal.Info(str(tmp), format="json")
+    ds = gdal.Open(str(tmp))
+    band = ds.GetRasterBand(1)
+    try:
+        mn, mx, mean, _std = band.ComputeStatistics(False)
+    except RuntimeError:
+        mn = mx = mean = None
+    layout = (info.get("metadata", {}).get("IMAGE_STRUCTURE", {}) or {}).get("LAYOUT")
+    epsg = ds.GetSpatialRef().GetAuthorityCode(None) if ds.GetSpatialRef() else None
+    gt = ds.GetGeoTransform()
+    raster = {"width": ds.RasterXSize, "height": ds.RasterYSize, "bands": ds.RasterCount,
+              "dtype": gdal.GetDataTypeName(band.DataType), "resolution": [gt[1], -gt[5]],
+              "crs": f"EPSG:{epsg}" if epsg else None, "nodata": band.GetNoDataValue(),
+              "min": mn, "max": mx, "mean": mean}
+    ds = None
+    if layout != "COG":
+        tmp.unlink(missing_ok=True)
+        raise ImportError_(f"output is not a valid COG (layout {layout})")
+    if mn is None:
+        tmp.unlink(missing_ok=True)
+        raise ImportError_("output has no valid pixels (check spat / source CRS)")
+
+    if dest.exists():
+        vdir = COG_DIR / ".versions" / name
+        vdir.mkdir(parents=True, exist_ok=True)
+        dest.replace(vdir / f"{datetime.datetime.now(datetime.timezone.utc):%Y%m%dT%H%M%SZ}.tif")
+        keep = int((r.get("retention") or {}).get("keep_versions", 1))
+        for old in sorted(vdir.glob("*.tif"))[:-keep] if keep else sorted(vdir.glob("*.tif")):
+            old.unlink()
+    tmp.replace(dest)
+    digest, src_digest = sha256(dest), sha256(local)
+    dest.with_suffix(".json").write_text(json.dumps({
+        "recipe": r["name"], "source": src.get("url") or src.get("path"), "source_sha256": src_digest,
+        "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "params": {k: r.get(k) for k in ("srs", "resolution", "resampling", "spat", "nodata")},
+        "raster": raster, "sha256": digest, "license": r.get("license"), "attribution": r.get("attribution"),
+    }, indent=2))
+
+    run_id = runs.ACTIVE.run_id if runs.ACTIVE else None
+    with psycopg.connect(LOADER) as conn:
+        outputs_mod.record_cog(conn, r["name"], name, raster, dest.stat().st_size, digest,
+                               json.dumps(info.get("wgs84Extent")), run_id, PROJECTS)
+        if src.get("url"):
+            freshness.record_loaded_part(conn, r["name"], local, run_id, src_digest, None)
+        conn.commit()
+    print(f"OK data/cog/{name}.tif: {raster['width']}x{raster['height']} {raster['dtype']}, {raster['crs']}, "
+          f"{raster['resolution'][0]:g} m, values {mn:.2f} .. {mx:.2f}")
+    return {"row_count": None, "raster": raster}
+
+
 def cmd_recipe(args) -> None:
+    sync_quietly()
     r = load_recipe(args.name)
     if r.get("enabled") is False and not args.force:
         raise ImportError_(f"recipe {args.name} is disabled (todo: {r.get('todo', '-')}). "
                            "Set enabled: true, or run with force=1.")
-    run_recipe(r)
+    run_recorded(r, {"force": bool(args.force)})
 
 
-def cmd_all(_args) -> None:
+def cmd_all(args) -> None:
+    sync_quietly()
     names = [p.stem for p in sorted(RECIPES.glob("*.yaml"))]
     failed, skipped = [], []
     for name in names:
@@ -439,7 +633,10 @@ def cmd_all(_args) -> None:
             if r.get("enabled") is False:
                 skipped.append(f"{name} (todo: {r.get('todo', '-')})")
                 continue
-            run_recipe(r)
+            if r.get("kind") == "raster" and not getattr(args, "rasters", False):
+                skipped.append(f"{name} (raster: COGs survive reset-db; rebuild with make import-all rasters=1)")
+                continue
+            run_recorded(r, {"via": "import-all"})
         except (ImportError_, OSError, RuntimeError, psycopg.Error) as e:
             print(f"FAILED {name}: {e}", file=sys.stderr)
             failed.append(name)
@@ -453,6 +650,7 @@ def cmd_all(_args) -> None:
 # --------------------------------------------------------------------------- list / cog
 
 def cmd_list(args) -> None:
+    sync_quietly()
     with psycopg.connect(LOADER) as conn:
         where = "WHERE recipe IS NULL" if args.no_recipe else ""
         rows = conn.execute(
@@ -492,10 +690,49 @@ def cmd_cog(args) -> None:
     dest = COG_DIR / f"{src.stem}.tif"
     cmd = ["gdal_translate", "-of", "COG", "-co", "COMPRESS=DEFLATE", "-co", "OVERVIEWS=AUTO",
            "-co", "BLOCKSIZE=512", gdal_path(src), str(dest)]
-    print("$ " + shlex.join(cmd), flush=True)
-    if subprocess.run(cmd).returncode != 0:
-        raise ImportError_("gdal_translate failed")
-    print(f"OK wrote {dest.relative_to(REPO)}")
+    with runs.RunRecorder("derive", params={"op": "cog", "file": args.file}) as run:
+        print("$ " + redact(shlex.join(cmd)), flush=True)
+        if runs.run_cmd(cmd) != 0:
+            raise ImportError_("gdal_translate failed")
+        run.outcome = f"wrote {dest.relative_to(REPO)}"
+        print(f"OK wrote {dest.relative_to(REPO)}")
+
+
+# --------------------------------------------------------------------------- registry commands
+
+def sync_quietly() -> None:
+    """Mirror recipes before every command, so the dashboard and history always match the YAML."""
+    with psycopg.connect(LOADER) as conn:
+        result = registry.sync_recipes(conn, RECIPES)
+    for name, err in result["errors"].items():
+        print(f"warning: recipe {name}.yaml could not be synced: {err}", file=sys.stderr)
+
+
+def cmd_sync(_args) -> None:
+    with psycopg.connect(LOADER) as conn:
+        result = registry.sync_recipes(conn, RECIPES)
+    print(f"synced {result['synced']} recipes"
+          + (f"; orphaned (YAML removed): {result['orphaned']}" if result["orphaned"] else "")
+          + (f"; errors: {result['errors']}" if result["errors"] else ""))
+
+
+def cmd_health(args) -> None:
+    sync_quietly()
+    with psycopg.connect(LOADER) as conn:
+        outputs_mod.refresh_outputs(conn, args.name, PROJECTS)
+        results = health.check_outputs(conn, args.name)
+    for kind, locator, state, detail in results:
+        print(f"{state.upper():<8}{kind:<17}{locator:<45}{detail}")
+    if any(r[2] == "fail" for r in results):
+        raise ImportError_("some outputs failed their health check")
+
+
+def cmd_freshness(args) -> None:
+    sync_quietly()
+    with psycopg.connect(LOADER) as conn:
+        results = freshness.check(conn, args.name, DOWNLOADS)
+    for name, verdict, detail in results:
+        print(f"{verdict.upper():<9}{name:<24}{detail}")
 
 
 # --------------------------------------------------------------------------- main
@@ -530,7 +767,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--force", action="store_true")
     p.set_defaults(func=cmd_recipe)
 
-    sub.add_parser("all").set_defaults(func=cmd_all)
+    p = sub.add_parser("all")
+    p.add_argument("--rasters", action="store_true", help="also rebuild kind: raster recipes")
+    p.set_defaults(func=cmd_all)
 
     p = sub.add_parser("list")
     p.add_argument("--no-recipe", action="store_true")
@@ -539,6 +778,14 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("cog")
     p.add_argument("file")
     p.set_defaults(func=cmd_cog)
+
+    sub.add_parser("sync").set_defaults(func=cmd_sync)
+    p = sub.add_parser("health")
+    p.add_argument("name", nargs="?")
+    p.set_defaults(func=cmd_health)
+    p = sub.add_parser("freshness")
+    p.add_argument("name", nargs="?")
+    p.set_defaults(func=cmd_freshness)
 
     args = ap.parse_args(argv)
     try:

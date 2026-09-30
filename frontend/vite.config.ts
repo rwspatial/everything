@@ -10,7 +10,8 @@ export default defineConfig({
 	server: {
 		proxy: {
 			'/tiles': backend,
-			'/projects': backend
+			'/projects': backend,
+			'/api': backend
 		}
 	}
 });

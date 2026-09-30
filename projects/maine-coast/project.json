@@ -1,0 +1,271 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-coast",
+  "status": "draft",
+  "title": "Maine Coast",
+  "description": "Shellfish growing areas and NSSP classifications, aquaculture leases and LPA sites, and boat launches.",
+  "tags": [
+    "maine",
+    "coast",
+    "shellfish",
+    "aquaculture"
+  ],
+  "view": {
+    "center": [
+      -69.4,
+      44.05
+    ],
+    "zoom": 8,
+    "basemap": "positron"
+  },
+  "notes": [
+    "Shellfish classifications are the 2022 NSSP edition, NOT real-time open/closed status. Check Maine DMR closure notices before harvesting."
+  ],
+  "layers": [
+    {
+      "id": "growing-areas",
+      "title": "Shellfish growing areas",
+      "group": "Shellfish",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_coast__growing_areas"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#4d4d4d",
+              "line-width": 1,
+              "line-dasharray": [
+                2,
+                2
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#4d4d4d",
+        "label": "Growing-area boundary"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "Growing area {label}"
+        }
+      },
+      "attribution": "Maine DMR"
+    },
+    {
+      "id": "shellfish-classes",
+      "title": "Shellfish classifications (2022, not real-time)",
+      "group": "Shellfish",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_coast__shellfish_classes"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "classification"
+                ],
+                "Approved",
+                "#1a9850",
+                "Conditionally approved",
+                "#91cf60",
+                "Conditionally restricted",
+                "#fee08b",
+                "Restricted",
+                "#fc8d59",
+                "Prohibited",
+                "#d73027",
+                "#9e9e9e"
+              ],
+              "fill-opacity": 0.6
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "NSSP classification",
+        "items": [
+          {
+            "label": "Approved",
+            "color": "#1a9850"
+          },
+          {
+            "label": "Conditionally approved",
+            "color": "#91cf60"
+          },
+          {
+            "label": "Conditionally restricted",
+            "color": "#fee08b"
+          },
+          {
+            "label": "Restricted",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "Prohibited",
+            "color": "#d73027"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{classification} ({growing_area} {section})"
+        }
+      },
+      "attribution": "Maine DMR"
+    },
+    {
+      "id": "aquaculture-leases",
+      "title": "Aquaculture leases",
+      "group": "Aquaculture",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_coast__aquaculture_leases"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "status"
+                ],
+                "Active",
+                "#7b3294",
+                "Pending",
+                "#c2a5cf",
+                "#9e9e9e"
+              ],
+              "fill-opacity": 0.7
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#40004b",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Lease status",
+        "items": [
+          {
+            "label": "Active",
+            "color": "#7b3294"
+          },
+          {
+            "label": "Pending",
+            "color": "#c2a5cf"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{site_id}: {species} ({status})"
+        }
+      },
+      "attribution": "Maine DMR"
+    },
+    {
+      "id": "lpa-sites",
+      "title": "Limited-purpose aquaculture sites",
+      "group": "Aquaculture",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_coast__lpa_sites"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#c51b7d",
+              "circle-radius": 3.5,
+              "circle-stroke-color": "#fff",
+              "circle-stroke-width": 1
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#c51b7d",
+        "label": "LPA site"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{site_id}: {species}"
+        }
+      },
+      "attribution": "Maine DMR"
+    },
+    {
+      "id": "boat-launches",
+      "title": "Boat launches",
+      "group": "Access",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_coast__boat_launches"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#2166ac",
+              "circle-radius": 4.5,
+              "circle-stroke-color": "#fff",
+              "circle-stroke-width": 1
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#2166ac",
+        "label": "Boat launch"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{water_body} ({town})"
+        }
+      },
+      "attribution": "Maine GeoLibrary"
+    }
+  ]
+}

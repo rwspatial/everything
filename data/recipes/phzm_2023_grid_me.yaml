@@ -1,0 +1,21 @@
+name: phzm_2023_grid_me
+title: Extreme minimum temperature grid 2023 (Maine)
+description: Average annual extreme minimum temperature 1991-2020 (°F) behind the 2023 USDA hardiness zones; 30 arc-second grid clipped to Maine, reprojected to UTM 19N
+agency: USDA-ARS / PRISM Climate Group, Oregon State University
+kind: raster
+group: maine
+vintage: { label: "USDA PHZM 2023 (1991-2020 normals)", year: 2023 }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  url: https://prism.oregonstate.edu/phzm/data/2023/phzm_us_grid_2023.zip
+  inner: phzm_us_grid_2023.bil
+target: cog:maine/phzm_2023_min_temp
+srs: EPSG:26919
+resolution: 800
+resampling: bilinear
+spat: [-71.1, 42.95, -66.9, 47.47]
+retention: { keep_versions: 1 }
+license: USDA-ARS and Oregon State University (see phzm_terms_of_use.txt in the download; cite)
+attribution: USDA Plant Hardiness Zone Map 2023; PRISM Climate Group, Oregon State University
+enabled: true

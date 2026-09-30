@@ -36,7 +36,7 @@ service_health() { "${COMPOSE[@]}" ps --format '{{.Health}}' "$1" 2>/dev/null ||
 
 wait_healthy() {
   local deadline=$((SECONDS + ${1:-240}))
-  say "waiting for postgis, tipg, frontend, proxy to become healthy"
+  say "waiting for postgis, tipg, core-api, frontend, proxy to become healthy"
   while ((SECONDS < deadline)); do
     local m
     m=$("${COMPOSE[@]}" ps -a --format '{{.State}} {{.ExitCode}}' migrator 2>/dev/null || true)
@@ -46,7 +46,7 @@ wait_healthy() {
       exit 1
     fi
     local all=1 s
-    for s in postgis tipg frontend proxy; do
+    for s in postgis tipg core-api frontend proxy; do
       [[ $(service_health "$s") == healthy ]] || all=0
     done
     if ((all)); then

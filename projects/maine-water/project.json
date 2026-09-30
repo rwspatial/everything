@@ -1,0 +1,284 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-water",
+  "status": "draft",
+  "title": "Maine Water",
+  "description": "National Wetlands Inventory and EPA ATTAINS assessed waters (Maine DEP integrated report).",
+  "tags": [
+    "maine",
+    "water",
+    "wetlands",
+    "water quality"
+  ],
+  "view": {
+    "center": [
+      -69.25,
+      45.3
+    ],
+    "zoom": 6.3,
+    "basemap": "positron"
+  },
+  "notes": [
+    "Wetlands appear from zoom 11 (587,644 polygons). A statewide generalized view is a later step."
+  ],
+  "layers": [
+    {
+      "id": "wetlands",
+      "title": "Wetlands (NWI)",
+      "group": "Wetlands",
+      "minzoom": 11,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__wetlands"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "wetland_type"
+                ],
+                "Freshwater Forested/Shrub Wetland",
+                "#008837",
+                "Freshwater Emergent Wetland",
+                "#7fc31c",
+                "Freshwater Pond",
+                "#688cc0",
+                "Lake",
+                "#13007c",
+                "Riverine",
+                "#0190bf",
+                "Estuarine and Marine Wetland",
+                "#66c2a5",
+                "Estuarine and Marine Deepwater",
+                "#007c88",
+                "Other",
+                "#b28653",
+                "#9e9e9e"
+              ],
+              "fill-opacity": 0.6
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "wetland_type"
+                ],
+                "Freshwater Forested/Shrub Wetland",
+                "#008837",
+                "Freshwater Emergent Wetland",
+                "#7fc31c",
+                "Freshwater Pond",
+                "#688cc0",
+                "Lake",
+                "#13007c",
+                "Riverine",
+                "#0190bf",
+                "Estuarine and Marine Wetland",
+                "#66c2a5",
+                "Estuarine and Marine Deepwater",
+                "#007c88",
+                "Other",
+                "#b28653",
+                "#9e9e9e"
+              ],
+              "line-width": 0.2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Wetland type",
+        "items": [
+          {
+            "label": "Freshwater Forested/Shrub Wetland",
+            "color": "#008837"
+          },
+          {
+            "label": "Freshwater Emergent Wetland",
+            "color": "#7fc31c"
+          },
+          {
+            "label": "Freshwater Pond",
+            "color": "#688cc0"
+          },
+          {
+            "label": "Lake",
+            "color": "#13007c"
+          },
+          {
+            "label": "Riverine",
+            "color": "#0190bf"
+          },
+          {
+            "label": "Estuarine and Marine Wetland",
+            "color": "#66c2a5"
+          },
+          {
+            "label": "Estuarine and Marine Deepwater",
+            "color": "#007c88"
+          },
+          {
+            "label": "Other",
+            "color": "#b28653"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{wetland_type} ({nwi_code}), {acres} acres"
+        }
+      },
+      "attribution": "USFWS National Wetlands Inventory"
+    },
+    {
+      "id": "assessed-lakes",
+      "title": "Assessed lakes and estuaries",
+      "group": "Water quality",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__assessed_lakes"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "status"
+                ],
+                "Fully Supporting",
+                "#1a9850",
+                "Not Supporting",
+                "#d73027",
+                "Not Assessed",
+                "#9e9e9e",
+                "#9e9e9e"
+              ],
+              "fill-opacity": 0.5
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "status"
+                ],
+                "Fully Supporting",
+                "#1a9850",
+                "Not Supporting",
+                "#d73027",
+                "Not Assessed",
+                "#9e9e9e",
+                "#9e9e9e"
+              ],
+              "line-width": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Overall status",
+        "items": [
+          {
+            "label": "Fully Supporting",
+            "color": "#1a9850"
+          },
+          {
+            "label": "Not Supporting",
+            "color": "#d73027"
+          },
+          {
+            "label": "Not Assessed",
+            "color": "#9e9e9e"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{name}: {status} (category {category})"
+        }
+      },
+      "attribution": "U.S. EPA ATTAINS; Maine DEP"
+    },
+    {
+      "id": "assessed-streams",
+      "title": "Assessed streams and rivers",
+      "group": "Water quality",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__assessed_streams"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "status"
+                ],
+                "Fully Supporting",
+                "#1a9850",
+                "Not Supporting",
+                "#d73027",
+                "Not Assessed",
+                "#9e9e9e",
+                "#9e9e9e"
+              ],
+              "line-width": 2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Overall status",
+        "items": [
+          {
+            "label": "Fully Supporting",
+            "color": "#1a9850"
+          },
+          {
+            "label": "Not Supporting",
+            "color": "#d73027"
+          },
+          {
+            "label": "Not Assessed",
+            "color": "#9e9e9e"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{name}: {status} (category {category})"
+        }
+      },
+      "attribution": "U.S. EPA ATTAINS; Maine DEP"
+    }
+  ]
+}

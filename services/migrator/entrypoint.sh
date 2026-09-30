@@ -14,6 +14,7 @@ set_passwords() {
     -v loader_pw="$LOADER_DB_PASSWORD" \
     -v worker_pw="$WORKER_DB_PASSWORD" \
     -v analyst_pw="$ANALYST_DB_PASSWORD" \
+    -v admin_api_pw="$ADMIN_API_DB_PASSWORD" \
     -f /db/roles/set-passwords.sql
   echo "migrator: role passwords set"
 }

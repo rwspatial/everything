@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { title } from '$lib/site';
 </script>
 
-<svelte:head><title>Not found · Spatial</title></svelte:head>
+<svelte:head><title>{title('Not found')}</title></svelte:head>
 
 <main class="error">
 	<h1>{page.status === 404 ? 'Not found' : 'Something went wrong'}</h1>
 	<p>{page.error?.message}</p>
-	<p><a href="/">← Back to projects</a></p>
+	<p><a href="/maps">← All maps</a> · <a href="/">Home</a></p>
 </main>
 
 <style>

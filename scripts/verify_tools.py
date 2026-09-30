@@ -110,7 +110,9 @@ def privileges() -> None:
         ("loader", "CREATE TABLE pub._verify_x (id int)", "denied"),
         ("loader", "CREATE TABLE app._verify_x (id int)", "denied"),
         ("analyst", "SELECT 1 FROM src_ne.countries LIMIT 1", "allowed"),
-        ("analyst", "INSERT INTO app.datasets (table_schema, table_name, source) VALUES ('src_ne', 'x', 'x')", "denied"),
+        ("analyst", "INSERT INTO app.dataset_outputs (kind, locator) VALUES ('pub_view', 'pub.x')", "denied"),
+        ("analyst", "INSERT INTO app.runs (action, status, triggered_by) VALUES ('import', 'failed', 'x')", "denied"),
+        ("tipg", "SELECT 1 FROM app.runs LIMIT 1", "denied"),
     ]
     for service, sql, expected in cases:
         got = attempt(service, sql)
@@ -187,7 +189,57 @@ def formats() -> None:
           ", ".join(f"{r[0]}={r[1]} ({r[2]})" for r in rows) or "none: run make import-all")
 
 
+def redaction() -> None:
+    """A canary secret printed, logged and raised inside a recorded run must never reach app.runs."""
+    import os
+    import secrets
+
+    from etl import runs as runs_mod
+
+    canary = "canary" + secrets.token_hex(12)
+    os.environ["SPATIAL_VERIFY_API_KEY"] = canary
+    run_id = None
+    try:
+        with runs_mod.RunRecorder("dry_run", params={"verify": "redaction"}) as rec:
+            run_id = rec.run_id
+            print(f"GET https://upstream.invalid/data?key={canary}&year=2024")
+            print(f"Authorization: Bearer {canary}")
+            raise RuntimeError(f"upstream rejected key {canary}")
+    except RuntimeError:
+        pass
+    finally:
+        os.environ.pop("SPATIAL_VERIFY_API_KEY", None)
+    with psycopg.connect("service=loader") as conn:
+        text, status, job_id = conn.execute(
+            "SELECT coalesce(log_tail, '') || coalesce(error, ''), status, job_id FROM app.runs WHERE id = %s",
+            (run_id,)).fetchone()
+        conn.execute("DELETE FROM app.runs WHERE id = %s", (run_id,))
+        conn.execute("DELETE FROM app.jobs WHERE id = %s", (job_id,))
+    check("secrets are redacted from run logs and errors", canary not in text and "•••" in text and status == "failed",
+          f"run {run_id}: status {status}, canary {'LEAKED' if canary in text else 'absent'}")
+
+
+def make_test_cog() -> None:
+    """data/cog/_verify/gradient.tif: 256 km square over central Maine (UTM 19N), values 0..1600."""
+    import numpy as np
+    out = Path("/work/data/cog/_verify")
+    out.mkdir(parents=True, exist_ok=True)
+    x, y = np.meshgrid(np.linspace(0, 1, 256), np.linspace(1, 0, 256))
+    mem = gdal.GetDriverByName("MEM").Create("", 256, 256, 1, gdal.GDT_Float32)
+    mem.SetGeoTransform((400000, 1000, 0, 5100000, 0, -1000))
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(26919)
+    mem.SetProjection(srs.ExportToWkt())
+    band = mem.GetRasterBand(1)
+    band.WriteArray((1600 * (0.5 * x + 0.5 * y)).astype("float32"))
+    band.SetNoDataValue(-9999)
+    gdal.Translate(str(out / "gradient.tif"), mem, format="COG", creationOptions=["COMPRESS=DEFLATE", "OVERVIEWS=AUTO"])
+
+
 def main() -> int:
+    if sys.argv[1:] == ["make-test-cog"]:
+        make_test_cog()
+        return 0
     expect = json.loads((VERIFY / "expect.json").read_text())
     print("-- toolbox")
     versions()
@@ -199,6 +251,8 @@ def main() -> int:
     items(expect)
     print("-- import formats")
     formats()
+    print("-- run history")
+    redaction()
     return 0 if all(results) else 1
 
 

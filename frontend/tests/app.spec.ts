@@ -20,17 +20,37 @@ test.afterEach(() => {
 	expect(pageErrors, 'uncaught errors in the page').toEqual([]);
 });
 
-test('hub lists the placeholder projects with status and what is missing', async ({ page }) => {
+test('landing page: identity, live selected work from the manifests, services and contact', async ({ page }) => {
 	await page.goto('/');
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	const work = page.getByRole('list', { name: 'Selected work' });
+	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure']) {
+		await expect(work.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
+	}
+	await expect(work.getByRole('link', { name: /World Overview/ })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'What I do' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Work with me' })).toBeVisible();
+	await shot(page, '0-landing');
+	await work.getByRole('link', { name: /^Maine Lands/ }).click();
+	await expect(page).toHaveURL(/\/p\/maine-lands/);
+	await page.getByRole('link', { name: '← All maps' }).click();
+	await expect(page).toHaveURL(/\/maps$/);
+});
+
+test('hub lists the placeholder projects with status and what is missing', async ({ page }) => {
+	await page.goto('/maps');
 	const cards = page.getByRole('list', { name: 'Projects' });
 	await expect(cards.getByRole('link', { name: 'World Overview', exact: true })).toBeVisible();
 	await expect(cards.getByRole('link', { name: 'Hydrology Sketch', exact: true })).toBeVisible();
 	await expect(cards.getByRole('link', { name: 'Analysis Sandbox', exact: true })).toBeVisible();
-	await expect(page.getByText('Draft', { exact: true })).toHaveCount(1);
+	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure']) {
+		await expect(cards.getByRole('link', { name, exact: true })).toBeVisible();
+	}
+	await expect(page.getByText('Draft', { exact: true })).toHaveCount(5);
 	await expect(page.getByText('Stub', { exact: true })).toHaveCount(2);
-	await expect(page.getByText('2 of 5 pending')).toBeVisible();
-	await page.getByText("What's missing?").first().click();
-	await expect(page.getByText(/ne_admin1/).first()).toBeVisible();
+	const lands = cards.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Maine Lands', exact: true }) });
+	await lands.getByText("What's missing?").click();
+	await expect(lands.getByText(/trails/i).first()).toBeVisible();
 	await shot(page, '1-hub');
 });
 
@@ -39,8 +59,8 @@ test('world-overview draws countries and places from tiPG vector tiles', async (
 	await mapIdle(page);
 	expect(await rendered(page, 'countries')).toBeGreaterThan(100);
 	expect(await rendered(page, 'places')).toBeGreaterThan(50);
-	await expect(page.getByText('States and provinces')).toBeVisible();
-	await expect(page.getByRole('checkbox', { name: 'States and provinces' })).toBeDisabled();
+	expect(await rendered(page, 'admin1')).toBeGreaterThan(20);
+	await expect(page.getByRole('checkbox', { name: 'States and provinces' })).toBeChecked();
 	await shot(page, '2-world-overview');
 });
 
@@ -50,7 +70,7 @@ test('layer toggle, opacity and feature inspector', async ({ page }) => {
 
 	await page.getByRole('checkbox', { name: 'Populated places' }).uncheck();
 	await expect.poll(() => rendered(page, 'places')).toBe(0);
-	await expect(page).toHaveURL(/v=countries(&|$)/);
+	await expect(page).toHaveURL(/v=countries,admin1(&|$)/);
 	await page.getByRole('checkbox', { name: 'Populated places' }).check();
 	await expect.poll(() => rendered(page, 'places')).toBeGreaterThan(50);
 
@@ -63,7 +83,10 @@ test('layer toggle, opacity and feature inspector', async ({ page }) => {
 	await page.mouse.click(box.x + pt.x, box.y + pt.y);
 	const drawer = page.getByRole('complementary', { name: 'Feature details' });
 	await expect(drawer).toBeVisible();
-	await expect(drawer.getByRole('cell', { name: 'Brazil' })).toBeVisible();
+	const country = drawer.getByRole('region', { name: 'Countries by population' });
+	await expect(country.getByRole('cell', { name: 'Brazil', exact: true })).toBeVisible();
+	// States and provinces sit on top of countries, so the Brazilian state under the click is listed too.
+	await expect(drawer.getByRole('heading', { name: 'States and provinces' }).first()).toBeVisible();
 	await shot(page, '3-inspector');
 	await page.keyboard.press('Escape');
 	await expect(drawer).toBeHidden();
@@ -115,14 +138,14 @@ test('layer order can be changed and is kept in the URL', async ({ page }) => {
 	await page.goto('/p/world-overview');
 	await mapIdle(page);
 	await page.getByRole('button', { name: 'Move Populated places down' }).click();
-	// Skips the undrawn to-do layer (admin1): Places now draws below Countries (URL "o" is top → bottom).
+	// Places now draws below States and provinces (URL "o" is top → bottom).
 	await expect(page).toHaveURL(/[?&]o=/);
 	const order = new URL(page.url()).searchParams.get('o')!.split(',');
-	expect(order.indexOf('places')).toBeGreaterThan(order.indexOf('countries'));
+	expect(order.indexOf('places')).toBeGreaterThan(order.indexOf('admin1'));
 	await page.reload();
 	await mapIdle(page);
 	const titles = await page.locator('.tree .layer label[for]').allTextContents();
-	expect(titles.indexOf('Populated places')).toBeGreaterThan(titles.indexOf('Countries by population'));
+	expect(titles.indexOf('Populated places')).toBeGreaterThan(titles.indexOf('States and provinces'));
 });
 
 test('hydrology-sketch: GeoJSON lakes and the parametrized PostGIS function layer', async ({ page }) => {
@@ -141,6 +164,29 @@ test('hydrology-sketch: GeoJSON lakes and the parametrized PostGIS function laye
 	await shot(page, '4-hydrology');
 });
 
+test('maine-lands: COG through titiler draws, and a click reads the pixel value', async ({ page }) => {
+	const tiles: number[] = [];
+	page.on('response', (r) => {
+		if (/\/raster\/maine\/phzm_2023_min_temp\/\d+\/\d+\/\d+\.png/.test(r.url())) tiles.push(r.status());
+	});
+	await page.goto('/p/maine-lands');
+	await mapIdle(page);
+	expect(tiles.length, 'raster tiles requested').toBeGreaterThan(0);
+	expect(tiles.filter((s) => s === 200).length, 'raster tiles served').toBeGreaterThan(0);
+	await expect(page.getByText('Avg. annual extreme minimum (°F)')).toBeVisible();
+	await expect(page.getByRole('checkbox', { name: 'Plant hardiness zones (2023)' })).not.toBeChecked();
+
+	// Click inland Maine (Augusta area): the Inspector shows the titiler point value.
+	const xy = await page.evaluate(() => window.__spatial!.map!.project([-69.78, 44.31]));
+	await page.locator('.maplibregl-canvas').click({ position: { x: xy.x, y: xy.y } });
+	const inspector = page.getByRole('complementary', { name: 'Feature details' });
+	await expect(inspector.getByRole('heading', { name: 'Extreme minimum temperature (grid)' })).toBeVisible();
+	const value = parseFloat((await inspector.getByRole('row', { name: /value/ }).locator('td').first().textContent())!);
+	expect(value).toBeGreaterThan(-20);
+	expect(value).toBeLessThan(-5);
+	await shot(page, '6-maine-lands-cog');
+});
+
 test('analysis-sandbox (empty placeholder) opens cleanly', async ({ page }) => {
 	await page.goto('/p/analysis-sandbox');
 	await mapIdle(page);
@@ -152,11 +198,11 @@ test('analysis-sandbox (empty placeholder) opens cleanly', async ({ page }) => {
 test('unknown project shows a helpful 404', async ({ page }) => {
 	await page.goto('/p/does-not-exist');
 	await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
-	await expect(page.getByRole('link', { name: '← Back to projects' })).toBeVisible();
+	await expect(page.getByRole('link', { name: '← All maps' })).toBeVisible();
 });
 
 test('accessibility: no serious or critical axe violations', async ({ page }) => {
-	for (const path of ['/', '/new', '/p/world-overview']) {
+	for (const path of ['/', '/maps', '/new', '/p/world-overview']) {
 		await page.goto(path);
 		if (path.startsWith('/p/')) await mapIdle(page);
 		const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

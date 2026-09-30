@@ -8,6 +8,8 @@
 | `migrator` | `ghcr.io/amacneil/dbmate:2.36.0` | Applies `db/migrations`, sets role passwords, runs `db/seed` on demand | no, runs once per `make up` and exits 0 |
 | `tipg` | `ghcr.io/developmentseed/tipg:1.6.1` | Serves `pub.*` as OGC Features + vector tiles | yes |
 | `frontend` | built from `frontend/` (Node build → Caddy) | The Svelte + MapLibre web app | yes |
+| `core-api` | built from `services/core-api/` (FastAPI) | Admin API behind `/api/admin` (login required), read-only in Phase A | yes |
+| `titiler` | `ghcr.io/developmentseed/titiler:2.4.0` | Raster tiles from COGs in `data/cog/`, via `/raster/<name>/…` only | yes |
 | `proxy` | `caddy:2.11.4-alpine` | The only published web port. `/tiles/*` → tipg, `/projects/*` → manifests, everything else → frontend | yes |
 | `node` | `node:24.21.0-bookworm-slim` | Frontend toolbox (`make frontend-dev`, `frontend-check`) | no, one-off |
 | `e2e` | `mcr.microsoft.com/playwright:v1.63.0-noble` | Browser tests (`make e2e`) | no, one-off |

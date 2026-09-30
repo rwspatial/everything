@@ -1,0 +1,279 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-lands",
+  "status": "draft",
+  "title": "Maine Lands",
+  "description": "Lands in which the Bureau of Parks and Lands holds an interest, USDA plant hardiness zones (2023), and the underlying extreme-minimum-temperature grid served as a Cloud-Optimized GeoTIFF.",
+  "tags": [
+    "maine",
+    "public lands",
+    "climate"
+  ],
+  "view": {
+    "center": [
+      -69.25,
+      45.3
+    ],
+    "zoom": 6.3,
+    "basemap": "positron"
+  },
+  "notes": [
+    "BPL trails are pending a source decision."
+  ],
+  "layers": [
+    {
+      "id": "min-temp",
+      "title": "Extreme minimum temperature (grid)",
+      "group": "Climate",
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/phzm_2023_min_temp",
+        "rescale": [
+          -35,
+          5
+        ],
+        "colormap": "rdylbu_r",
+        "units": "°F",
+        "maxzoom": 12
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.75,
+              "raster-resampling": "linear"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "gradient",
+        "title": "Avg. annual extreme minimum (°F)",
+        "stops": [
+          {
+            "value": "-35",
+            "color": "#313695"
+          },
+          {
+            "value": "-25",
+            "color": "#4575b4"
+          },
+          {
+            "value": "-15",
+            "color": "#abd9e9"
+          },
+          {
+            "value": "-5",
+            "color": "#fee090"
+          },
+          {
+            "value": "5",
+            "color": "#d73027"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "USDA PHZM 2023; PRISM, Oregon State University"
+    },
+    {
+      "id": "hardiness",
+      "title": "Plant hardiness zones (2023)",
+      "group": "Climate",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__hardiness_zones"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "zone"
+                ],
+                "3a",
+                "#5b6bd1",
+                "3b",
+                "#6f8ee0",
+                "4a",
+                "#6ec2d8",
+                "4b",
+                "#7fd1a0",
+                "5a",
+                "#b7e07a",
+                "5b",
+                "#e4e35c",
+                "6a",
+                "#f6c64a",
+                "6b",
+                "#f39c3c",
+                "7a",
+                "#e8713a",
+                "#9e9e9e"
+              ],
+              "fill-opacity": 0.45
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "USDA zone",
+        "items": [
+          {
+            "label": "3a",
+            "color": "#5b6bd1"
+          },
+          {
+            "label": "3b",
+            "color": "#6f8ee0"
+          },
+          {
+            "label": "4a",
+            "color": "#6ec2d8"
+          },
+          {
+            "label": "4b",
+            "color": "#7fd1a0"
+          },
+          {
+            "label": "5a",
+            "color": "#b7e07a"
+          },
+          {
+            "label": "5b",
+            "color": "#e4e35c"
+          },
+          {
+            "label": "6a",
+            "color": "#f6c64a"
+          },
+          {
+            "label": "6b",
+            "color": "#f39c3c"
+          },
+          {
+            "label": "7a",
+            "color": "#e8713a"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "Zone {zone}: {min_temp_range_f} °F"
+        }
+      },
+      "attribution": "USDA PHZM 2023; PRISM, Oregon State University",
+      "visible": false
+    },
+    {
+      "id": "public-lands",
+      "title": "Public lands (BPL interests)",
+      "group": "Lands",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__public_lands"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "designation"
+                ],
+                "Public Land",
+                "#1b7837",
+                "State Park",
+                "#5aae61",
+                "State Wildlife Management Area",
+                "#a6dba0",
+                "Coastal Island",
+                "#80cdc1",
+                "Easement",
+                "#c2a5cf",
+                "#bababa"
+              ],
+              "fill-opacity": 0.65
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#1b4d1b",
+              "line-width": 0.4
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Designation",
+        "items": [
+          {
+            "label": "Public Land",
+            "color": "#1b7837"
+          },
+          {
+            "label": "State Park",
+            "color": "#5aae61"
+          },
+          {
+            "label": "State Wildlife Management Area",
+            "color": "#a6dba0"
+          },
+          {
+            "label": "Coastal Island",
+            "color": "#80cdc1"
+          },
+          {
+            "label": "Easement",
+            "color": "#c2a5cf"
+          },
+          {
+            "label": "Other",
+            "color": "#bababa"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{parcel_name} ({designation}), {acres} acres"
+        }
+      },
+      "attribution": "Maine Bureau of Parks and Lands"
+    },
+    {
+      "id": "trails",
+      "title": "Trails",
+      "group": "Lands",
+      "status": "todo",
+      "todo": "No statewide BPL trails service found; choose a source (DACF/BPL data, Maine Trail Finder, or OSM via Overture).",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__trails"
+      }
+    }
+  ]
+}

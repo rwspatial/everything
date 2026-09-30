@@ -1,22 +1,15 @@
-<script lang="ts" module>
-	import { setWorkerUrl } from 'maplibre-gl';
-	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-	// MapLibre 6 + bundler: point it at the bundled worker once (MapLibre docs, "Vite").
-	setWorkerUrl(workerUrl);
-</script>
-
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { Map as MlMap, NavigationControl, Popup, ScaleControl } from 'maplibre-gl';
 	import type { GeoJSONSource, MapGeoJSONFeature, PointLike, StyleSpecification, VectorTileSource } from 'maplibre-gl';
-	import 'maplibre-gl/dist/maplibre-gl.css';
+	import '$lib/maplibre';
 	import { fragmentsFor, isProjectId, opacityPaint, sourceIdFor, toMapLibre } from '$lib/adapters';
 	import type { AdapterContext } from '$lib/adapters';
 	import { basemaps, DEFAULT_BASEMAP, resolveBasemap } from '$lib/basemaps';
 	import type { AppConfig } from '$lib/config';
 	import { fillTemplate, formatValue, PALETTE } from '$lib/format';
-	import type { InspectedFeature, LayerState, ProjectManifest } from '$lib/types';
+	import type { InspectedFeature, LayerState, ProjectManifest, SourceSpec } from '$lib/types';
 	import Inspector from './Inspector.svelte';
 	import LayerTree from './LayerTree.svelte';
 	import StatusBadge from './StatusBadge.svelte';
@@ -186,11 +179,15 @@
 				cursor = null;
 				hover.remove();
 			});
-			map.on('click', (e) => {
-				selected = featuresAt(e.point)
+			map.on('click', async (e) => {
+				const vectors = featuresAt(e.point)
 					.filter((h) => h.ls.spec.interaction?.inspect !== false)
 					.slice(0, 10)
 					.map((h) => ({ layerId: h.ls.spec.id, layerTitle: h.ls.spec.title, properties: { ...h.feature.properties } }));
+				selected = vectors;
+				const click = ++clickSeq; // $state wraps arrays in proxies, so compare clicks, not arrays
+				const pixels = await rasterValuesAt(e.lngLat.lng, e.lngLat.lat);
+				if (pixels.length && click === clickSeq) selected = [...pixels, ...vectors];
 			});
 			map.on('error', (e) => {
 				const sourceId = (e as unknown as { sourceId?: string }).sourceId;
@@ -205,6 +202,29 @@
 			delete window.__spatial;
 		};
 	});
+
+	let clickSeq = 0;
+
+	/** Pixel values under the click for visible COG layers (titiler point query through the proxy). */
+	async function rasterValuesAt(lng: number, lat: number): Promise<InspectedFeature[]> {
+		const cogs = active().filter((l) => l.visible && l.spec.source.type === 'raster-cog' && l.spec.interaction?.inspect !== false);
+		const found = await Promise.all(
+			cogs.map(async (l): Promise<InspectedFeature | null> => {
+				const src = l.spec.source as Extract<SourceSpec, { type: 'raster-cog' }>;
+				try {
+					const r = await fetch(`/raster/${src.cog}/point/${lng.toFixed(5)},${lat.toFixed(5)}`);
+					if (!r.ok) return null; // outside the raster, or nodata
+					const v = (await r.json()).values?.[src.bidx ? src.bidx - 1 : 0];
+					if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+					const value = `${Math.round(v * 10) / 10}${src.units ? ` ${src.units}` : ''}`;
+					return { layerId: l.spec.id, layerTitle: l.spec.title, properties: { value } };
+				} catch {
+					return null;
+				}
+			})
+		);
+		return found.filter((f): f is InspectedFeature => f !== null);
+	}
 
 	function featuresAt(p: { x: number; y: number }): { ls: LayerState; feature: MapGeoJSONFeature }[] {
 		if (!map) return [];
@@ -325,7 +345,7 @@
 
 <div class="viewer" class:panel-closed={!panelOpen}>
 	<header class="topbar">
-		<a class="back" href="/">← Projects</a>
+		<a class="back" href="/maps">← All maps</a>
 		<h1>{manifest.title}</h1>
 		<StatusBadge status={manifest.status} />
 		<span class="spacer"></span>

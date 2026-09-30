@@ -155,7 +155,30 @@ FROM src_cad.parcels;
 
 ## Rasters
 
-Rasters aren't stored in PostGIS by default. Convert them to Cloud Optimized GeoTIFFs for TiTiler (Phase 5):
+Rasters aren't stored in PostGIS. They become Cloud Optimized GeoTIFFs in `data/cog/`, which TiTiler serves at
+`/raster/<name>/{z}/{x}/{y}.png` (plus `/point/<lon>,<lat>` and `/info`).
+
+**Raster recipes** (repeatable; the example is `data/recipes/phzm_2023_grid_me.yaml`):
+
+```yaml
+kind: raster
+source: { url: https://…/grid.zip, inner: grid.bil }   # or path:
+target: cog:maine/phzm_2023_min_temp                     # -> data/cog/maine/phzm_2023_min_temp.tif
+srs: EPSG:26919
+resolution: 800            # metres (target CRS units)
+resampling: bilinear       # nearest for categorical rasters
+spat: [-71.1, 42.95, -66.9, 47.47]   # lon/lat clip
+nodata: -9999
+retention: { keep_versions: 1 }
+```
+
+`make import-recipe r=<name>` warps and writes a COG (DEFLATE, 512 px blocks, internal overviews). It checks that the layout
+is COG and that there are valid pixels, then swaps the file in atomically. The previous file moves to
+`data/cog/.versions/<name>/`, and a provenance sidecar `<name>.json` (source checksum, parameters, stats) is written next to it.
+The COG and its tile URL are registered in the admin dashboard and health-checked. COGs live on disk, so `make reset-db` does not
+touch them, and `make import-all` skips raster recipes unless you pass `rasters=1`.
+
+One-off conversion without a recipe:
 
 ```bash
 make cog f=dem.tif          # -> data/cog/dem.tif (DEFLATE, internal overviews)

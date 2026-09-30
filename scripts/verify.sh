@@ -126,6 +126,75 @@ cat > "$OUT/expect.json" <<'EOF'
 }
 EOF
 
+echo "-- raster tiles (titiler, named COGs only)"
+h=$(docker compose ps --format '{{.Health}}' titiler 2>/dev/null)
+[[ $h == healthy ]]; check "titiler is healthy" $? "${h:-not running}"
+docker compose run --rm -T geotools python scripts/verify_tools.py make-test-cog > /dev/null 2>&1
+R="$BASE/raster/_verify/gradient"
+ct=$(curl -s -o "$OUT/raster.png" -w '%{http_code} %{content_type}' "$R/7/38/45.png?rescale=0,1600&colormap_name=terrain")
+[[ $ct == "200 image/png" && -s $OUT/raster.png ]]; check "raster tile from a COG" $? "$ct"
+val=$(curl -s "$R/point/-69.2,45.2" | python3 -c 'import sys, json; print(round(json.load(sys.stdin)["values"][0]))' 2>/dev/null)
+[[ $val -gt 700 && $val -lt 840 ]]; check "raster point query returns the pixel value" $? "value $val (expected ~769)"
+val2=$(curl -s "$R/point/-69.2,45.2?url=https://example.com/other.tif" | python3 -c 'import sys, json; print(round(json.load(sys.stdin)["values"][0]))' 2>/dev/null)
+[[ $val2 == "$val" ]]; check "client-supplied url= is ignored (no SSRF)" $? "value $val2"
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/raster/_verify/gradient.tif/7/38/45.png")
+[[ $code == 404 ]]; check "raster names with dots are rejected" $? "HTTP $code"
+if [[ -f data/cog/maine/phzm_2023_min_temp.tif ]]; then
+  M="$BASE/raster/maine/phzm_2023_min_temp"
+  ct=$(curl -s -o "$OUT/maine.png" -w '%{http_code} %{content_type}' "$M/8/77/92.png?rescale=-35,5&colormap_name=rdylbu_r")
+  [[ $ct == "200 image/png" && -s $OUT/maine.png ]]; check "Maine COG (hardiness grid) tile" $? "$ct"
+  val=$(curl -s "$M/point/-69.78,44.31" | python3 -c 'import sys, json; print(round(json.load(sys.stdin)["values"][0]))' 2>/dev/null)
+  [[ $val -gt -20 && $val -lt -5 ]]; check "Maine COG point value at Augusta" $? "${val:-none} °F (expected about -11)"
+else
+  echo "  --    Maine COG not built (make import-recipe r=phzm_2023_grid_me); skipped"
+fi
+
+echo "-- admin dashboard (dataset registry)"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$BASE/admin")
+[[ $code == 401 ]]; check "/admin rejects anonymous visitors" $? "HTTP $code"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$BASE/api/admin/datasets")
+[[ $code == 401 ]]; check "/api/admin rejects anonymous requests" $? "HTTP $code"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -u "${ADMIN_USER:-admin}:wrong-password" "$BASE/api/admin/datasets")
+[[ $code == 401 ]]; check "/api/admin rejects a wrong password" $? "HTTP $code"
+before=$(curl -s --max-time 10 -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" "$BASE/api/admin/runs?limit=1" \
+  | python3 -c 'import sys, json; r = json.load(sys.stdin); print(r[0]["id"] if r else 0)' 2>/dev/null || echo 0)
+docker compose run --rm -T geotools python scripts/geoimport.py recipe ne_lakes > "$OUT/cli-run.log" 2>&1
+check "CLI recipe run (make import-recipe r=ne_lakes) succeeds" $? "log: $OUT/cli-run.log"
+python3 - "$BASE" "$before" <<'EOF'
+import base64, json, os, sys, urllib.request
+from pathlib import Path
+base, before = sys.argv[1], int(sys.argv[2])
+auth = base64.b64encode(f"{os.environ.get('ADMIN_USER', 'admin')}:{os.environ.get('ADMIN_PASSWORD', '')}".encode()).decode()
+def get(path):
+    req = urllib.request.Request(base + path, headers={"Authorization": f"Basic {auth}"})
+    return json.load(urllib.request.urlopen(req, timeout=20))
+fails = 0
+def check(name, ok, detail=""):
+    global fails
+    fails += not ok
+    print(f"{'PASS' if ok else 'FAIL'}  {name}" + (f"  [{detail}]" if detail else ""))
+data = get("/api/admin/datasets")
+names = {d["name"] for d in data["datasets"] if not d["orphaned"]}
+yaml_names = {p.stem for p in Path("data/recipes").glob("*.yaml")}
+check("registry mirrors every recipe YAML", names == yaml_names, f"{len(names)} recipes")
+bad = [f"{d['name']}={d['status']}" for d in data["datasets"]
+       if d["enabled"] and (d["status"] != "ok" or d["health_ok"] != d["outputs_total"])]
+check("every enabled dataset is ok with all outputs healthy", not bad, ", ".join(bad) or f"{sum(d['enabled'] for d in data['datasets'])} enabled")
+disabled = [d["name"] for d in data["datasets"] if not d["enabled"]]
+check("disabled recipes are shown as disabled", all(d["status"] == "disabled" for d in data["datasets"] if not d["enabled"]), ", ".join(disabled) or "none")
+runs = get("/api/admin/datasets/ne_lakes")["runs"]
+latest = runs[0] if runs else {}
+check("the CLI run is recorded and visible in the admin API",
+      latest.get("id", 0) > before and latest.get("status") == "succeeded" and latest.get("triggered_by", "").startswith("cli:"),
+      f"run #{latest.get('id')} {latest.get('status')} by {latest.get('triggered_by')}")
+sys.exit(1 if fails else 0)
+EOF
+[[ $? == 0 ]] || fails=$((fails + 1))
+
+echo "-- architecture doc"
+bash scripts/check_architecture.sh
+[[ $? == 0 ]] || fails=$((fails + 1))
+
 echo "-- inside geotools"
 docker compose run --rm -T geotools python scripts/verify_tools.py
 [[ $? == 0 ]] || fails=$((fails + 1))

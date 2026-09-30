@@ -60,7 +60,7 @@ export function defaultFragments(color: string): StyleFragment[] {
 
 export function fragmentsFor(spec: LayerSpec, ctx: AdapterContext): StyleFragment[] {
 	if (spec.style?.layers?.length) return spec.style.layers;
-	if (spec.source.type === 'raster-xyz') return [{ type: 'raster' }];
+	if (spec.source.type === 'raster-xyz' || spec.source.type === 'raster-cog') return [{ type: 'raster' }];
 	return defaultFragments(ctx.color);
 }
 
@@ -131,11 +131,32 @@ const rasterXyz: Adapter<'raster-xyz'> = (spec, ctx) => {
 	};
 };
 
+const rasterCog: Adapter<'raster-cog'> = (spec, ctx) => {
+	const sourceId = sourceIdFor(spec.id);
+	const q = new URLSearchParams();
+	if (spec.source.rescale) q.set('rescale', spec.source.rescale.join(','));
+	if (spec.source.colormap) q.set('colormap_name', spec.source.colormap);
+	if (spec.source.bidx) q.set('bidx', String(spec.source.bidx));
+	const qs = q.toString();
+	return {
+		sourceId,
+		source: {
+			type: 'raster',
+			tiles: [`${window.location.origin}/raster/${spec.source.cog}/{z}/{x}/{y}.png${qs ? `?${qs}` : ''}`],
+			tileSize: 256,
+			maxzoom: spec.source.maxzoom ?? 18,
+			...(spec.attribution ? { attribution: spec.attribution } : {})
+		},
+		layers: layersFor(spec, ctx, sourceId)
+	};
+};
+
 const registry: { [T in SourceType]: Adapter<T> } = {
 	'tipg-vector': tipgVector,
 	'tipg-geojson': tipgGeojson,
 	'geojson-url': geojsonUrl,
-	'raster-xyz': rasterXyz
+	'raster-xyz': rasterXyz,
+	'raster-cog': rasterCog
 };
 
 export const adapterTypes = Object.keys(registry) as string[];

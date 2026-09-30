@@ -3,6 +3,7 @@
 A modular web-mapping stack: **PostGIS → tiPG → (Svelte + MapLibre)**, with a GDAL + R + Python toolbox for data work.
 Adding a map project means registering database views plus a manifest. No frontend code changes are needed.
 
+- Architecture diagrams (current + proposed): [docs/architecture.md](docs/architecture.md)
 - Architecture plan: [.claude/plans/spatial-app-architecture.plan.md](.claude/plans/spatial-app-architecture.plan.md)
 - Operator guide: [docs/setup/](docs/setup/README.md)
 - Decisions: [docs/decisions/](docs/decisions/)
@@ -13,6 +14,7 @@ Adding a map project means registering database views plus a manifest. No fronte
 |---|---|---|
 | 1 | Docker, PostGIS, tiPG, proxy, geotools, data import, setup guide | done: exit gate passed 2026-09-29 |
 | 2 | Svelte + MapLibre UI shell, placeholder projects | done: exit gate passed 2026-09-29 |
+| Dashboard A | `/admin`: dataset registry, run history, freshness, health (read-only) | done 2026-09-30 |
 | 3 | Project creator (`mapgen`, core-api) | – |
 | 4 | MCP servers | – |
 | 5 | R / Python ML workers | – |
@@ -26,7 +28,7 @@ make bootstrap   # start stack, build geotools, import Natural Earth, create vie
 make verify
 ```
 
-Then open **http://localhost:8080/** (project hub → map viewer). `make help` lists every command.
+Then open **http://localhost:8080/** (landing page; **/maps** is the project hub → map viewer). Site name, copy and contact details live in `frontend/src/lib/site.ts`. `make help` lists every command.
 
 ## Layout
 

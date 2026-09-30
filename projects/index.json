@@ -1,3 +1,11 @@
 {
-  "projects": ["world-overview", "hydrology-sketch", "analysis-sandbox"]
+  "projects": [
+    "world-overview",
+    "hydrology-sketch",
+    "analysis-sandbox",
+    "maine-coast",
+    "maine-water",
+    "maine-lands",
+    "maine-infrastructure"
+  ]
 }

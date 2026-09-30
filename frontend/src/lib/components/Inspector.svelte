@@ -19,8 +19,8 @@
 		<button bind:this={closeButton} class="icon" onclick={onclose} aria-label="Close feature details">✕</button>
 	</header>
 	{#each features as f, i (i)}
-		<section>
-			<h3>{f.layerTitle}</h3>
+		<section aria-labelledby="inspect-{i}">
+			<h3 id="inspect-{i}">{f.layerTitle}</h3>
 			<table>
 				<tbody>
 					{#each Object.entries(f.properties) as [key, value] (key)}

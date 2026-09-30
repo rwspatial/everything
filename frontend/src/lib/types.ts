@@ -60,7 +60,18 @@ export type SourceSpec =
 			limit?: number;
 	  }
 	| { type: 'geojson-url'; url: string }
-	| { type: 'raster-xyz'; tiles: string[]; tileSize?: number; maxzoom?: number };
+	| { type: 'raster-xyz'; tiles: string[]; tileSize?: number; maxzoom?: number }
+	| {
+			/** A COG in data/cog/, served by titiler through the proxy's /raster/<cog>/... route. */
+			type: 'raster-cog';
+			cog: string;
+			rescale?: [number, number];
+			colormap?: string;
+			bidx?: number;
+			maxzoom?: number;
+			/** Unit label for the pixel value shown when the map is clicked (titiler point query). */
+			units?: string;
+	  };
 
 export type SourceType = SourceSpec['type'];
 

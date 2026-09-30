@@ -1,0 +1,199 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-infrastructure",
+  "status": "draft",
+  "title": "Maine Infrastructure",
+  "description": "E911 road centerlines and address points, and wind turbines (US Wind Turbine Database).",
+  "tags": [
+    "maine",
+    "roads",
+    "addresses",
+    "energy"
+  ],
+  "view": {
+    "center": [
+      -70.26,
+      43.66
+    ],
+    "zoom": 11.5,
+    "basemap": "positron"
+  },
+  "notes": [
+    "Local roads appear from zoom 12 and address points from zoom 14 (798,422 points)."
+  ],
+  "layers": [
+    {
+      "id": "roads-local",
+      "title": "Local and other roads",
+      "group": "Roads",
+      "minzoom": 12,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_infrastructure__roads_local"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#8c8c8c",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#8c8c8c",
+        "label": "Local road"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{name} ({class}, {town})"
+        }
+      },
+      "attribution": "Maine E911"
+    },
+    {
+      "id": "roads-secondary",
+      "title": "Secondary roads",
+      "group": "Roads",
+      "minzoom": 9,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_infrastructure__roads_secondary"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#e6a100",
+              "line-width": 1.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#e6a100",
+        "label": "Secondary"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{name} ({town})"
+        }
+      },
+      "attribution": "Maine E911"
+    },
+    {
+      "id": "roads-primary",
+      "title": "Primary roads and ramps",
+      "group": "Roads",
+      "minzoom": 5,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_infrastructure__roads_primary"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#d95f02",
+              "line-width": 2.4
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#d95f02",
+        "label": "Primary"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{name}"
+        }
+      },
+      "attribution": "Maine E911"
+    },
+    {
+      "id": "addresses",
+      "title": "Address points (E911)",
+      "group": "Addresses",
+      "minzoom": 14,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_infrastructure__addresses"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#525252",
+              "circle-radius": 2.5,
+              "circle-stroke-color": "#fff",
+              "circle-stroke-width": 1
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#525252",
+        "label": "Address point"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{address}, {town}"
+        }
+      },
+      "attribution": "Maine E911"
+    },
+    {
+      "id": "wind-turbines",
+      "title": "Wind turbines",
+      "group": "Energy",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_infrastructure__wind_turbines"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#5e3c99",
+              "circle-radius": 4,
+              "circle-stroke-color": "#fff",
+              "circle-stroke-width": 1
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#5e3c99",
+        "label": "Turbine"
+      },
+      "interaction": {
+        "inspect": true,
+        "popup": {
+          "template": "{project} ({year}): {capacity_kw} kW"
+        }
+      },
+      "attribution": "U.S. Wind Turbine Database (USGS, LBNL, ACP)"
+    }
+  ]
+}

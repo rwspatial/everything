@@ -27,6 +27,47 @@
 		respond "ok" 200
 	}
 
+	# Raster tiles (titiler) for COGs in data/cog/. Named rasters only: the file path is built here from the
+	# URL path and any client-supplied `url` parameter is replaced, so titiler can only read data/cog/*.tif.
+	# Names: lowercase letters, digits, _ - / (no dots, so no path traversal).
+	#   /raster/<name>/{z}/{x}/{y}.png?rescale=0,1600&colormap_name=terrain   map tiles (WebMercatorQuad)
+	#   /raster/<name>/point/{lon},{lat}                                        pixel values (click inspect)
+	#   /raster/<name>/info                                                     metadata
+	handle_path /raster/* {
+		@tile path_regexp tile ^/([a-z0-9_/-]+)/(\d+)/(\d+)/(\d+)\.png$
+		handle @tile {
+			rewrite * /cog/tiles/WebMercatorQuad/{re.tile.2}/{re.tile.3}/{re.tile.4}.png?{query}
+			uri query url /data/cog/{re.tile.1}.tif
+			reverse_proxy titiler:8000
+		}
+		@point path_regexp point ^/([a-z0-9_/-]+)/point/(-?[0-9.]+),(-?[0-9.]+)$
+		handle @point {
+			rewrite * /cog/point/{re.point.2},{re.point.3}?{query}
+			uri query url /data/cog/{re.point.1}.tif
+			reverse_proxy titiler:8000
+		}
+		@info path_regexp info ^/([a-z0-9_/-]+)/info$
+		handle @info {
+			rewrite * /cog/info
+			uri query url /data/cog/{re.info.1}.tif
+			reverse_proxy titiler:8000
+		}
+		respond 404
+	}
+
+	# Admin dashboard: pages (/admin, served by the frontend) and API (/api/admin/*, core-api).
+	# Every request is authenticated by core-api first; unauthenticated browsers get a login prompt.
+	# When deployed, swap this for OIDC (oauth2-proxy via forward_auth, or ALB auth); see docs/setup/06-admin.md.
+	@admin path /admin /admin/* /api/admin/*
+	forward_auth @admin core-api:8000 {
+		uri /api/admin/auth
+	}
+	header @admin Cache-Control "no-store"
+
+	handle /api/admin/* {
+		reverse_proxy core-api:8000
+	}
+
 	# Everything else: the Svelte app (static build in the frontend container).
 	handle {
 		reverse_proxy frontend:80

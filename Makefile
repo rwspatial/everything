@@ -5,18 +5,20 @@ SHELL := /bin/bash
 
 export HOST_UID := $(shell id -u)
 export HOST_GID := $(shell id -g)
+export HOST_USER := $(shell id -un)
 
 COMPOSE := docker compose
 TOOLS   := $(COMPOSE) run --rm geotools
 TOOLS_T := $(COMPOSE) run --rm -T geotools
 OPS     := bash scripts/ops.sh
 
-.PHONY: help check-env env bootstrap verify \
+.PHONY: help check-env env bootstrap verify arch-check \
         up down stop start restart ps health logs shell rebuild pull \
         psql migrate migrate-status migration seed refresh backup restore reset-db nuke \
         build-tools inspect import import-recipe import-all datasets cog \
         r py tools-sh \
-        frontend frontend-install frontend-dev frontend-check e2e
+        frontend frontend-install frontend-dev frontend-check e2e \
+        recipes-sync health-datasets freshness admin-credentials
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "} \
@@ -41,6 +43,9 @@ bootstrap: check-env ## First run: start, build geotools, import recipes, seed, 
 
 verify: check-env ## Run the automated Phase 1 checks
 	@bash scripts/verify.sh
+
+arch-check: ## Check docs/architecture.md still names every service, adapter and project
+	@bash scripts/check_architecture.sh
 
 ## Containers
 up: check-env ## Start the stack (data is kept)
@@ -134,7 +139,7 @@ import-recipe: check-env ## Run one recipe (r=<name>; force=1 runs a disabled re
 	@$(TOOLS_T) python scripts/geoimport.py recipe "$(r)" $(if $(force),--force)
 
 import-all: check-env ## Run every enabled recipe in data/recipes/
-	@$(TOOLS_T) python scripts/geoimport.py all
+	@$(TOOLS_T) python scripts/geoimport.py all $(if $(rasters),--rasters)
 
 datasets: check-env ## List imported datasets (app.datasets)
 	@$(TOOLS_T) python scripts/geoimport.py list
@@ -163,6 +168,26 @@ frontend-check: check-env frontend/node_modules ## Type-check the frontend (svel
 
 e2e: check-env frontend/node_modules ## Browser tests + screenshots (frontend/test-results/screens/)
 	$(COMPOSE) --profile test run --rm e2e
+
+## Admin dashboard (http://localhost:8080/admin; docs/setup/06-admin.md)
+recipes-sync: check-env ## Mirror data/recipes/*.yaml into the dataset registry
+	@$(TOOLS_T) python scripts/geoimport.py sync
+
+health-datasets: check-env ## Re-check every dataset output (tables, pub views, tiPG collections)
+	@$(TOOLS_T) python scripts/geoimport.py health $(r)
+
+freshness: check-env ## Compare loaded data with what upstream offers now (r=<recipe> for one)
+	@$(TOOLS_T) python scripts/geoimport.py freshness $(r)
+
+admin-credentials: check-env ## Show the /admin login (creates one in an older .env)
+	@python3 -c 'import re, secrets; p = ".env"; s = open(p).read(); add = []; \
+	  add += [] if re.search(r"^ADMIN_USER=", s, re.M) else ["ADMIN_USER=admin"]; \
+	  add += [] if re.search(r"^ADMIN_PASSWORD=", s, re.M) else ["ADMIN_PASSWORD=" + secrets.token_hex(12)]; \
+	  add += [] if re.search(r"^ADMIN_API_DB_PASSWORD=", s, re.M) else ["ADMIN_API_DB_PASSWORD=" + secrets.token_hex(16)]; \
+	  open(p, "a").write("\n" + "\n".join(add) + "\n") if add else None; \
+	  print("added " + ", ".join(a.split("=")[0] for a in add) + " to .env; run make up") if add else None'
+	@grep -E '^ADMIN_(USER|PASSWORD)=' .env | sed 's/^ADMIN_USER=/user:     /; s/^ADMIN_PASSWORD=/password: /'
+	@echo "login at http://localhost:$${HTTP_PORT:-8080}/admin"
 
 ## Tools (geotools container, connected to PostGIS as analyst_ro)
 r: check-env ## R session

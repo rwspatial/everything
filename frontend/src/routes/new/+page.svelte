@@ -1,4 +1,8 @@
-<svelte:head><title>New project · Spatial</title></svelte:head>
+<script lang="ts">
+	import { title } from '$lib/site';
+</script>
+
+<svelte:head><title>{title('New project')}</title></svelte:head>
 
 <main class="page">
 	<h1>Create a project</h1>
