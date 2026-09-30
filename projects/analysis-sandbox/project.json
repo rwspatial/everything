@@ -1,0 +1,28 @@
+{
+  "manifestVersion": 1,
+  "slug": "analysis-sandbox",
+  "title": "Analysis Sandbox",
+  "status": "stub",
+  "description": "Landing place for R and Python analysis results (hot spots, interpolated surfaces, model outputs).",
+  "tags": ["analysis", "phase-5"],
+  "view": { "center": [0, 20], "zoom": 1.5, "basemap": "positron" },
+  "layers": [
+    {
+      "id": "surface",
+      "title": "Interpolated surface (raster)",
+      "group": "Model outputs",
+      "status": "todo",
+      "todo": "Phase 5: an R/Python worker writes a Cloud Optimized GeoTIFF, served as raster tiles by TiTiler under /raster/.",
+      "source": { "type": "raster-xyz", "tiles": ["/raster/tiles/{z}/{x}/{y}.png"] }
+    },
+    {
+      "id": "hotspots",
+      "title": "Hot spots (vector)",
+      "group": "Model outputs",
+      "status": "todo",
+      "todo": "Phase 5: a job writes ml_out.job_<id> and publishes pub.analysis_sandbox__job_<id>; the result appears here with no UI changes.",
+      "source": { "type": "tipg-vector", "collection": "pub.analysis_sandbox__hotspots" }
+    }
+  ],
+  "notes": ["Phase 5: job results will appear here as layers."]
+}

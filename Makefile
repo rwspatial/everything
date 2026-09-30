@@ -15,7 +15,8 @@ OPS     := bash scripts/ops.sh
         up down stop start restart ps health logs shell rebuild pull \
         psql migrate migrate-status migration seed refresh backup restore reset-db nuke \
         build-tools inspect import import-recipe import-all datasets cog \
-        r py tools-sh
+        r py tools-sh \
+        frontend frontend-install frontend-dev frontend-check e2e
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "} \
@@ -141,6 +142,27 @@ datasets: check-env ## List imported datasets (app.datasets)
 cog: check-env ## Convert a raster to a Cloud Optimized GeoTIFF in data/cog/ (f=<file>)
 	@test -n "$(f)" || { echo "usage: make cog f=<raster in data/incoming>"; exit 2; }
 	@$(TOOLS_T) python scripts/geoimport.py cog "$(f)"
+
+## Frontend (Svelte + MapLibre; docs/setup/05-frontend.md)
+frontend: check-env ## Rebuild and restart the web app after frontend code changes
+	$(COMPOSE) up -d --build frontend
+	@$(OPS) wait
+
+frontend/node_modules: frontend/package-lock.json
+	$(COMPOSE) run --rm -T node npm ci --no-audit --no-fund
+	@touch frontend/node_modules
+
+frontend-install: check-env ## Install frontend dependencies (node container)
+	$(COMPOSE) run --rm -T node npm ci --no-audit --no-fund
+
+frontend-dev: check-env frontend/node_modules ## Live-reload dev server on http://localhost:5173
+	$(COMPOSE) run --rm --service-ports node npm run dev -- --host 0.0.0.0 --port 5173
+
+frontend-check: check-env frontend/node_modules ## Type-check the frontend (svelte-check)
+	$(COMPOSE) run --rm -T node npm run check
+
+e2e: check-env frontend/node_modules ## Browser tests + screenshots (frontend/test-results/screens/)
+	$(COMPOSE) --profile test run --rm e2e
 
 ## Tools (geotools container, connected to PostGIS as analyst_ro)
 r: check-env ## R session

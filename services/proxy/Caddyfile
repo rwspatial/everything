@@ -12,21 +12,23 @@
 		reverse_proxy tipg:8000
 	}
 
+	# Project manifests (Phase 2): projects/<slug>/project.json + projects/index.json,
+	# served straight from the repo, so adding a project needs no rebuild.
+	# Only JSON is exposed; SQL and other files in projects/ stay private.
+	handle_path /projects/* {
+		@notjson not path *.json
+		respond @notjson 404
+		root * /srv/projects
+		header Cache-Control "no-cache"
+		file_server
+	}
+
 	handle /healthz {
 		respond "ok" 200
 	}
 
-	# Phase 2 replaces this with the Svelte frontend.
+	# Everything else: the Svelte app (static build in the frontend container).
 	handle {
-		header Content-Type "text/plain; charset=utf-8"
-		respond <<TEXT
-			Spatial app: Phase 1 stack is running.
-
-			  Collections:  /tiles/collections
-			  Map viewer:   /tiles/collections/{collectionId}/viewer.html
-			  API docs:     /tiles/api.html
-
-			The Svelte frontend arrives in Phase 2.
-			TEXT 200
+		reverse_proxy frontend:80
 	}
 }

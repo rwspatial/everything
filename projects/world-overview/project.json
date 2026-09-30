@@ -1,0 +1,85 @@
+{
+  "manifestVersion": 1,
+  "slug": "world-overview",
+  "title": "World Overview",
+  "status": "draft",
+  "description": "Countries shaded by population, with the world's major populated places. Natural Earth 1:110m.",
+  "tags": ["global", "demographics", "natural-earth"],
+  "view": { "center": [12, 22], "zoom": 1.4, "basemap": "positron" },
+  "layers": [
+    {
+      "id": "countries",
+      "title": "Countries by population",
+      "group": "Boundaries",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.world_overview__countries",
+        "properties": ["name", "iso_a3", "continent", "subregion", "pop_est", "gdp_md", "income_grp"]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": ["step", ["get", "pop_est"], "#eff3ff", 5000000, "#bdd7e7", 20000000, "#6baed6", 60000000, "#3182bd", 150000000, "#08519c"],
+              "fill-opacity": 0.8
+            }
+          },
+          { "type": "line", "paint": { "line-color": "#ffffff", "line-width": 0.7 } }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Population",
+        "items": [
+          { "label": "under 5 million", "color": "#eff3ff" },
+          { "label": "5–20 million", "color": "#bdd7e7" },
+          { "label": "20–60 million", "color": "#6baed6" },
+          { "label": "60–150 million", "color": "#3182bd" },
+          { "label": "over 150 million", "color": "#08519c" }
+        ]
+      },
+      "interaction": { "popup": { "template": "{name}: {pop_est} people" }, "inspect": true }
+    },
+    {
+      "id": "admin1",
+      "title": "States and provinces",
+      "group": "Boundaries",
+      "status": "todo",
+      "todo": "Enable data/recipes/ne_admin1.yaml, run `make import-recipe r=ne_admin1`, add pub.world_overview__admin1 to db/seed/010_world_overview.sql, then `make seed && make refresh` and remove this layer's \"status\".",
+      "source": { "type": "tipg-vector", "collection": "pub.world_overview__admin1" }
+    },
+    {
+      "id": "places",
+      "title": "Populated places",
+      "group": "Places",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.world_overview__places",
+        "properties": ["name", "adm0name", "pop_max", "featurecla"]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-radius": ["interpolate", ["linear"], ["get", "pop_max"], 0, 2.5, 5000000, 5, 20000000, 9],
+              "circle-color": "#c2410c",
+              "circle-opacity": 0.9,
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 1
+            }
+          }
+        ]
+      },
+      "legend": { "type": "single", "color": "#c2410c", "label": "City (size = population)" },
+      "interaction": { "popup": { "template": "{name}, {adm0name}: {pop_max} people" }, "inspect": true }
+    }
+  ],
+  "notes": [
+    "Add a thumbnail and a final description.",
+    "Admin-1 layer pending (see the layer note)."
+  ]
+}

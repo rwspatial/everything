@@ -8,6 +8,13 @@ data/cog/*
 data/backups/*
 !data/**/.gitkeep
 
+# Frontend build artefacts
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/test-results/
+frontend/playwright-report/
+
 # Local analysis scratch output
 analysis/**/output/
 

@@ -7,17 +7,20 @@
 | `postgis` | `postgis/postgis:17-3.5` | Database. Data lives in the Docker volume `spatial_pgdata` | yes |
 | `migrator` | `ghcr.io/amacneil/dbmate:2.36.0` | Applies `db/migrations`, sets role passwords, runs `db/seed` on demand | no, runs once per `make up` and exits 0 |
 | `tipg` | `ghcr.io/developmentseed/tipg:1.6.1` | Serves `pub.*` as OGC Features + vector tiles | yes |
-| `proxy` | `caddy:2.11.4-alpine` | The only published web port. Routes `/tiles/*` to tipg | yes |
+| `frontend` | built from `frontend/` (Node build → Caddy) | The Svelte + MapLibre web app | yes |
+| `proxy` | `caddy:2.11.4-alpine` | The only published web port. `/tiles/*` → tipg, `/projects/*` → manifests, everything else → frontend | yes |
+| `node` | `node:24.21.0-alpine` | Frontend toolbox (`make frontend-dev`, `frontend-check`) | no, one-off |
+| `e2e` | `mcr.microsoft.com/playwright:v1.63.0-noble` | Browser tests (`make e2e`) | no, one-off |
 | `geotools` | built locally from `services/geotools/` | GDAL + R + Python toolbox for imports and analysis | no, one-off via `make` |
 
-Start order is enforced: postgis healthy → migrator exits successfully → tipg healthy → proxy.
+Start order is enforced: postgis healthy → migrator exits successfully → tipg and frontend healthy → proxy.
 If the migrator fails, `make up` stops and prints its log.
 
 ### Networks
 
 | Network | Members | Internet? |
 |---|---|---|
-| `edge` | proxy (published on 127.0.0.1) | yes |
+| `edge` | proxy (published on 127.0.0.1), frontend, node, e2e | yes |
 | `api` | proxy, tipg | no (internal) |
 | `data` | postgis, migrator, tipg, geotools | no (internal) |
 | `egress` | geotools | yes, for dataset downloads |

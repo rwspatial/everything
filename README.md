@@ -12,7 +12,7 @@ Adding a map project means registering database views plus a manifest. No fronte
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Docker, PostGIS, tiPG, proxy, geotools, data import, setup guide | done: exit gate passed 2026-09-29 |
-| 2 | Svelte + MapLibre UI shell, placeholder projects | – |
+| 2 | Svelte + MapLibre UI shell, placeholder projects | done: exit gate passed 2026-09-29 |
 | 3 | Project creator (`mapgen`, core-api) | – |
 | 4 | MCP servers | – |
 | 5 | R / Python ML workers | – |
@@ -26,7 +26,7 @@ make bootstrap   # start stack, build geotools, import Natural Earth, create vie
 make verify
 ```
 
-Then open http://localhost:8080/. `make help` lists every command.
+Then open **http://localhost:8080/** (project hub → map viewer). `make help` lists every command.
 
 ## Layout
 

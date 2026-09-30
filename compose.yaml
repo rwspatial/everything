@@ -82,11 +82,14 @@ services:
       - "127.0.0.1:${HTTP_PORT:-8080}:80"
     volumes:
       - ./services/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./projects:/srv/projects:ro
       - caddy_data:/data
       - caddy_config:/config
     networks: [edge, api]
     depends_on:
       tipg:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/healthz"]
@@ -94,6 +97,53 @@ services:
       timeout: 5s
       retries: 6
     restart: unless-stopped
+
+  # Svelte + MapLibre app: static build served by its own Caddy (frontend/Dockerfile).
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NODE_TAG: ${NODE_TAG:-24.21.0-alpine}
+        CADDY_TAG: ${CADDY_TAG}
+    image: spatial/frontend:local
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  # On-demand Node toolbox for frontend work: `make frontend-dev`, `make frontend-check`.
+  node:
+    profiles: [tools]
+    image: node:${NODE_TAG:-24.21.0-alpine}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /tmp/home
+      BACKEND_URL: http://proxy
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    ports:
+      - "127.0.0.1:5173:5173"   # only published with `run --service-ports` (make frontend-dev)
+    networks: [edge]
+
+  # Browser tests (Playwright + axe) against the running stack: `make e2e`.
+  e2e:
+    profiles: [test]
+    image: mcr.microsoft.com/playwright:${PLAYWRIGHT_TAG:-v1.63.0-noble}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    ipc: host
+    environment:
+      HOME: /tmp/home
+      BASE_URL: http://proxy
+      CI: "1"
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: ["npx", "playwright", "test"]
+    networks: [edge]
 
   # On-demand toolbox: GDAL CLI + R + Python 3, all on one GDAL/PROJ build.
   # Never started by `docker compose up`; used via `make import`, `make r`, `make py` ...
@@ -123,7 +173,7 @@ services:
         condition: service_healthy
 
 networks:
-  edge: {}                # proxy (host-published) <-> frontend (Phase 2)
+  edge: {}                # proxy (host-published) <-> frontend; also node/e2e tools
   api:
     internal: true        # proxy <-> tipg / core-api / titiler
   data:

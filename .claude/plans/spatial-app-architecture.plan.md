@@ -1,6 +1,6 @@
 # Spatial App Generator — Architecture Plan
 
-Status: **rev 3 — Phase 1 built (2026-09-29); awaiting first `make verify` on Docker before Phase 2**
+Status: **rev 3 — Phase 1 and Phase 2 complete (2026-09-29); next: Phase 3 (project creator)**
 Date: 2026-09-29
 Repo state at planning time: greenfield (README + empty .gitignore)
 
@@ -422,7 +422,7 @@ Each phase ends with an **exit gate**: acceptance criteria that must pass before
 3. **Viewer layout** (standardized): top bar (project title, share), left panel (layer tree with toggles, opacity, groups, legend), map canvas, right drawer (feature inspector / attribute table), and a bottom status bar (coords, zoom, loading indicator).
 4. **Layer adapter registry**: `adapters: Record<SourceType, LayerAdapter>` with `LayerAdapter = { toMapLibre(spec, ctx): {sources, layers}; legend?(spec); onClick?(feature, spec) }`. Initial adapters: `tipg-vector`, `tipg-geojson`, `geojson-url`, `raster-xyz`.
 5. Map state store: layer visibility/order/opacity, derived from the manifest and reflected in the URL (`?layers=a,b&z=&c=`) so views are shareable.
-6. For this phase only, manifests are loaded from static JSON under `frontend/static/projects/` so UI work doesn't block on core-api. Phase 3 swaps the loader behind the same `ProjectRepository` interface.
+6. For this phase only, manifests are loaded from static JSON in the repo's `projects/<slug>/project.json` (+ `projects/index.json`), served by the proxy at `/projects/*` (JSON only) so adding a project needs no rebuild, and UI work doesn't block on core-api. Phase 3 swaps the loader behind the same `ProjectRepository` interface.
 7. Basemap registry (open vector basemap + a raster fallback), keyed by name.
 8. The three placeholder projects (§2.8) as hand-authored manifests. Hub status badges and incompleteness hints. `todo` layers greyed out in the layer tree.
 9. Setup guide `05-frontend.md`.

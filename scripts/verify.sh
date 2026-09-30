@@ -27,7 +27,7 @@ fetch() {  # fetch <file under $OUT> <path>
 }
 
 echo "-- containers"
-for s in postgis tipg proxy; do
+for s in postgis tipg frontend proxy; do
   h=$(docker compose ps --format '{{.Health}}' "$s" 2>/dev/null)
   [[ $h == healthy ]]; check "$s is healthy" $? "${h:-not running}"
 done
@@ -44,6 +44,32 @@ else
 fi
 px=$(docker compose port proxy 80 2>/dev/null || true)
 [[ $px == 127.0.0.1:* ]]; check "proxy published on loopback only" $? "${px:-not published}"
+
+echo "-- web app (Phase 2)"
+for path in / /p/world-overview /new; do
+  body=$(curl -fsS --max-time 10 "$BASE$path" 2>/dev/null)
+  [[ $body == *"<!doctype html>"* && $body == *"/_app/"* ]]; check "GET $path serves the app" $?
+done
+fetch projects-index.json "/projects/index.json"
+check "GET /projects/index.json" $?
+python3 - "$OUT/projects-index.json" "$BASE" <<'EOF'
+import json, sys, urllib.request
+slugs = json.load(open(sys.argv[1]))["projects"]
+bad = []
+for s in slugs:
+    try:
+        m = json.load(urllib.request.urlopen(f"{sys.argv[2]}/projects/{s}/project.json", timeout=10))
+        if m.get("slug") != s or m.get("manifestVersion") != 1:
+            bad.append(f"{s}: slug/manifestVersion")
+    except Exception as e:
+        bad.append(f"{s}: {e}")
+print(f"{'PASS' if not bad else 'FAIL'}  project manifests load  [{len(slugs)} projects{'; ' + '; '.join(bad) if bad else ''}]")
+sys.exit(1 if bad else 0)
+EOF
+[[ $? == 0 ]] || fails=$((fails + 1))
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/projects/world-overview/notes.sql")
+[[ $code == 404 ]]; check "/projects serves JSON only" $? "HTTP $code for a .sql path"
+echo "  (full browser tests: make e2e)"
 
 echo "-- proxy and tiPG"
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$BASE/healthz")
