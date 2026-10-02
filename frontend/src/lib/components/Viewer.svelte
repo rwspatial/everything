@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { Map as MlMap, NavigationControl, Popup, ScaleControl } from 'maplibre-gl';
 	import type { GeoJSONSource, MapGeoJSONFeature, PointLike, StyleSpecification, VectorTileSource } from 'maplibre-gl';
@@ -14,11 +14,20 @@
 	import LayerTree from './LayerTree.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 
-	let { manifest, config }: { manifest: ProjectManifest; config: AppConfig } = $props();
+	let {
+		manifest,
+		config,
+		embedded = false
+	}: {
+		manifest: ProjectManifest;
+		config: AppConfig;
+		/** Preview inside another page (the /admin/new wizard): fill the parent, leave the page URL alone. */
+		embedded?: boolean;
+	} = $props();
 
 	// ---- initial state: manifest defaults, overridden by the URL (shareable views) ----------
-	const url = new URL(window.location.href);
-	const q = url.searchParams;
+	// Read once: the viewer is re-created (keyed) when its inputs change.
+	const q = untrack(() => embedded) ? new URLSearchParams() : new URL(window.location.href).searchParams;
 
 	function initialLayers(): LayerState[] {
 		let states: LayerState[] = manifest.layers.map((spec, i) => ({
@@ -320,7 +329,7 @@
 	function syncUrl() {
 		clearTimeout(urlTimer);
 		urlTimer = setTimeout(() => {
-			if (!map) return;
+			if (!map || embedded) return;
 			const p = new URLSearchParams();
 			const c = map.getCenter();
 			p.set('map', `${map.getZoom().toFixed(2)}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}`);
@@ -343,9 +352,9 @@
 	}
 </script>
 
-<div class="viewer" class:panel-closed={!panelOpen}>
+<div class="viewer" class:panel-closed={!panelOpen} class:embedded>
 	<header class="topbar">
-		<a class="back" href="/maps">← All maps</a>
+		{#if !embedded}<a class="back" href="/maps">← All maps</a>{/if}
 		<h1>{manifest.title}</h1>
 		<StatusBadge status={manifest.status} />
 		<span class="spacer"></span>
@@ -356,7 +365,7 @@
 			</select>
 		</label>
 		<button onclick={resetView}>Reset view</button>
-		<button onclick={copyLink} aria-live="polite">{copied ? 'Link copied' : 'Copy link'}</button>
+		{#if !embedded}<button onclick={copyLink} aria-live="polite">{copied ? 'Link copied' : 'Copy link'}</button>{/if}
 		<button class="panel-toggle" aria-expanded={panelOpen} aria-controls="layer-panel" onclick={() => (panelOpen = !panelOpen)}>
 			Layers
 		</button>
@@ -405,6 +414,7 @@
 		grid-template-areas: 'top top top' 'panel map inspector' 'status status status';
 	}
 	.viewer.panel-closed { grid-template-columns: 0 1fr auto; }
+	.viewer.embedded { height: 100%; }
 	.topbar {
 		grid-area: top;
 		display: flex;

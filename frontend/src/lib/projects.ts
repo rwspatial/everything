@@ -1,6 +1,8 @@
-// Where manifests come from. Phase 2 reads static JSON (projects/<slug>/project.json,
-// served by the proxy). Phase 3 swaps in a core-api implementation of the same interface.
+// Where manifests come from. The registry API (core-api, /api/projects) is the default; the static
+// files (projects/<slug>/project.json, served by the proxy) are the fallback when core-api is down.
+// Both implement ProjectRepository; routes get one from projectRepository().
 import { adapterTypes } from './adapters';
+import type { AppConfig } from './config';
 import type { ProjectManifest, ProjectSummary } from './types';
 
 export interface ProjectRepository {
@@ -52,7 +54,63 @@ export class StaticProjectRepository implements ProjectRepository {
 	}
 }
 
-/** Structural checks that catch authoring mistakes early; Phase 3 replaces this with JSON Schema. */
+/** Registry API: summaries are computed server-side, manifests come back exactly as stored. */
+export class ApiProjectRepository implements ProjectRepository {
+	constructor(
+		private base: string,
+		private fetchFn: typeof fetch = fetch
+	) {}
+
+	private async json<T>(url: string): Promise<T> {
+		const res = await this.fetchFn(url, { cache: 'no-cache', headers: { Accept: 'application/json' } });
+		if (!res.ok) throw new ManifestError(`${res.status} ${res.statusText} for ${url}`);
+		return (await res.json()) as T;
+	}
+
+	async list(): Promise<ProjectSummary[]> {
+		return (await this.json<{ projects: ProjectSummary[] }>(this.base)).projects;
+	}
+
+	async get(slug: string): Promise<ProjectManifest> {
+		const m = await this.json<ProjectManifest>(`${this.base}/${encodeURIComponent(slug)}`);
+		validateManifest(m, slug);
+		return m;
+	}
+}
+
+/** Try the primary repository; on any failure (core-api down, not registered yet) use the fallback. */
+export class FallbackProjectRepository implements ProjectRepository {
+	constructor(
+		private primary: ProjectRepository,
+		private fallback: ProjectRepository
+	) {}
+
+	async list(): Promise<ProjectSummary[]> {
+		try {
+			return await this.primary.list();
+		} catch {
+			return this.fallback.list();
+		}
+	}
+
+	async get(slug: string): Promise<ProjectManifest> {
+		try {
+			return await this.primary.get(slug);
+		} catch {
+			return this.fallback.get(slug);
+		}
+	}
+}
+
+export function projectRepository(config: AppConfig, fetchFn: typeof fetch = fetch): ProjectRepository {
+	return new FallbackProjectRepository(
+		new ApiProjectRepository(config.projectsApi, fetchFn),
+		new StaticProjectRepository(config.projectsBase, fetchFn)
+	);
+}
+
+/** Cheap structural checks in the browser. The full contract (JSON Schema + database checks) runs in
+ * contracts/validate.py when a project is registered (mapgen) or saved (the /admin/new wizard). */
 export function validateManifest(m: ProjectManifest, slug: string): void {
 	const fail = (msg: string) => {
 		throw new ManifestError(`projects/${slug}/project.json: ${msg}`);

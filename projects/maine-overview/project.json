@@ -1,0 +1,122 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-overview",
+  "title": "Maine Overview",
+  "status": "draft",
+  "description": "Median household income for every Maine town, city, plantation and unorganized territory (ACS 2020-2024 5-year estimates on TIGER/Line 2024 boundaries).",
+  "tags": [
+    "maine",
+    "demographics",
+    "census"
+  ],
+  "view": {
+    "center": [
+      -69.25,
+      45.3
+    ],
+    "zoom": 6.3,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "towns",
+      "title": "Median household income by town",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__towns",
+        "properties": [
+          "name",
+          "namelsad",
+          "county",
+          "pop",
+          "median_hh_income",
+          "median_hh_income_moe"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "median_hh_income"
+                  ],
+                  null
+                ],
+                "#d9d9d9",
+                [
+                  "step",
+                  [
+                    "get",
+                    "median_hh_income"
+                  ],
+                  "#f1eef6",
+                  53618,
+                  "#bdc9e1",
+                  62361,
+                  "#74a9cf",
+                  71635,
+                  "#2b8cbe",
+                  86766,
+                  "#045a8d"
+                ]
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.4
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Median household income (quintiles)",
+        "items": [
+          {
+            "label": "under $53,600",
+            "color": "#f1eef6"
+          },
+          {
+            "label": "$53,600–62,400",
+            "color": "#bdc9e1"
+          },
+          {
+            "label": "$62,400–71,600",
+            "color": "#74a9cf"
+          },
+          {
+            "label": "$71,600–86,800",
+            "color": "#2b8cbe"
+          },
+          {
+            "label": "$86,800 and over",
+            "color": "#045a8d"
+          },
+          {
+            "label": "suppressed (very small places)",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{namelsad}, {county}: median household income ${median_hh_income} (±{median_hh_income_moe})"
+        },
+        "inspect": true
+      },
+      "group": "Demographics",
+      "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
+    }
+  ]
+}

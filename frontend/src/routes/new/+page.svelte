@@ -6,36 +6,37 @@
 
 <main class="page">
 	<h1>Create a project</h1>
-	<p class="lead">
-		A guided creator (pick a published view, choose a style, preview, save) arrives in <strong>Phase 3</strong>. Until then,
-		adding a project takes four steps and <strong>no code changes</strong>:
-	</p>
+	<p class="lead">Two ways, one result: both write the same project manifest and run the same checks.</p>
 
-	<ol class="steps">
-		<li>
-			<h2>Load the data</h2>
-			<p>Put the file in <code>data/incoming/</code>, then:</p>
-			<pre><code>make inspect f=parcels.gpkg
+	<section class="way">
+		<h2>In the browser</h2>
+		<p>
+			<a class="button" href="/admin/new">Open the project creator</a> (admin login): pick a published view, choose a
+			style preset, check the live preview, save.
+		</p>
+	</section>
+
+	<section class="way">
+		<h2>From the command line</h2>
+		<ol class="steps">
+			<li>
+				<p>Load the data, with a recipe or a one-off file:</p>
+				<pre><code>make import-recipe r=me_cousub
 make import f=parcels.gpkg t=src_cad.parcels</code></pre>
-		</li>
-		<li>
-			<h2>Publish a view</h2>
-			<p>tiPG only serves the <code>pub</code> schema. Name views <code>pub.&lt;project&gt;__&lt;layer&gt;</code>:</p>
-			<pre><code>CREATE OR REPLACE VIEW pub.flood_risk__parcels AS
-SELECT id, parcel_id, zone, geom FROM src_cad.parcels;</code></pre>
-			<p>Then <code>make refresh</code> so tiPG picks it up.</p>
-		</li>
-		<li>
-			<h2>Write the manifest</h2>
-			<p>Copy <code>projects/world-overview/project.json</code> to <code>projects/flood-risk/project.json</code> and edit the slug, title and layers.</p>
-		</li>
-		<li>
-			<h2>List it</h2>
-			<p>Add <code>"flood-risk"</code> to <code>projects/index.json</code> and reload the project page. No rebuild or restart needed.</p>
-		</li>
-	</ol>
+			</li>
+			<li>
+				<p>Scaffold the project (manifest + the SQL for its first view):</p>
+				<pre><code>./mapgen new maine-parcels --title "Maine Parcels" --layer parcels --from src_cad.parcels</code></pre>
+			</li>
+			<li>
+				<p>Edit <code>projects/maine-parcels/sql/010_parcels.sql</code> and the layer style, then publish:</p>
+				<pre><code>./mapgen apply maine-parcels</code></pre>
+				<p>That validates the manifest, creates the <code>pub</code> view, refreshes tiPG and registers the project.</p>
+			</li>
+		</ol>
+	</section>
 
-	<p>Full walkthrough: <code>docs/setup/04-data-import.md</code> and <code>docs/setup/05-frontend.md</code>.</p>
+	<p>Full walkthrough: <code>docs/setup/07-projects.md</code>.</p>
 </main>
 
 <style>
@@ -43,7 +44,9 @@ SELECT id, parcel_id, zone, geom FROM src_cad.parcels;</code></pre>
 	h1 { margin: 0 0 0.5rem; }
 	.lead { color: var(--muted); }
 	.steps { padding-left: 1.3rem; display: grid; gap: 1rem; }
-	.steps h2 { font-size: 1.05rem; margin: 0 0 0.25rem; }
+	.way { margin-top: 1.4rem; }
+	.way h2 { font-size: 1.1rem; margin: 0 0 0.3rem; }
+	.button { display: inline-block; background: var(--accent); color: #fff; padding: 0.45rem 0.9rem; border-radius: 6px; text-decoration: none; }
 	.steps p { margin: 0.25rem 0; }
 	pre { background: #13202c; color: #e6edf3; padding: 0.75rem 1rem; border-radius: 8px; overflow: auto; font-size: 0.82rem; }
 	code { font-size: 0.88em; }

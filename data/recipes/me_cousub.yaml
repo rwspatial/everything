@@ -1,0 +1,16 @@
+name: me_cousub
+title: Towns and townships (Maine county subdivisions)
+description: Census county subdivisions for Maine (towns, cities, plantations, unorganized territories), TIGER/Line 2024
+agency: U.S. Census Bureau (TIGER/Line)
+group: maine
+vintage: { label: "TIGER/Line 2024", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  url: https://www2.census.gov/geo/tiger/TIGER2024/COUSUB/tl_2024_23_cousub.zip
+target: src_census.cousub
+srs: EPSG:4326
+fix_invalid: true
+license: Public domain (U.S. Census Bureau)
+attribution: U.S. Census Bureau, TIGER/Line Shapefiles 2024
+enabled: true

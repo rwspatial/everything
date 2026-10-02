@@ -1,6 +1,8 @@
 # Spatial App Generator — Architecture Plan
 
-Status: **rev 3 — Phase 1 and Phase 2 complete (2026-09-29); next: Phase 3 (project creator)**
+Status: **rev 3 — Phases 1–2 complete (2026-09-29); Phase 3 (project creator) complete (2026-10-01); next: Phase 4 (MCP)**
+
+Phase 3 as built: `contracts/project-manifest.v1.schema.json` (one file with `definitions`, not two) generates the TS types; Python validates directly against the schema (`contracts/validate.py`, shared by mapgen and core-api) instead of generated Pydantic models. Writes, validation and field stats live under `/api/admin/projects` (admin auth, wizard at `/admin/new`); `/api/projects` is public and read-only. Exit-gate project: `maine-overview` (Maine towns × ACS income). Guide: docs/setup/07-projects.md.
 Date: 2026-09-29
 Repo state at planning time: greenfield (README + empty .gitignore)
 

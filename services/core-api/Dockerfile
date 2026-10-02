@@ -6,6 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY app.py .
+COPY --from=contracts project-manifest.v1.schema.json validate.py ./contracts/
 
 USER nobody
 EXPOSE 8000

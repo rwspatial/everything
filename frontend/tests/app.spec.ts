@@ -38,20 +38,45 @@ test('landing page: identity, live selected work from the manifests, services an
 });
 
 test('hub lists the placeholder projects with status and what is missing', async ({ page }) => {
+	const api = page.waitForResponse((r) => r.url().endsWith('/api/projects') && r.status() === 200);
 	await page.goto('/maps');
+	await api; // the hub reads the project registry (core-api), not the static files
 	const cards = page.getByRole('list', { name: 'Projects' });
 	await expect(cards.getByRole('link', { name: 'World Overview', exact: true })).toBeVisible();
 	await expect(cards.getByRole('link', { name: 'Hydrology Sketch', exact: true })).toBeVisible();
 	await expect(cards.getByRole('link', { name: 'Analysis Sandbox', exact: true })).toBeVisible();
-	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure']) {
+	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure', 'Maine Overview']) {
 		await expect(cards.getByRole('link', { name, exact: true })).toBeVisible();
 	}
-	await expect(page.getByText('Draft', { exact: true })).toHaveCount(5);
+	await expect(page.getByText('Draft', { exact: true })).toHaveCount(6);
 	await expect(page.getByText('Stub', { exact: true })).toHaveCount(2);
 	const lands = cards.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Maine Lands', exact: true }) });
 	await lands.getByText("What's missing?").click();
 	await expect(lands.getByText(/trails/i).first()).toBeVisible();
 	await shot(page, '1-hub');
+});
+
+test('hub and viewer fall back to the static manifests when core-api is unreachable', async ({ page }) => {
+	await page.route('**/api/projects**', (route) => route.abort());
+	await page.goto('/maps');
+	await expect(page.getByRole('list', { name: 'Projects' }).getByRole('link', { name: 'Maine Overview', exact: true })).toBeVisible();
+	await page.goto('/p/maine-overview');
+	await mapIdle(page);
+	expect(await rendered(page, 'towns')).toBeGreaterThan(400);
+});
+
+test('maine-overview (made with mapgen): towns shaded by ACS median household income', async ({ page }) => {
+	await page.goto('/p/maine-overview');
+	await mapIdle(page);
+	expect(await rendered(page, 'towns')).toBeGreaterThan(400);
+	await expect(page.getByText('Median household income (quintiles)')).toBeVisible();
+	await expect(page.getByText('suppressed (very small places)')).toBeVisible();
+	// Hover Augusta (its TIGER interior point): the popup shows town, county and income with its margin of error.
+	const xy = await page.evaluate(() => window.__spatial!.map!.project([-69.7342, 44.3349]));
+	const box = (await page.locator('.maplibregl-canvas').boundingBox())!;
+	await page.mouse.move(box.x + xy.x, box.y + xy.y);
+	await expect(page.locator('.hover-popup')).toContainText(/Augusta city, Kennebec County: median household income \$[\d,]+ \(±[\d,]+\)/);
+	await shot(page, '7-maine-overview');
 });
 
 test('world-overview draws countries and places from tiPG vector tiles', async ({ page }) => {
@@ -202,7 +227,7 @@ test('unknown project shows a helpful 404', async ({ page }) => {
 });
 
 test('accessibility: no serious or critical axe violations', async ({ page }) => {
-	for (const path of ['/', '/maps', '/new', '/p/world-overview']) {
+	for (const path of ['/', '/maps', '/new', '/p/world-overview', '/p/maine-overview']) {
 		await page.goto(path);
 		if (path.startsWith('/p/')) await mapIdle(page);
 		const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

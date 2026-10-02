@@ -191,6 +191,39 @@ sys.exit(1 if fails else 0)
 EOF
 [[ $? == 0 ]] || fails=$((fails + 1))
 
+echo "-- projects (contracts, mapgen, registry; Maine Overview)"
+docker compose run --rm -T node node scripts/contracts.mjs check 2>/dev/null | grep -E "PASS|FAIL"
+check "generated frontend types match the schema" ${PIPESTATUS[0]}
+docker compose run --rm -T node node scripts/validate-styles.mjs 2>&1 >/dev/null | grep -E "PASS|FAIL" | sed 's/^/      /'
+check "every project's styles pass the MapLibre style spec" ${PIPESTATUS[0]}
+docker compose run --rm -T geotools python scripts/mapgen.py check-templates 2>/dev/null | sed 's/^/      /'
+check "placeholder projects are reproducible from their templates" ${PIPESTATUS[0]}
+docker compose run --rm -T geotools python scripts/mapgen.py sync --check 2>/dev/null | tail -1 | sed 's/^/      /'
+check "projects/ and the registry agree" ${PIPESTATUS[0]}
+n_files=$(python3 -c 'import json; print(len(json.load(open("projects/index.json"))["projects"]))')
+api=$(curl -s --max-time 10 "$BASE/api/projects" | python3 -c 'import sys, json; p = json.load(sys.stdin)["projects"]; print(len(p), sum(not x["valid"] for x in p))' 2>/dev/null)
+[[ $api == "$n_files 0" ]]; check "GET /api/projects lists every project, all valid" $? "${api:-no answer} (count, invalid)"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --max-time 10 "$BASE/api/projects")
+[[ $code == 405 ]]; check "anonymous project writes are refused" $? "HTTP $code"
+census=$(docker compose exec -T postgis sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -AtF" " -c "SELECT count(*), count(DISTINCT geoid), count(median_hh_income), round(100.0 * count(median_hh_income) / count(*), 1) FROM pub.maine_overview__towns"' 2>/dev/null)
+read -r n uniq inc pct <<<"$census"
+[[ $n == 529 && $uniq == 529 ]]; check "Maine towns: 529 county subdivisions, unique GEOIDs" $? "${n:-?} rows, ${uniq:-?} unique"
+python3 -c "import sys; sys.exit(0 if float('${pct:-0}') >= 93 else 1)"
+check "Maine towns: ACS income joined (the rest are Census-suppressed small places)" $? "${inc:-?} of ${n:-?} (${pct:-?} %)"
+size=$(curl -s -o "$OUT/towns.pbf" -w '%{http_code} %{size_download}' "$BASE/tiles/collections/pub.maine_overview__towns/tiles/WebMercatorQuad/7/38/46")
+[[ ${size% *} == 200 && ${size#* } -gt 1000 ]]; check "Maine towns: z7 tile over Augusta has features" $? "$size bytes"
+# Round trip: a manifest saved through the API (the wizard's path) and exported by the CLI is byte-identical.
+python3 -c 'import json; m = json.load(open("projects/maine-overview/project.json")); m["slug"] = "zz-verify-roundtrip"; m["title"] = "Round trip – Maine"; print(json.dumps(m, indent=2, ensure_ascii=False))' > "$OUT/rt.json"
+curl -s -o /dev/null -X DELETE -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" "$BASE/api/admin/projects/zz-verify-roundtrip"
+code=$(curl -s -o "$OUT/rt.resp" -w '%{http_code}' -X POST -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" --data-binary @"$OUT/rt.json" "$BASE/api/admin/projects")
+docker compose run --rm -T geotools python scripts/mapgen.py export zz-verify-roundtrip --stdout > "$OUT/rt.out" 2>/dev/null
+[[ $code == 201 ]] && cmp -s "$OUT/rt.json" "$OUT/rt.out"; check "wizard save -> mapgen export round trip is byte-identical" $? "create HTTP $code"
+curl -s -o /dev/null -X DELETE -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" "$BASE/api/admin/projects/zz-verify-roundtrip"
+# Invalid manifests fail with specific codes.
+python3 -c 'import json; m = json.load(open("projects/maine-overview/project.json")); m["slug"] = "zz-verify-invalid"; m["layers"][0]["source"]["collection"] = "pub.maine_overview__nope"; print(json.dumps(m))' > "$OUT/bad.json"
+codes=$(curl -s -X POST -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" --data-binary @"$OUT/bad.json" "$BASE/api/admin/projects" | python3 -c 'import sys, json; print(",".join(e["code"] for e in json.load(sys.stdin)["detail"]["errors"]))' 2>/dev/null)
+[[ $codes == E_VIEW_MISSING ]]; check "a manifest pointing at a missing view is refused with E_VIEW_MISSING" $? "${codes:-no answer}"
+
 echo "-- architecture doc"
 bash scripts/check_architecture.sh
 [[ $? == 0 ]] || fails=$((fails + 1))

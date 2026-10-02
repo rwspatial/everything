@@ -1,0 +1,9 @@
+-- {{title}}: {{layer_title}} -> pub.{{slug_}}__{{layer_}}
+-- Applied by `./mapgen apply {{slug}}` (and by `make seed`), as the database owner, so tiPG's grants apply.
+-- tiPG needs an `id` column, exactly one geometry column with a declared SRID, and a GiST index on the table.
+-- Keep CREATE OR REPLACE; DROP VIEW first if you remove or retype columns.
+CREATE OR REPLACE VIEW pub.{{slug_}}__{{layer_}} AS
+SELECT id, geom
+FROM {{from}};
+
+COMMENT ON VIEW pub.{{slug_}}__{{layer_}} IS '{{slug}}: {{layer_title}}';

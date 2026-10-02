@@ -11,7 +11,7 @@ Every command here is a `make` target. `make help` prints the same list.
 | [04-data-import.md](04-data-import.md) | Loading data with GDAL/ogr2ogr, recipes, publishing a view, R and Python access | 1 |
 | [05-frontend.md](05-frontend.md) | The web app, adding projects (JSON only), dev server, browser tests | 2 |
 | [06-admin.md](06-admin.md) | Admin dashboard: dataset registry, run history, freshness, health, login | Dashboard A |
-| 07-projects.md | `mapgen`, completing placeholder projects | 3 |
+| [07-projects.md](07-projects.md) | Creating projects: `./mapgen`, the `/admin/new` wizard, validation codes, the project registry | 3 |
 | 08-mcp.md | MCP servers | 4 |
 | 09-ml-workers.md | R/Python workers | 5 |
 | [99-troubleshooting.md](99-troubleshooting.md) | Known problems and fixes | all |

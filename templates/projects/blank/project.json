@@ -1,0 +1,20 @@
+{
+  "manifestVersion": 1,
+  "slug": "{{slug}}",
+  "title": "{{title}}",
+  "status": "stub",
+  "description": "",
+  "tags": [],
+  "view": {
+    "center": [
+      -69.25,
+      45.3
+    ],
+    "zoom": 6.3,
+    "basemap": "positron"
+  },
+  "layers": [],
+  "notes": [
+    "Add a layer: write projects/{{slug}}/sql/010_<layer>.sql and a layer entry here, then ./mapgen apply {{slug}}."
+  ]
+}

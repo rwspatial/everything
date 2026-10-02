@@ -10,15 +10,25 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
 import hmac
+import json
 import os
+import re
+import sys
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "contracts"))
+import validate as V  # noqa: E402  contracts/validate.py, shared with mapgen
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
@@ -26,12 +36,20 @@ REALM = 'Basic realm="Spatial admin", charset="UTF-8"'
 
 pool = ConnectionPool(os.environ["DATABASE_URL"], min_size=1, max_size=5, open=False,
                       kwargs={"row_factory": dict_row, "autocommit": True})
+# Projects (Phase 3) use app_rw: read pub views, write app.projects / app.manifest_versions only.
+projects_pool = ConnectionPool(os.environ["PROJECTS_DATABASE_URL"], min_size=1, max_size=5, open=False,
+                               kwargs={"row_factory": dict_row, "autocommit": True,
+                                       "options": "-c statement_timeout=10000"})  # field stats scan views
+TITILER = os.environ.get("TITILER_URL", "http://titiler:8000")
+MAX_MANIFEST_BYTES = 1_000_000
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     pool.open(wait=True, timeout=30)
+    projects_pool.open(wait=True, timeout=30)
     yield
+    projects_pool.close()
     pool.close()
 
 
@@ -241,3 +259,186 @@ def list_keys() -> list[dict]:
     """Which external API keys are configured for the processes that use them. Never the values."""
     return rows("SELECT key_name, configured, fingerprint, required_by, last_used_ok_at, last_error_at, reported_at "
                 "FROM app.secrets_status ORDER BY key_name")
+
+
+# ---- projects (Phase 3) ------------------------------------------------------------------------
+# Public reads for the hub and viewer; writes, validation and field stats are admin-only (the /admin/new wizard).
+
+COLLECTION = re.compile(r"^pub\.[a-z0-9_]+$")
+COG = re.compile(r"^[a-z0-9_/-]+$")
+
+
+def _admin_user(request: Request) -> str:
+    user = base64.b64decode(request.headers["authorization"][6:].strip()).decode().partition(":")[0]
+    return f"admin:{user}"
+
+
+def _cog_exists(name: str) -> bool:
+    if not COG.match(name):
+        return False
+    try:
+        with urllib.request.urlopen(f"{TITILER}/cog/info?url=/data/cog/{name}.tif", timeout=10) as r:
+            return r.status == 200
+    except (urllib.error.URLError, TimeoutError):
+        return False
+
+
+def _summary(p: dict) -> dict:
+    m = json.loads(p["manifest"])
+    return {
+        "slug": p["slug"], "title": m["title"], "status": m["status"], "description": m.get("description", ""),
+        "tags": m.get("tags", []), "layerCount": len(m["layers"]),
+        "pendingLayers": [{"title": l["title"], "todo": l.get("todo") or "Not configured yet."}
+                          for l in m["layers"] if l.get("status") == "todo"],
+        "notes": m.get("notes", []), "version": p["version"], "updatedAt": p["updated_at"],
+        "valid": bool((p["validation"] or {}).get("ok", True)),
+    }
+
+
+@app.get("/api/projects")
+def list_projects(response: Response) -> dict:
+    with projects_pool.connection() as conn:
+        ps = conn.execute("SELECT slug, manifest::text AS manifest, version, updated_at, validation "
+                          "FROM app.projects ORDER BY position, slug").fetchall()
+    response.headers["Cache-Control"] = "no-cache"
+    return {"projects": [_summary(p) for p in ps]}
+
+
+@app.get("/api/projects/{slug}")
+def get_project(slug: str) -> Response:
+    """The manifest exactly as stored (json keeps key order), for the viewer and `mapgen export`."""
+    with projects_pool.connection() as conn:
+        p = conn.execute("SELECT manifest::text AS manifest FROM app.projects WHERE slug = %s", (slug,)).fetchone()
+    if not p:
+        raise HTTPException(404, f"no project {slug}")
+    return Response(p["manifest"], media_type="application/json", headers={"Cache-Control": "no-cache"})
+
+
+async def _manifest_body(request: Request) -> Any:
+    body = await request.body()
+    if len(body) > MAX_MANIFEST_BYTES:
+        raise HTTPException(413, "manifest too large")
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"body is not JSON: {e}") from None
+
+
+def _validate(m: Any, slug: str | None = None) -> dict:
+    with projects_pool.connection() as conn:
+        return V.validate(m, slug, conn=conn, cog_exists=_cog_exists)
+
+
+@app.post("/api/admin/projects/validate", dependencies=[Depends(require_admin)])
+async def validate_project(request: Request) -> dict:
+    return _validate(await _manifest_body(request))
+
+
+def _save(m: dict, rep: dict, who: str, *, create: bool) -> dict:
+    text = V.normalize(m)
+    digest = hashlib.sha256(text.encode()).hexdigest()
+    with projects_pool.connection() as conn, conn.transaction():
+        cur = conn.execute("SELECT version, checksum FROM app.projects WHERE slug = %s FOR UPDATE", (m["slug"],)).fetchone()
+        if create and cur:
+            raise HTTPException(409, f"project {m['slug']} already exists")
+        if not create and not cur:
+            raise HTTPException(404, f"no project {m['slug']}")
+        if cur and cur["checksum"] == digest:
+            return {"slug": m["slug"], "version": cur["version"], "result": "unchanged", "report": rep}
+        version = cur["version"] + 1 if cur else 1
+        conn.execute(
+            """INSERT INTO app.projects (slug, title, status, position, manifest, checksum, version, origin, validation,
+                                         updated_at, updated_by)
+               VALUES (%(slug)s, %(title)s, %(status)s,
+                       (SELECT coalesce(max(position), -1) + 1 FROM app.projects), %(m)s::json, %(sum)s, %(v)s, 'api',
+                       %(rep)s, now(), %(who)s)
+               ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status,
+                   manifest = EXCLUDED.manifest, checksum = EXCLUDED.checksum, version = EXCLUDED.version,
+                   origin = 'api', validation = EXCLUDED.validation, updated_at = now(), updated_by = EXCLUDED.updated_by""",
+            {"slug": m["slug"], "title": m["title"], "status": m["status"], "m": text, "sum": digest, "v": version,
+             "rep": json.dumps(rep), "who": who})
+        conn.execute("INSERT INTO app.manifest_versions (slug, version, manifest, checksum, origin, created_by) "
+                     "VALUES (%s, %s, %s::json, %s, 'api', %s)", (m["slug"], version, text, digest, who))
+    return {"slug": m["slug"], "version": version, "result": "created" if create else "updated", "report": rep}
+
+
+@app.post("/api/admin/projects", dependencies=[Depends(require_admin)], status_code=201)
+async def create_project(request: Request) -> dict:
+    m = await _manifest_body(request)
+    rep = _validate(m)
+    if not rep["ok"]:
+        raise HTTPException(422, rep)
+    return _save(m, rep, _admin_user(request), create=True)
+
+
+@app.put("/api/admin/projects/{slug}", dependencies=[Depends(require_admin)])
+async def update_project(slug: str, request: Request) -> dict:
+    m = await _manifest_body(request)
+    rep = _validate(m, slug)
+    if not rep["ok"]:
+        raise HTTPException(422, rep)
+    return _save(m, rep, _admin_user(request), create=False)
+
+
+@app.delete("/api/admin/projects/{slug}", dependencies=[Depends(require_admin)], status_code=204)
+def delete_project(slug: str) -> Response:
+    """Remove a project saved in the wizard. File-managed projects come back on the next `mapgen sync`,
+    so they are refused here: remove them from projects/index.json instead."""
+    with projects_pool.connection() as conn, conn.transaction():
+        p = conn.execute("SELECT origin FROM app.projects WHERE slug = %s FOR UPDATE", (slug,)).fetchone()
+        if not p:
+            raise HTTPException(404, f"no project {slug}")
+        if p["origin"] != "api":
+            raise HTTPException(409, f"{slug} is managed by projects/{slug}/project.json; remove it there")
+        conn.execute("DELETE FROM app.projects WHERE slug = %s", (slug,))
+    return Response(status_code=204)
+
+
+def _collection(collection: str) -> tuple[str, str]:
+    if not COLLECTION.match(collection):
+        raise HTTPException(400, "collection must look like pub.<name>")
+    return "pub", collection.split(".", 1)[1]
+
+
+@app.get("/api/admin/projects/fields", dependencies=[Depends(require_admin)])
+def collection_fields(collection: str) -> dict:
+    """Columns of a pub view (for the wizard's field pickers) and its geometry type."""
+    schema, name = _collection(collection)
+    with projects_pool.connection() as conn:
+        cols = conn.execute(
+            """SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type,
+                      CASE WHEN a.atttypid = 'geometry'::regtype THEN postgis_typmod_type(a.atttypmod) END AS geometry
+               FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+               WHERE c.relnamespace = 'pub'::regnamespace AND c.relname = %s AND a.attnum > 0 AND NOT a.attisdropped
+               ORDER BY a.attnum""", (name,)).fetchall()
+    if not cols:
+        raise HTTPException(404, f"no view {collection}")
+    geom = next((c["geometry"] for c in cols if c["geometry"]), None)
+    numeric = ("integer", "bigint", "smallint", "numeric", "real", "double precision")
+    return {"collection": collection, "geometry": geom,
+            "fields": [{"name": c["name"], "type": c["type"],
+                        "numeric": c["type"].split("(")[0] in numeric}
+                       for c in cols if not c["geometry"]]}
+
+
+@app.get("/api/admin/projects/stats", dependencies=[Depends(require_admin)])
+def field_stats(collection: str, field: str, k: int = 5) -> dict:
+    """Breaks for a numeric field (quantiles), or the most common values of a text field, for style presets."""
+    schema, name = _collection(collection)
+    fields = {f["name"]: f for f in collection_fields(collection)["fields"]}
+    if field not in fields:
+        raise HTTPException(404, f"{collection} has no field {field}")
+    k = min(max(k, 2), 9)
+    rel, col = sql.Identifier(schema, name), sql.Identifier(field)
+    with projects_pool.connection() as conn:
+        if fields[field]["numeric"]:
+            fractions = [i / k for i in range(1, k)]
+            r = conn.execute(sql.SQL(
+                "SELECT count(*) AS count, count({c}) AS non_null, min({c})::float8 AS min, max({c})::float8 AS max, "
+                "percentile_disc(%s::float8[]) WITHIN GROUP (ORDER BY {c})::float8[] AS breaks FROM {r}").format(c=col, r=rel),
+                (fractions,)).fetchone()
+            return {"field": field, "kind": "numeric", **r}
+        r = conn.execute(sql.SQL(
+            "SELECT {c}::text AS value, count(*) AS count FROM {r} GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 13").format(c=col, r=rel)
+        ).fetchall()
+        return {"field": field, "kind": "categorical", "values": r[:12], "more": len(r) > 12}

@@ -1,0 +1,55 @@
+{
+  "manifestVersion": 1,
+  "slug": "{{slug}}",
+  "title": "{{title}}",
+  "status": "draft",
+  "description": "",
+  "tags": [
+    "maine"
+  ],
+  "view": {
+    "center": [
+      -69.25,
+      45.3
+    ],
+    "zoom": 6.3,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "{{layer}}",
+      "title": "{{layer_title}}",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.{{slug_}}__{{layer_}}"
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#3b82f6",
+              "fill-opacity": 0.5
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#1e3a8a",
+              "line-width": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#3b82f6",
+        "label": "{{layer_title}}"
+      },
+      "interaction": {
+        "inspect": true
+      }
+    }
+  ]
+}

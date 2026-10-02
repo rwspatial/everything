@@ -50,5 +50,5 @@ export const site = {
 	}
 };
 
-/** Page title helper: "Maine Coast · Bold Coast Geospatial". */
+/** Page title helper: "Maine Coast · Downeast Geospatial". */
 export const title = (...parts: string[]) => [...parts, site.studio].join(' · ');

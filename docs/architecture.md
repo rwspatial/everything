@@ -23,29 +23,30 @@ flowchart LR
 
   subgraph web["proxy (Caddy :8080)"]
     r_app["/ (app)"]
-    r_proj["/projects/*.json"]
+    r_proj["/api/projects (registry)<br/>/projects/*.json (fallback)"]
     r_tiles["/tiles/*"]
     r_raster["/raster/*"]
-    r_admin["/admin, /api/admin/*<br/>(forward_auth)"]
+    r_admin["/admin, /api/admin/*<br/>(forward_auth; wizard at /admin/new)"]
   end
 
   frontend["frontend<br/>static Svelte build"]
   projects[("projects/&lt;slug&gt;/project.json<br/>bind mount")]
   tipg["tipg<br/>OGC Features + MVT tiles"]
-  titiler["titiler<br/>COG tiles + pixel values"]:::empty
-  cog[("data/cog/*.tif<br/>(empty)")]:::empty
-  core_api["core-api<br/>FastAPI admin API"]
+  titiler["titiler<br/>COG tiles + pixel values"]
+  cog[("data/cog/*.tif<br/>maine/phzm_2023_min_temp")]
+  core_api["core-api<br/>FastAPI: projects + admin API"]
 
   subgraph db["postgis"]
-    pub[("pub.* views<br/>world_overview__*, hydrology_sketch__*")]
-    src[("src_* tables<br/>Natural Earth + Maine imports")]
-    app[("app.* registry<br/>datasets, recipes, runs")]
+    pub[("pub.* views<br/>world_overview__*, maine_*__*, …")]
+    src[("src_* tables<br/>Natural Earth, Maine, Census")]
+    app[("app.* registry<br/>projects, recipes, runs")]
   end
 
   basemaps["OSM, Esri imagery,<br/>OpenFreeMap"]:::ext
 
   browser --> r_app --> frontend
-  browser --> r_proj --> projects
+  browser --> r_proj --> core_api
+  r_proj -.->|core-api down| projects
   browser --> r_tiles --> tipg -->|"role tipg_ro, schema pub only"| pub
   browser --> r_raster --> titiler --> cog
   browser --> r_admin --> core_api --> app
@@ -102,7 +103,7 @@ sequenceDiagram
   participant T as tipg
   participant DB as postgis
 
-  B->>P: GET /projects/index.json, then /projects/world-overview/project.json
+  B->>P: GET /api/projects, then /api/projects/world-overview (static /projects/*.json if core-api is down)
   P-->>B: layer specs (source.type = tipg-vector, collection = pub.world_overview__countries)
   Note over B: adapters.ts turns each spec into a MapLibre source + style layers
   loop every visible tile while panning or zooming
@@ -119,7 +120,7 @@ Layer adapters (`frontend/src/lib/adapters.ts`), one per `source.type`:
 
 | Adapter | Fetches from | Used today by |
 |---|---|---|
-| `tipg-vector` | `/tiles/collections/<pub view>/tiles/…` (MVT) | world-overview, hydrology-sketch, analysis-sandbox, maine-coast, maine-water, maine-lands, maine-infrastructure |
+| `tipg-vector` | `/tiles/collections/<pub view>/tiles/…` (MVT) | world-overview, hydrology-sketch, analysis-sandbox, maine-coast, maine-water, maine-lands, maine-infrastructure, maine-overview |
 | `tipg-geojson` | `/tiles/collections/<pub view>/items?f=geojson` | hydrology-sketch |
 | `geojson-url` | any GeoJSON URL | nothing yet |
 | `raster-xyz` | any XYZ raster tile URL | analysis-sandbox (stub) |
@@ -140,12 +141,13 @@ flowchart LR
     postgis[("postgis")]:::now
     core_api["core-api"]:::now
     geotools["geotools"]:::now
-    maine_proj["projects/maine-*<br/>4 draft manifests"]:::now
+    maine_proj["projects/maine-*<br/>5 draft manifests"]:::now
+    census["Census API recipes<br/>kind: table (ACS 5-yr)"]:::now
+    mapgen["mapgen + /admin/new<br/>(Phase 3 project creator)"]:::now
     cogs[("data/cog/maine/*.tif<br/>+ provenance sidecars")]:::now
   end
 
-  maine_views[("more pub.maine_* views<br/>towns × ACS, habitat, …")]:::todo
-  census["Census API recipes<br/>kind: table (ACS 5-yr)"]:::todo
+  maine_views[("more pub.maine_* views<br/>counties, tracts, habitat, …")]:::todo
   rasters["More raster recipes<br/>3DEP DEM, LANDFIRE, SNODAS, VIIRS"]:::todo
   zonal["Zonal stats → vector tables<br/>(NDVI per town)"]:::todo
   worker["Job queue + worker<br/>(admin Phase B)"]:::todo
@@ -163,9 +165,25 @@ flowchart LR
   core_api --> worker --> geotools
   postgis -.-> pmtiles
   mcp -.-> core_api
+  mapgen --> maine_proj
   ml -.-> postgis
   today -.->|later| aws
 ```
+
+## Project creation (Phase 3)
+
+One contract, two front doors, one registry:
+
+- `contracts/project-manifest.v1.schema.json` is the manifest contract. The frontend's types are generated from it
+  (`make contracts`, checked by `make verify`), and `contracts/validate.py` checks a manifest against it, against status
+  rules, and against the live database (the view exists, tiPG can read it, one geometry column with an SRID, an `id`
+  column, a GiST index, field names in popups and styles). The MapLibre style spec is checked by
+  `frontend/scripts/validate-styles.mjs`.
+- `./mapgen` (CLI, in geotools): `new` scaffolds `projects/<slug>/` from a template, `apply` runs its SQL through the
+  migrator (so tiPG's grants apply), refreshes tiPG and registers it; `sync` registers every file.
+- `/admin/new` (browser): pick a `pub` view, a style preset (single, categorical, quantile choropleth, graduated
+  circles, heatmap; breaks computed in PostGIS), preview, save through core-api. `./mapgen export` writes it to git.
+- `app.projects` + `app.manifest_versions` hold what is served; files in `projects/` stay the source of truth in git.
 
 ## Services
 
@@ -175,7 +193,7 @@ flowchart LR
 | migrator | dbmate: applies `db/migrations`, sets role passwords, then exits | default |
 | tipg | Serves `pub.*` views as OGC API Features and vector tiles | default |
 | titiler | Serves COGs under `data/cog/` as raster tiles | default |
-| core-api | Admin API (`/api/admin/*`) and the auth check for `/admin` | default |
+| core-api | Project registry (`/api/projects`, public reads; `/api/admin/projects`, writes), admin API (`/api/admin/*`) and the auth check for `/admin` | default |
 | frontend | Static Svelte build served by Caddy | default |
 | proxy | Caddy: the only published port (`:8080`), routes everything | default |
 | geotools | GDAL + Python + R: imports, raster work, registry updates | tools |

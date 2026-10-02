@@ -1,0 +1,292 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "project-manifest.v1.schema.json",
+  "title": "ProjectManifest",
+  "description": "One map project (plan §2.1). Source of truth for the TypeScript types (frontend/src/lib/contracts.gen.ts) and for validation in mapgen and core-api (contracts/validate.py).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "slug", "title", "status", "view", "layers"],
+  "properties": {
+    "manifestVersion": { "const": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 48 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "status": { "$ref": "#/definitions/ProjectStatus" },
+    "description": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "view": { "$ref": "#/definitions/ViewSpec" },
+    "layers": { "type": "array", "items": { "$ref": "#/definitions/LayerSpec" } },
+    "notes": {
+      "description": "Free-text to-do notes for placeholder projects, shown on the hub and in the viewer.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "ProjectStatus": { "title": "ProjectStatus", "type": "string", "enum": ["stub", "draft", "ready"] },
+    "LayerStatus": { "title": "LayerStatus", "type": "string", "enum": ["ready", "todo"] },
+    "LngLat": {
+      "title": "LngLat",
+      "type": "array",
+      "items": [{ "type": "number", "minimum": -180, "maximum": 180 }, { "type": "number", "minimum": -90, "maximum": 90 }],
+      "minItems": 2,
+      "maxItems": 2,
+      "additionalItems": false
+    },
+    "BBox": {
+      "title": "BBox",
+      "type": "array",
+      "items": [{ "type": "number" }, { "type": "number" }, { "type": "number" }, { "type": "number" }],
+      "minItems": 4,
+      "maxItems": 4,
+      "additionalItems": false
+    },
+    "ViewSpec": {
+      "title": "ViewSpec",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["center", "zoom"],
+      "properties": {
+        "center": { "$ref": "#/definitions/LngLat" },
+        "zoom": { "type": "number", "minimum": 0, "maximum": 22 },
+        "bounds": { "anyOf": [{ "$ref": "#/definitions/BBox" }, { "type": "null" }] },
+        "basemap": { "type": "string" }
+      }
+    },
+    "LayerSpec": {
+      "title": "LayerSpec",
+      "description": "One visual layer. `source.type` selects the frontend adapter (src/lib/adapters.ts).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "source"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 48 },
+        "title": { "type": "string", "minLength": 1 },
+        "group": { "type": "string" },
+        "status": { "$ref": "#/definitions/LayerStatus" },
+        "todo": { "type": ["string", "null"] },
+        "visible": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minzoom": { "type": "number", "minimum": 0, "maximum": 24 },
+        "maxzoom": { "type": "number", "minimum": 0, "maximum": 24 },
+        "source": { "$ref": "#/definitions/SourceSpec" },
+        "style": { "$ref": "#/definitions/StyleSpec" },
+        "legend": { "$ref": "#/definitions/LegendSpec" },
+        "interaction": { "$ref": "#/definitions/InteractionSpec" },
+        "controls": {
+          "description": "UI controls bound to tiPG function arguments (source.params).",
+          "type": "array",
+          "items": { "$ref": "#/definitions/ParamControl" }
+        },
+        "attribution": { "type": "string" }
+      }
+    },
+    "SourceSpec": {
+      "title": "SourceSpec",
+      "oneOf": [
+        { "$ref": "#/definitions/TipgVectorSource" },
+        { "$ref": "#/definitions/TipgGeojsonSource" },
+        { "$ref": "#/definitions/GeojsonUrlSource" },
+        { "$ref": "#/definitions/RasterXyzSource" },
+        { "$ref": "#/definitions/RasterCogSource" }
+      ]
+    },
+    "Collection": {
+      "title": "Collection",
+      "description": "A tiPG collection id: a view or function in the pub schema.",
+      "type": "string",
+      "pattern": "^pub\\.[a-z0-9_]+$"
+    },
+    "FunctionParams": {
+      "title": "FunctionParams",
+      "type": "object",
+      "additionalProperties": { "type": ["string", "number"] }
+    },
+    "TipgVectorSource": {
+      "title": "TipgVectorSource",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "collection"],
+      "properties": {
+        "type": { "const": "tipg-vector" },
+        "collection": { "$ref": "#/definitions/Collection" },
+        "tms": { "type": "string" },
+        "params": { "$ref": "#/definitions/FunctionParams" },
+        "properties": { "type": "array", "items": { "type": "string" } },
+        "maxzoom": { "type": "number", "minimum": 0, "maximum": 24 }
+      }
+    },
+    "TipgGeojsonSource": {
+      "title": "TipgGeojsonSource",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "collection"],
+      "properties": {
+        "type": { "const": "tipg-geojson" },
+        "collection": { "$ref": "#/definitions/Collection" },
+        "params": { "$ref": "#/definitions/FunctionParams" },
+        "properties": { "type": "array", "items": { "type": "string" } },
+        "limit": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "GeojsonUrlSource": {
+      "title": "GeojsonUrlSource",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "url"],
+      "properties": {
+        "type": { "const": "geojson-url" },
+        "url": { "type": "string", "minLength": 1 }
+      }
+    },
+    "RasterXyzSource": {
+      "title": "RasterXyzSource",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "tiles"],
+      "properties": {
+        "type": { "const": "raster-xyz" },
+        "tiles": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "tileSize": { "type": "integer", "enum": [256, 512] },
+        "maxzoom": { "type": "number", "minimum": 0, "maximum": 24 }
+      }
+    },
+    "RasterCogSource": {
+      "title": "RasterCogSource",
+      "description": "A COG in data/cog/, served by titiler through the proxy's /raster/<cog>/... route.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "cog"],
+      "properties": {
+        "type": { "const": "raster-cog" },
+        "cog": { "type": "string", "pattern": "^[a-z0-9_/-]+$" },
+        "rescale": {
+          "type": "array",
+          "items": [{ "type": "number" }, { "type": "number" }],
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false
+        },
+        "colormap": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "bidx": { "type": "integer", "minimum": 1 },
+        "maxzoom": { "type": "number", "minimum": 0, "maximum": 24 },
+        "units": {
+          "description": "Unit label for the pixel value shown when the map is clicked (titiler point query).",
+          "type": "string"
+        }
+      }
+    },
+    "StyleSpec": {
+      "title": "StyleSpec",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "layers"],
+      "properties": {
+        "kind": { "const": "maplibre" },
+        "layers": { "type": "array", "items": { "$ref": "#/definitions/StyleFragment" } }
+      }
+    },
+    "StyleFragment": {
+      "title": "StyleFragment",
+      "description": "A MapLibre style layer minus id/source/source-layer, which the adapter injects. Checked in full by the MapLibre style-spec validator (make validate).",
+      "tsType": "MapLibreStyleFragment",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["fill", "line", "circle", "symbol", "heatmap", "fill-extrusion", "raster", "hillshade"] },
+        "id": false,
+        "source": false,
+        "source-layer": false
+      }
+    },
+    "LegendSpec": {
+      "title": "LegendSpec",
+      "oneOf": [
+        {
+          "title": "CategoricalLegend",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "items"],
+          "properties": {
+            "type": { "const": "categorical" },
+            "title": { "type": "string" },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "color"],
+                "properties": { "label": { "type": "string" }, "color": { "type": "string" } }
+              }
+            }
+          }
+        },
+        {
+          "title": "GradientLegend",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "stops"],
+          "properties": {
+            "type": { "const": "gradient" },
+            "title": { "type": "string" },
+            "stops": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["value", "color"],
+                "properties": { "value": { "type": "string" }, "color": { "type": "string" } }
+              }
+            }
+          }
+        },
+        {
+          "title": "SingleLegend",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "color"],
+          "properties": {
+            "type": { "const": "single" },
+            "label": { "type": "string" },
+            "color": { "type": "string" }
+          }
+        },
+        {
+          "title": "NoLegend",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": { "type": { "const": "none" } }
+        }
+      ]
+    },
+    "InteractionSpec": {
+      "title": "InteractionSpec",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "popup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template"],
+          "properties": { "template": { "type": "string" } }
+        },
+        "inspect": { "type": "boolean" }
+      }
+    },
+    "ParamControl": {
+      "title": "ParamControl",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["param", "label", "type", "min", "max"],
+      "properties": {
+        "param": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "const": "range" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" }
+      }
+    }
+  }
+}

@@ -29,6 +29,22 @@ def project_usage(projects_dir: Path) -> dict[str, list[str]]:
     return {k: sorted(v) for k, v in usage.items()}
 
 
+def recipes_behind(conn, names: list[str]) -> list[str]:
+    """Recipes whose tables (or COGs) feed these pub collections / COG names."""
+    rows = conn.execute(
+        """SELECT DISTINCT o.recipe_name FROM app.dataset_outputs o
+           WHERE o.recipe_name IS NOT NULL AND (
+                 (o.kind = 'cog' AND o.locator = ANY(%(names)s))
+              OR (o.kind = 'postgis_table' AND to_regclass(o.locator) IN (
+                    SELECT d.refobjid FROM pg_rewrite r
+                    JOIN pg_depend d ON d.objid = r.oid AND d.classid = 'pg_rewrite'::regclass
+                                    AND d.refclassid = 'pg_class'::regclass
+                    WHERE r.ev_class IN (SELECT c.oid FROM pg_class c   -- catalog lookup: no USAGE on pub needed
+                                         WHERE c.relnamespace = 'pub'::regnamespace AND c.relname = ANY(%(rels)s)))))""",
+        {"names": names, "rels": [n.split(".", 1)[1] for n in names if n.startswith("pub.")]}).fetchall()
+    return [r[0] for r in rows]
+
+
 def pub_dependents(conn, qualified: str) -> list[tuple[str, str]]:
     """[(pub object, 'pub_view' | 'pub_function')] built on a table."""
     views = conn.execute(

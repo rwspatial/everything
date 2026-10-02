@@ -112,6 +112,8 @@ reset_db() {
   say "applying seed views"
   "${COMPOSE[@]}" run --rm migrator seed
   refresh
+  say "registering projects"
+  "${TOOLS[@]}" python scripts/mapgen.py sync || echo "some projects have errors: ./mapgen validate <slug>"
   echo "reset-db complete"
 }
 
@@ -141,6 +143,8 @@ bootstrap() {
   say "applying seed views"
   "${COMPOSE[@]}" run --rm migrator seed
   refresh
+  say "registering projects"
+  "${TOOLS[@]}" python scripts/mapgen.py sync || echo "some projects have errors: ./mapgen validate <slug>"
   echo "bootstrap complete. Next: make verify"
 }
 

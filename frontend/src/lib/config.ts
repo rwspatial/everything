@@ -3,11 +3,13 @@
 export interface AppConfig {
 	/** Absolute base URL of the tiPG API (the proxy strips /tiles). */
 	tilesBase: string;
-	/** Absolute base URL of the project manifests. */
+	/** Absolute base URL of the static project manifests (fallback when core-api is unreachable). */
 	projectsBase: string;
+	/** Absolute base URL of the project registry API (core-api). */
+	projectsApi: string;
 }
 
-const defaults = { tilesBase: '/tiles', projectsBase: '/projects' };
+const defaults = { tilesBase: '/tiles', projectsBase: '/projects', projectsApi: '/api/projects' };
 
 let cached: Promise<AppConfig> | undefined;
 
@@ -20,7 +22,8 @@ export function loadConfig(fetchFn: typeof fetch = fetch): Promise<AppConfig> {
 			// MapLibre workers need absolute URLs; resolve relative ones against this page.
 			return {
 				tilesBase: new URL(merged.tilesBase, window.location.origin).href.replace(/\/$/, ''),
-				projectsBase: new URL(merged.projectsBase, window.location.origin).href.replace(/\/$/, '')
+				projectsBase: new URL(merged.projectsBase, window.location.origin).href.replace(/\/$/, ''),
+				projectsApi: new URL(merged.projectsApi, window.location.origin).href.replace(/\/$/, '')
 			};
 		});
 	return cached;

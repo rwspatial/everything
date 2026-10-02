@@ -26,6 +26,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 import re
 import shlex
 import sys
@@ -496,8 +497,10 @@ def load_recipe(name: str) -> dict:
     if r.get("name") != name:
         raise ImportError_(f"{path.name}: 'name' must equal the file name ({name})")
     src = r.get("source") or {}
-    if sum(bool(src.get(k)) for k in ("url", "path", "arcgis")) != 1:
-        raise ImportError_(f"{path.name}: source needs exactly one of url, path or arcgis")
+    if sum(bool(src.get(k)) for k in ("url", "path", "arcgis", "census_api")) != 1:
+        raise ImportError_(f"{path.name}: source needs exactly one of url, path, arcgis or census_api")
+    if src.get("census_api") and r.get("kind") != "table":
+        raise ImportError_(f"{path.name}: source.census_api needs kind: table")
     if "target" not in r:
         raise ImportError_(f"{path.name}: missing target")
     return r
@@ -523,10 +526,93 @@ def run_recorded(r: dict, params: dict | None = None) -> dict:
         if missing:
             raise ImportError_(f"recipe {r['name']} requires {', '.join(missing)}, which is not configured. "
                                "Add it to .env (see .env.example) and run the command again.")
-        stats = run_raster_recipe(r) if r.get("kind") == "raster" else run_recipe(r)
+        runner = {"raster": run_raster_recipe, "table": run_table_recipe}.get(r.get("kind"), run_recipe)
+        stats = runner(r)
         run.rows, run.bytes = stats.get("row_count"), DOWNLOADED_BYTES
         run.outcome = "downloaded" if DOWNLOADED_BYTES else "imported from cached download"
         finalize(r["name"])
+    return stats
+
+
+# Census "annotation" values that stand for suppressed / not applicable estimates.
+CENSUS_NULLS = {"-666666666", "-999999999", "-888888888", "-555555555", "-333333333", "-222222222"}
+IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
+
+
+def census_api_url(c: dict, key: str | None) -> str:
+    ins = c.get("in") or []
+    q = [("get", ",".join(c["get"])), ("for", c["for"])] + [("in", v) for v in (ins if isinstance(ins, list) else [ins])]
+    if key:
+        q.append(("key", key))
+    return f"https://api.census.gov/data/{c['dataset']}?{urllib.parse.urlencode(q)}"
+
+
+def run_table_recipe(r: dict) -> dict:
+    """kind: table -> a non-spatial src_* table (today: source.census_api), replaced in one transaction.
+
+    The table is emptied and refilled rather than dropped, so pub views built on it survive a refresh.
+    Numeric columns become numeric; Census annotation values (suppressed estimates) become NULL.
+    """
+    global DOWNLOADED_BYTES
+    c, target = r["source"]["census_api"], r["target"]
+    schema, table = target.split(".", 1)
+    columns = c["get"]  # {api variable: column name}
+    if not all(IDENT.match(x) for x in [schema, table, *columns.values()]):
+        raise ImportError_(f"{r['name']}: target and column names must be lowercase identifiers")
+    print(f"\n=== recipe {r['name']} -> {target}")
+    url = census_api_url(c, os.environ.get("CENSUS_API_KEY"))
+    print(f"downloading {redact(url)}", flush=True)
+    try:
+        with urllib.request.urlopen(url, timeout=120) as resp:
+            body = resp.read()
+    except urllib.error.HTTPError as e:
+        raise ImportError_(f"Census API returned HTTP {e.code}: {redact(e.read().decode(errors='replace'))[:300]}") from None
+    DOWNLOADED_BYTES += len(body)
+    try:
+        rows = json.loads(body)
+    except json.JSONDecodeError:
+        raise ImportError_(f"Census API did not return JSON (bad key?): {redact(body[:200].decode(errors='replace'))}") from None
+    header, data = rows[0], rows[1:]
+    idx = {h: i for i, h in enumerate(header)}
+    geo_parts = c.get("geoid") or []
+    numeric = {v: all(row[idx[v]] is None or re.fullmatch(r"-?\d+(\.\d+)?", row[idx[v]]) for row in data)
+               for v in columns}
+    suppressed = 0
+    records = []
+    for row in data:
+        out = ["".join(row[idx[g]] for g in geo_parts)] if geo_parts else []
+        for v in columns:
+            val = row[idx[v]]
+            if val in CENSUS_NULLS:
+                val, suppressed = None, suppressed + 1
+            out.append(val)
+        records.append(out)
+    defs = (["geoid text PRIMARY KEY"] if geo_parts else []) + [
+        f"{col} {'numeric' if numeric[v] else 'text'}" for v, col in columns.items()]
+    names = (["geoid"] if geo_parts else []) + list(columns.values())
+    q = f'"{schema}"."{table}"'
+    with psycopg.connect(LOADER) as conn:
+        existing = [x[0] for x in conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = %s AND table_name = %s "
+            "ORDER BY ordinal_position", (schema, table)).fetchall()]
+        if existing and existing != names:
+            raise ImportError_(f"{target} exists with columns {existing}, the recipe now gives {names}; "
+                               "drop it (and dependent views) deliberately before changing columns")
+        if not existing:
+            conn.execute(f"CREATE TABLE {q} ({', '.join(defs)})")
+        conn.execute(f"TRUNCATE {q}")
+        with conn.cursor().copy(f"COPY {q} ({', '.join(names)}) FROM STDIN") as cp:
+            for rec in records:
+                cp.write_row(rec)
+        conn.execute(psycopg.sql.SQL("COMMENT ON TABLE {} IS {}").format(
+            psycopg.sql.Identifier(schema, table),
+            psycopg.sql.Literal(f"{r.get('title', r['name'])} ({c['dataset']}); recipe {r['name']}")))
+        conn.execute(f"ANALYZE {q}")
+        digest = hashlib.sha256(body).hexdigest()
+        stats = {"geometry_type": None, "srid": None, "row_count": len(records), "invalid_geom_count": None}
+        record(conn, schema, table, source=census_api_url(c, None), layer=None, digest=digest, source_srs=None,
+               target_srs=None, stats=stats, recipe=r["name"], license=r.get("license"), notes=r.get("notes"))
+    print(f"OK {target}: {len(records)} rows, {len(names)} columns, {suppressed} suppressed values -> NULL")
     return stats
 
 

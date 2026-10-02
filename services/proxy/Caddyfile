@@ -68,6 +68,18 @@
 		reverse_proxy core-api:8000
 	}
 
+	# Project registry, public reads only (hub + viewer). GET/HEAD only: writes live under /api/admin/projects.
+	@projects_read {
+		path /api/projects /api/projects/*
+		method GET HEAD
+	}
+	handle @projects_read {
+		reverse_proxy core-api:8000
+	}
+	handle /api/projects* {
+		respond "method not allowed" 405
+	}
+
 	# Everything else: the Svelte app (static build in the frontend container).
 	handle {
 		reverse_proxy frontend:80

@@ -1,7 +1,8 @@
 #!/bin/sh
 # Migrator entrypoint (runs in the dbmate image, which includes psql).
 #   migrate  - apply db/migrations, then set login-role passwords from env
-#   seed     - apply db/seed/*.sql in name order (idempotent CREATE OR REPLACE)
+#   seed     - apply db/seed/*.sql, then every projects/<slug>/sql/*.sql, in name order (idempotent)
+#   project <slug> - apply one project's projects/<slug>/sql/*.sql (mapgen apply)
 #   status   - show migration status
 set -eu
 
@@ -25,16 +26,31 @@ case "$cmd" in
     set_passwords
     ;;
   seed)
-    for f in /db/seed/*.sql; do
-      echo "migrator: seeding $(basename "$f")"
+    for f in /db/seed/*.sql /projects/*/sql/*.sql; do
+      [ -f "$f" ] || continue
+      echo "migrator: seeding ${f#/}"
       psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
     done
+    ;;
+  project)
+    slug="${2:-}"
+    case "$slug" in
+      ''|*[!a-z0-9-]*) echo "usage: entrypoint.sh project <slug>  (lowercase letters, digits, dashes)" >&2; exit 2 ;;
+    esac
+    found=0
+    for f in /projects/"$slug"/sql/*.sql; do
+      [ -f "$f" ] || continue
+      found=1
+      echo "migrator: applying ${f#/}"
+      psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -1 -f "$f"
+    done
+    [ "$found" = 1 ] || echo "migrator: projects/$slug/sql/ has no .sql files (nothing to apply)"
     ;;
   status)
     dbmate status
     ;;
   *)
-    echo "usage: entrypoint.sh {migrate|seed|status}" >&2
+    echo "usage: entrypoint.sh {migrate|seed|project <slug>|status}" >&2
     exit 2
     ;;
 esac

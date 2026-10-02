@@ -30,11 +30,18 @@ port=${PGPORT}
 dbname=${PGDATABASE}
 user=tipg_ro
 password=${TIPG_DB_PASSWORD}
+
+[app]
+host=${PGHOST}
+port=${PGPORT}
+dbname=${PGDATABASE}
+user=app_rw
+password=${APP_DB_PASSWORD:-}
 EOF
 umask "$old_umask"
 
 export PGSERVICEFILE="$HOME/.pg_service.conf"
 export PGSERVICE="${PGSERVICE:-analyst}"
-unset LOADER_DB_PASSWORD ANALYST_DB_PASSWORD TIPG_DB_PASSWORD
+unset LOADER_DB_PASSWORD ANALYST_DB_PASSWORD TIPG_DB_PASSWORD APP_DB_PASSWORD
 
 exec "$@"

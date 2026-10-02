@@ -74,6 +74,63 @@ test.describe('signed in', () => {
 		await shot(page, 'admin-4-maine-cog');
 	});
 
+	test('project creator: pick a Maine view, style it, preview, validate, save, open, delete', async ({ page, request }) => {
+		const slug = 'e2e-maine-public-lands';
+		await request.delete(`/api/admin/projects/${slug}`); // leftover from an interrupted run
+		await page.goto('/admin/new');
+		await page.getByLabel('Published view (tiPG collection)').selectOption('pub.maine_lands__public_lands');
+		await expect(page.getByText(/fields, geometry MultiPolygon/)).toBeVisible();
+		await page.getByLabel('Preset').selectOption('categorical');
+		await page.getByLabel('Field', { exact: true }).selectOption('designation');
+		await page.getByLabel('Project title').fill('E2E Maine Public Lands');
+		await expect(page.getByLabel('Slug (URL and folder name)')).toHaveValue(slug);
+
+		// Live preview: the embedded viewer draws the view with the categorical style.
+		const preview = page.getByLabel('Preview');
+		await expect(preview.getByText('State Park', { exact: true }).first()).toBeVisible(); // legend from the most common values
+		await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
+		expect(await page.evaluate(() => window.__spatial!.renderedCount('public-lands'))).toBeGreaterThan(100);
+
+		await page.getByRole('button', { name: 'Validate' }).click();
+		const report = page.getByRole('region', { name: 'Validation report' });
+		await expect(report).toContainText('Valid: 0 error(s)');
+		await expect(report).toContainText('checked schema, rules, database, cogs');
+		await shot(page, 'admin-5-new-project');
+
+		await page.getByRole('button', { name: 'Save project' }).click();
+		await expect(page.getByRole('status').filter({ hasText: `Saved ${slug}` })).toBeVisible();
+		await page.getByRole('link', { name: 'Open the map' }).click();
+		await expect(page).toHaveURL(new RegExp(`/p/${slug}`));
+		await page.waitForFunction(() => window.__spatial?.idle === true, undefined, { timeout: 30_000 });
+		expect(await page.evaluate(() => window.__spatial!.renderedCount('public-lands'))).toBeGreaterThan(100);
+
+		// Saving the same slug again is refused; the wizard project can be deleted, a file-managed one cannot.
+		expect((await request.post('/api/admin/projects', { data: await (await request.get(`/api/projects/${slug}`)).json() })).status()).toBe(409);
+		expect((await request.delete(`/api/admin/projects/${slug}`)).status()).toBe(204);
+		expect((await request.delete('/api/admin/projects/maine-lands')).status()).toBe(409);
+	});
+
+	test('project API: invalid manifests fail with specific codes', async ({ request }) => {
+		const base = await (await request.get('/api/projects/maine-overview')).json();
+		const cases: [string, (m: any) => void][] = [
+			['E_SOURCE_TYPE', (m) => (m.layers[0].source.type = 'wms')],
+			['E_VIEW_MISSING', (m) => (m.layers[0].source.collection = 'pub.maine_overview__nope')],
+			['E_PROPERTY_UNKNOWN', (m) => m.layers[0].source.properties.push('bogus')],
+			['E_SCHEMA', (m) => (m.view.center = [-69])]
+		];
+		for (const [code, mutate] of cases) {
+			const m = structuredClone(base);
+			m.slug = 'e2e-invalid';
+			mutate(m);
+			const res = await request.post('/api/admin/projects', { data: m });
+			expect(res.status(), code).toBe(422);
+			const codes = (await res.json()).detail.errors.map((e: { code: string }) => e.code);
+			expect(codes, code).toContain(code);
+		}
+		// Anonymous writes are refused at both paths.
+		expect((await request.post('/api/projects', { data: base })).status()).toBe(405);
+	});
+
 	test('jobs page shows recent runs', async ({ page }) => {
 		await page.goto('/admin/jobs');
 		await expect(page.getByRole('heading', { name: 'Recent runs' })).toBeVisible();
@@ -81,7 +138,7 @@ test.describe('signed in', () => {
 	});
 
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

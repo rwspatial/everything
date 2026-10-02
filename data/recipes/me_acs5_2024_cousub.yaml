@@ -1,0 +1,25 @@
+name: me_acs5_2024_cousub
+title: Population and median household income by town (ACS 2020-2024)
+description: American Community Survey 5-year estimates for Maine county subdivisions, from the Census Data API. Suppressed estimates (Census codes -666666666 etc.) load as NULL.
+agency: U.S. Census Bureau (American Community Survey)
+kind: table
+group: maine
+vintage: { label: "ACS 2020-2024 5-year", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: [CENSUS_API_KEY]
+source:
+  census_api:
+    dataset: 2024/acs/acs5
+    get:
+      NAME: name
+      B01003_001E: pop
+      B19013_001E: median_hh_income
+      B19013_001M: median_hh_income_moe
+    for: "county subdivision:*"
+    in: "state:23"
+    geoid: [state, county, county subdivision]
+target: src_census.acs5_2024_cousub
+freshness: { method: none }
+license: Public domain (U.S. Census Bureau)
+attribution: "U.S. Census Bureau, American Community Survey 2020-2024 5-year estimates (B01003, B19013)"
+enabled: true

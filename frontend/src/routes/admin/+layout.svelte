@@ -14,9 +14,10 @@
 			<span class="title">Admin</span>
 			<a href="/admin" aria-current={current('/admin')}>Datasets</a>
 			<a href="/admin/jobs" aria-current={current('/admin/jobs') ?? current('/admin/runs')}>Jobs &amp; runs</a>
+			<a href="/admin/new" aria-current={current('/admin/new')}>New project</a>
 		</nav>
-		<span class="mode" title="Phase A: the dashboard reads the registry. Re-download and rebuild actions arrive with the job queue (Phase B).">
-			read-only
+		<span class="mode" title="Datasets are read-only here: re-download and rebuild actions arrive with the job queue (Phase B). Projects can be created under New project.">
+			datasets read-only
 		</span>
 	</div>
 	{@render children()}

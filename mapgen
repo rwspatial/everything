@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# mapgen: create, validate and publish map projects (docs/setup/07-projects.md).
+# Runs each step in the container that owns it; see `./mapgen help`.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+export HOST_UID=${HOST_UID:-$(id -u)} HOST_GID=${HOST_GID:-$(id -g)} HOST_USER=${HOST_USER:-$(id -un)}
+DC=(docker compose)
+PY=("${DC[@]}" run --rm -T geotools python scripts/mapgen.py)
+STYLES=("${DC[@]}" run --rm -T node node scripts/validate-styles.mjs)
+
+usage() {
+  cat <<'EOF'
+usage: ./mapgen <command> ...
+
+  new <slug> [--template vector-basic|blank|hydro|analysis] [--title T] [--layer ID] [--from src_x.table]
+                           scaffold projects/<slug>/ (manifest + sql/) and list it in projects/index.json
+  validate <slug> [--offline] [--json]
+                           schema, rules, live database and COG checks, and the MapLibre style spec
+  apply <slug>             validate -> run projects/<slug>/sql/*.sql (migrator) -> refresh tiPG -> register
+  sync [--check]           register every project in projects/index.json (--check: report drift only)
+  export <slug>            write a project saved in the /new wizard to projects/<slug>/project.json
+  list                     registered projects
+  check-templates          the placeholder projects must be reproducible from their templates
+  import ...               alias for scripts/geoimport.py (e.g. ./mapgen import recipe me_cousub)
+EOF
+}
+
+cmd=${1:-help}
+shift || true
+case $cmd in
+  new|register|sync|export|list|check-templates)
+    "${PY[@]}" "$cmd" "$@" ;;
+  validate)
+    slug=${1:?usage: ./mapgen validate <slug>}
+    rc=0
+    "${PY[@]}" validate "$@" || rc=1
+    "${STYLES[@]}" "$slug" || rc=1
+    exit $rc ;;
+  apply)
+    slug=${1:?usage: ./mapgen apply <slug>}
+    echo "== 1/4 validate (schema, rules, style spec)"
+    "${PY[@]}" validate "$slug" --offline
+    "${STYLES[@]}" "$slug"
+    echo "== 2/4 apply projects/$slug/sql (migrator)"
+    "${DC[@]}" run --rm -T migrator project "$slug"
+    echo "== 3/4 refresh tiPG"
+    bash scripts/ops.sh refresh
+    echo "== 4/4 validate against the database and register"
+    "${PY[@]}" register "$slug"
+    echo "open http://localhost:${WEB_PORT:-8080}/p/$slug" ;;
+  import)
+    "${DC[@]}" run --rm -T geotools python scripts/geoimport.py "$@" ;;
+  help|-h|--help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

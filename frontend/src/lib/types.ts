@@ -1,97 +1,26 @@
-// Project manifest + LayerSpec contract (plan §2.1 / §2.2).
-// Phase 2: hand-written here. Phase 3 generates these types from contracts/*.schema.json.
-import type { DistributiveOmit, LayerSpecification } from 'maplibre-gl';
+// Project manifest + LayerSpec contract (plan §2.1 / §2.2). The contract types are generated from
+// contracts/project-manifest.v1.schema.json into contracts.gen.ts (make contracts); this module
+// re-exports them next to the viewer's own UI types, so imports stay `$lib/types`.
+import type { LayerSpec, ProjectStatus, SourceSpec } from './contracts.gen';
 
-export type ProjectStatus = 'stub' | 'draft' | 'ready';
-export type LayerStatus = 'ready' | 'todo';
-
-export interface ProjectManifest {
-	manifestVersion: 1;
-	slug: string;
-	title: string;
-	status: ProjectStatus;
-	description?: string;
-	tags?: string[];
-	view: {
-		center: [number, number];
-		zoom: number;
-		bounds?: [number, number, number, number] | null;
-		basemap?: string;
-	};
-	layers: LayerSpec[];
-	/** Free-text to-do notes for placeholder projects, shown on the hub and in the viewer. */
-	notes?: string[];
-}
-
-/** One visual layer. `source.type` selects the frontend adapter (src/lib/adapters.ts). */
-export interface LayerSpec {
-	id: string;
-	title: string;
-	group?: string;
-	status?: LayerStatus;
-	todo?: string | null;
-	visible?: boolean;
-	opacity?: number;
-	minzoom?: number;
-	maxzoom?: number;
-	source: SourceSpec;
-	style?: { kind: 'maplibre'; layers: StyleFragment[] };
-	legend?: LegendSpec;
-	interaction?: { popup?: { template: string }; inspect?: boolean };
-	/** UI controls bound to tiPG function arguments (source.params). */
-	controls?: ParamControl[];
-	attribution?: string;
-}
-
-export type SourceSpec =
-	| {
-			type: 'tipg-vector';
-			collection: string;
-			tms?: string;
-			params?: Record<string, string | number>;
-			properties?: string[];
-			maxzoom?: number;
-	  }
-	| {
-			type: 'tipg-geojson';
-			collection: string;
-			params?: Record<string, string | number>;
-			properties?: string[];
-			limit?: number;
-	  }
-	| { type: 'geojson-url'; url: string }
-	| { type: 'raster-xyz'; tiles: string[]; tileSize?: number; maxzoom?: number }
-	| {
-			/** A COG in data/cog/, served by titiler through the proxy's /raster/<cog>/... route. */
-			type: 'raster-cog';
-			cog: string;
-			rescale?: [number, number];
-			colormap?: string;
-			bidx?: number;
-			maxzoom?: number;
-			/** Unit label for the pixel value shown when the map is clicked (titiler point query). */
-			units?: string;
-	  };
+export type {
+	BBox,
+	InteractionSpec,
+	LayerSpec,
+	LayerStatus,
+	LegendSpec,
+	LngLat,
+	ParamControl,
+	ProjectManifest,
+	ProjectStatus,
+	RasterCogSource,
+	SourceSpec,
+	StyleFragment,
+	StyleSpec,
+	ViewSpec
+} from './contracts.gen';
 
 export type SourceType = SourceSpec['type'];
-
-/** A MapLibre layer minus id/source/source-layer, which the adapter injects. */
-export type StyleFragment = DistributiveOmit<LayerSpecification, 'id' | 'source' | 'source-layer'>;
-
-export type LegendSpec =
-	| { type: 'categorical'; title?: string; items: { label: string; color: string }[] }
-	| { type: 'gradient'; title?: string; stops: { value: string; color: string }[] }
-	| { type: 'single'; label?: string; color: string }
-	| { type: 'none' };
-
-export interface ParamControl {
-	param: string;
-	label: string;
-	type: 'range';
-	min: number;
-	max: number;
-	step?: number;
-}
 
 /** Viewer UI state for one layer (array order = draw order, bottom → top). */
 export interface LayerState {

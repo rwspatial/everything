@@ -59,3 +59,6 @@ button.icon { background: transparent; line-height: 1; }
 	clip: rect(0 0 0 0);
 	white-space: nowrap;
 }
+
+/* Map attribution: data credits sit next to the basemap links in running text, so links need more than colour. */
+.maplibregl-ctrl.maplibregl-ctrl-attrib a { text-decoration: underline; } /* beats maplibre-gl.css, loaded later */

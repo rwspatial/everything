@@ -13,3 +13,4 @@ psycopg[binary]~=3.2
 sqlalchemy~=2.0
 geoalchemy2~=0.15
 pyyaml~=6.0
+jsonschema~=4.23   # contracts/validate.py (mapgen)

@@ -18,6 +18,7 @@ OPS     := bash scripts/ops.sh
         build-tools inspect import import-recipe import-all datasets cog \
         r py tools-sh \
         frontend frontend-install frontend-dev frontend-check e2e \
+        contracts contracts-check validate-styles projects-sync projects-check \
         recipes-sync health-datasets freshness admin-credentials
 
 help: ## List targets
@@ -168,6 +169,22 @@ frontend-check: check-env frontend/node_modules ## Type-check the frontend (svel
 
 e2e: check-env frontend/node_modules ## Browser tests + screenshots (frontend/test-results/screens/)
 	$(COMPOSE) --profile test run --rm e2e
+
+## Projects (./mapgen; docs/setup/07-projects.md)
+contracts: check-env frontend/node_modules ## Regenerate frontend types from contracts/*.schema.json
+	$(COMPOSE) run --rm -T node node scripts/contracts.mjs
+
+contracts-check: check-env frontend/node_modules ## Fail if the generated frontend types are stale
+	@$(COMPOSE) run --rm -T node node scripts/contracts.mjs check
+
+validate-styles: check-env frontend/node_modules ## MapLibre style-spec check of every project (p=<slug> for one)
+	@$(COMPOSE) run --rm -T node node scripts/validate-styles.mjs $(p)
+
+projects-sync: check-env ## Register every project in projects/index.json (same as ./mapgen sync)
+	@$(TOOLS_T) python scripts/mapgen.py sync
+
+projects-check: check-env ## Fail if projects/ and the project registry differ
+	@$(TOOLS_T) python scripts/mapgen.py sync --check
 
 ## Admin dashboard (http://localhost:8080/admin; docs/setup/06-admin.md)
 recipes-sync: check-env ## Mirror data/recipes/*.yaml into the dataset registry

@@ -5,3 +5,4 @@ ALTER ROLE app_rw     PASSWORD :'app_pw';
 ALTER ROLE loader     PASSWORD :'loader_pw';
 ALTER ROLE worker_rw  PASSWORD :'worker_pw';
 ALTER ROLE analyst_ro PASSWORD :'analyst_pw';
+ALTER ROLE admin_api  PASSWORD :'admin_api_pw';

@@ -22,6 +22,10 @@ def _normalize(r: dict) -> dict:
     upstream = r.get("upstream") or {k: src[k] for k in ("url", "path", "filename") if src.get(k)}
     if src.get("arcgis"):
         upstream = {"arcgis": src["arcgis"]["url"], "where": src["arcgis"].get("where", "1=1")}
+    if src.get("census_api"):
+        c = src["census_api"]
+        upstream = {"census_api": f"https://api.census.gov/data/{c['dataset']}", "for": c["for"], "in": c.get("in"),
+                    "variables": list(c["get"])}
     kind = r.get("kind", "vector")
     outputs = r.get("outputs") or ([{"type": "postgis_table", "target": r["target"]}] if r.get("target") else [])
     freshness = r.get("freshness") or (
