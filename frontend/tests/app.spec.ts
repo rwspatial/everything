@@ -24,7 +24,8 @@ test('landing page: identity, live selected work from the manifests, services an
 	await page.goto('/');
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	await expect(page).toHaveTitle(/Downeast Geospatial/);
-	await expect(page.getByText('Bold Coast')).toHaveCount(0);
+	await expect(page.getByText('Bold Coast Geospatial')).toHaveCount(0); // the old studio name (the photo credit names the Bold Coast itself)
+	await expect(page.getByRole('link', { name: /New England Wilderness Trust/ })).toBeVisible();
 	const work = page.getByRole('list', { name: 'Selected work' });
 	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure']) {
 		await expect(work.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();

@@ -119,6 +119,7 @@ services:
       DATABASE_URL: postgresql://admin_api:${ADMIN_API_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
       PROJECTS_DATABASE_URL: postgresql://app_rw:${APP_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
       MCP_PIPELINE_TOKEN: ${MCP_PIPELINE_TOKEN:-}   # project-pipeline MCP server: validate + field stats only
+      MCP_ANALYSIS_TOKEN: ${MCP_ANALYSIS_TOKEN:-}   # analysis MCP server: processes + jobs (no promote)
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run make admin-credentials}
     networks: [api, data]
@@ -224,6 +225,61 @@ services:
       PROJECTS_DIR: /projects
     volumes:
       - ./projects:/projects
+    networks: [api]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  # Analysis worker (plan Phase 5; docs/setup/09-ml-workers.md): claims kind=process jobs from app.jobs, runs R and
+  # Python processes, publishes their output as pub.analysis_sandbox__job_<id>. Built FROM geotools (make workers-up).
+  # Scale out: docker compose --profile workers up -d --scale worker=2
+  worker:
+    profiles: [workers]
+    build:
+      context: ./workers
+      args:
+        ROCKER_TAG: ${ROCKER_TAG:?set in .env}
+      additional_contexts:
+        contracts: ./contracts
+    image: spatial/worker:local
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      WORKER_DATABASE_URL: postgresql://worker_rw:${WORKER_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
+      PGHOST: postgis
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: worker_rw
+      PGPASSWORD: ${WORKER_DB_PASSWORD}
+      TIPG_URL: http://tipg:8000
+      TIPG_CATALOG_TTL: ${TIPG_CATALOG_TTL:-300}   # same value tipg uses (compose.dev.yaml: 30)
+      TIPG_WAIT_SECONDS: ${TIPG_WAIT_SECONDS:-360}
+    networks: [data, api]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, time, sys; sys.exit(time.time() - os.path.getmtime('/tmp/worker-alive') > 90)"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    restart: unless-stopped
+
+  # MCP server: run R/Python analysis jobs through core-api (scoped token). No database credential, no files.
+  mcp-analysis:
+    profiles: [mcp]
+    build: ./mcp
+    image: spatial/mcp:local
+    command: ["python", "-m", "spatial_mcp.analysis"]
+    environment:
+      MCP_SERVER_NAME: analysis
+      CORE_API_URL: http://core-api:8000
+      PUBLIC_URL: http://localhost:${HTTP_PORT:-8080}
+      MCP_ANALYSIS_TOKEN: ${MCP_ANALYSIS_TOKEN:-}
     networks: [api]
     read_only: true
     cap_drop: [ALL]

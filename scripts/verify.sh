@@ -237,6 +237,12 @@ if grep -qE '^MCP_DB_PASSWORD=.' .env; then
   check "spatial-db MCP server: Maine answers over stdio, writes and slow queries refused" ${PIPESTATUS[0]}
   bash scripts/mcp_pipeline_e2e.sh 2>/dev/null | sed 's/^/      /'
   check "project-pipeline MCP server: explore -> propose -> validate -> apply (approved) -> published" ${PIPESTATUS[0]}
+  if [[ $(docker compose --profile workers ps --format '{{.Health}}' worker 2>/dev/null) == healthy ]]; then
+    docker compose run --rm -T --no-deps mcp-analysis python tests/smoke_analysis.py 2>/dev/null | sed 's/^/      /'
+    check "analysis MCP server: Python and R jobs on Maine towns, cancel, scoped token" ${PIPESTATUS[0]}
+  else
+    echo "  --    analysis worker not running (make workers-up); analysis checks skipped"
+  fi
 else
   echo "  --    MCP_DB_PASSWORD not set (make mcp-credentials); MCP checks skipped"
 fi

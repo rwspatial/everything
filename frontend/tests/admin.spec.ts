@@ -131,6 +131,36 @@ test.describe('signed in', () => {
 		expect((await request.post('/api/projects', { data: base })).status()).toBe(405);
 	});
 
+	test('analysis: run the R process (Local Moran\'s I) on Maine town income, preview, add to the sandbox', async ({ page, request }) => {
+		test.setTimeout(240_000);
+		const original = await (await request.get('/api/projects/analysis-sandbox')).json();
+		try {
+			await page.goto('/admin/analysis');
+			await page.getByLabel('Process', { exact: true }).selectOption('r.local_moran');
+			await page.getByLabel('Polygon layer').selectOption('pub.maine_overview__towns');
+			await page.getByLabel('Numeric field').selectOption('median_hh_income');
+			await page.getByLabel('Label field (popups) (optional)').selectOption('namelsad');
+			await page.getByRole('button', { name: 'Run' }).click();
+			const status = page.getByRole('region', { name: 'Job status' });
+			await expect(status).toContainText('succeeded', { timeout: 200_000 });
+			const jobId = Number((await status.getByText(/^Job \d+/).textContent())!.match(/\d+/)![0]);
+			await expect(status).toContainText('global_moran');
+			await expect(page.getByLabel('Result preview').getByText('High-High')).toBeVisible();
+			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
+			expect(await page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId)).toBeGreaterThan(400);
+			await shot(page, 'admin-6-analysis');
+
+			await page.getByRole('button', { name: 'Add to Analysis Sandbox' }).click();
+			await page.getByRole('link', { name: 'Open the Analysis Sandbox' }).click();
+			await expect(page).toHaveURL(/\/p\/analysis-sandbox/);
+			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
+			expect(await page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId)).toBeGreaterThan(400);
+		} finally {
+			// Put the sandbox back the way the file has it.
+			expect((await request.put('/api/admin/projects/analysis-sandbox', { data: original })).ok()).toBe(true);
+		}
+	});
+
 	test('jobs page shows recent runs', async ({ page }) => {
 		await page.goto('/admin/jobs');
 		await expect(page.getByRole('heading', { name: 'Recent runs' })).toBeVisible();
@@ -138,7 +168,7 @@ test.describe('signed in', () => {
 	});
 
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/analysis']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

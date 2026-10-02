@@ -1,6 +1,6 @@
 # Spatial App Generator — Architecture Plan
 
-Status: **rev 3 — Phases 1–2 complete (2026-09-29); Phase 3 (project creator) complete (2026-10-01); Phase 4: spatial-db and project-pipeline MCP servers done (2026-10-02); analysis-mcp waits for Phase 5 jobs**
+Status: **rev 3 — Phases 1–2 complete (2026-09-29); Phase 3 (project creator) complete (2026-10-01); Phase 4 done (2026-10-02/03: spatial-db, project-pipeline, analysis MCP servers); Phase 5 done (2026-10-03: worker, py.getis_ord_hotspots, r.local_moran, jobs API, /admin/analysis); next: Phase 6 (AWS, deferred) or admin Phase B (dataset jobs on the same queue)**
 
 Phase 3 as built: `contracts/project-manifest.v1.schema.json` (one file with `definitions`, not two) generates the TS types; Python validates directly against the schema (`contracts/validate.py`, shared by mapgen and core-api) instead of generated Pydantic models. Writes, validation and field stats live under `/api/admin/projects` (admin auth, wizard at `/admin/new`); `/api/projects` is public and read-only. Exit-gate project: `maine-overview` (Maine towns × ACS income). Guide: docs/setup/07-projects.md.
 
@@ -645,3 +645,18 @@ No open decisions block Phase 1. Version pins (PostGIS, tiPG, rocker/geospatial,
 3. `geotools` image (GDAL + R + Python 3, version-match check) + `scripts/geoimport.py` + Natural Earth recipes + `docs/setup/04`
 4. Placeholder `pub` views + tiPG + proxy + the tiPG spike (ADR in `docs/decisions/`)
 5. Backup/reset/nuke targets + `docs/setup/03` + `99`, then the clean-clone walkthrough and `make verify`
+
+
+## Phase 5 as built (2026-10-03)
+
+- One queue: `app.jobs` gained `kind` ('dataset' | 'process'), `process_id`, `inputs`, `progress`, `result`, `error`;
+  `app.processes` holds descriptors (contracts/process.v1.schema.json; stored as json to keep input order).
+- One worker image `FROM geotools` (+ PySAL esda 2.9 / libpysal 4.14, the last releases for numpy<2) with one Python
+  claim loop (SKIP LOCKED, heartbeat, reaper, timeout, cancel); R processes run as `Rscript` children. Deviation from
+  §5.5 (separate workers-py / workers-r images with an R-native loop): same base, one loop, simpler and equivalent.
+- Outputs: `ml_out.job_<id>` published only through `app.publish_job_layer` (SECURITY DEFINER) as
+  `pub.analysis_sandbox__job_<id>`; a job succeeds only after one tiPG catalog TTL so every tiPG process serves it.
+- API (core-api): /api/admin/processes, /api/admin/jobs (+ /{id}, /cancel, /promote); inputs checked against the
+  descriptor and the database. UI: /admin/analysis. MCP: `analysis` server (token MCP_ANALYSIS_TOKEN, no promote).
+- Exit gate met: Gi* (Python) from MCP and Local Moran's I (R) from the UI on Maine towns, rendered as layers with no
+  frontend changes (e2e + make verify). Guide: docs/setup/09-ml-workers.md.

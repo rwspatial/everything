@@ -1,0 +1,18 @@
+{
+  "id": "r.local_moran",
+  "runtime": "r",
+  "version": "1.0.0",
+  "title": "Clusters and outliers (Local Moran's I)",
+  "description": "Local Moran's I (spdep, 999 permutations) of a numeric field on polygon neighbours: High-High and Low-Low clusters, High-Low and Low-High outliers at a chosen significance level; the report includes global Moran's I.",
+  "inputs": {
+    "collection": { "type": "collection-ref", "title": "Polygon layer", "required": true, "geometry": ["Polygon", "MultiPolygon"] },
+    "field": { "type": "field-ref", "title": "Numeric field", "of": "collection", "dtype": "numeric", "required": true },
+    "label": { "type": "field-ref", "title": "Label field (popups)", "of": "collection", "dtype": "any", "required": false },
+    "alpha": { "type": "number", "title": "Significance level", "default": 0.05, "minimum": 0.001, "maximum": 0.2 }
+  },
+  "outputs": {
+    "layer": { "type": "vector-layer", "geometry": "same-as-input", "fields": ["label", "value", "local_i", "p_value", "cluster"] },
+    "report": { "type": "json" }
+  },
+  "resources": { "cpu": 1, "memoryMb": 2048, "timeoutSec": 900 }
+}

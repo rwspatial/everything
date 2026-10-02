@@ -13,7 +13,7 @@ Every command here is a `make` target. `make help` prints the same list.
 | [06-admin.md](06-admin.md) | Admin dashboard: dataset registry, run history, freshness, health, login | Dashboard A |
 | [07-projects.md](07-projects.md) | Creating projects: `./mapgen`, the `/admin/new` wizard, validation codes, the project registry | 3 |
 | [08-mcp.md](08-mcp.md) | MCP servers for Claude Code: the read-only spatial-db server, credentials, testing | 4 |
-| 09-ml-workers.md | R/Python workers | 5 |
+| [09-ml-workers.md](09-ml-workers.md) | Analysis workers: R and Python processes, jobs, the /admin/analysis page, adding a process | 5 |
 | [99-troubleshooting.md](99-troubleshooting.md) | Known problems and fixes | all |
 
 ## Five-minute version

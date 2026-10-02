@@ -2,11 +2,36 @@
   "mcpServers": {
     "spatial-db": {
       "command": "docker",
-      "args": ["compose", "run", "--rm", "-T", "--no-deps", "mcp-db"]
+      "args": [
+        "compose",
+        "run",
+        "--rm",
+        "-T",
+        "--no-deps",
+        "mcp-db"
+      ]
     },
     "project-pipeline": {
       "command": "docker",
-      "args": ["compose", "run", "--rm", "-T", "--no-deps", "mcp-pipeline"]
+      "args": [
+        "compose",
+        "run",
+        "--rm",
+        "-T",
+        "--no-deps",
+        "mcp-pipeline"
+      ]
+    },
+    "analysis": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "run",
+        "--rm",
+        "-T",
+        "--no-deps",
+        "mcp-analysis"
+      ]
     }
   }
 }

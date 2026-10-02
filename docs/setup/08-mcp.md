@@ -8,18 +8,19 @@ container per session. They have no ports and join only internal networks (`spat
 |---|---|---|---|
 | `spatial-db` | Explore and query the database, read-only | `mcp_ro`: `SELECT` on `pub` and `src_*`, nothing in `app` | built |
 | `project-pipeline` | Validate manifests, propose views as SQL files, write manifests, hand back the publish command | `MCP_PIPELINE_TOKEN`: core-api project validation + field stats only | built |
-| `analysis` | Submit R/Python jobs and get layers back | core-api jobs API | Phase 5 |
+| `analysis` | List R/Python processes, submit jobs, follow them, read results, cancel | `MCP_ANALYSIS_TOKEN`: core-api processes + jobs only | built |
 
 ## Set up (once)
 
 ```bash
-make mcp-credentials   # adds MCP_DB_PASSWORD and MCP_PIPELINE_TOKEN to .env (if missing) and applies them
+make mcp-credentials   # adds MCP_DB_PASSWORD, MCP_PIPELINE_TOKEN and MCP_ANALYSIS_TOKEN to .env (if missing) and applies them
 make mcp-build         # builds spatial/mcp
 make mcp-test          # smoke test over stdio (also part of make verify)
 ```
 
-`.mcp.json` in the repository root registers both servers for Claude Code (`spatial-db` runs the `mcp-db`
-service, `project-pipeline` the `mcp-pipeline` service), each as `docker compose run --rm -T --no-deps <service>`.
+`.mcp.json` in the repository root registers the three servers for Claude Code (`spatial-db` runs the `mcp-db`
+service, `project-pipeline` runs `mcp-pipeline`, `analysis` runs `mcp-analysis`), each as
+`docker compose run --rm -T --no-deps <service>`. The analysis server needs a running worker (`make workers-up`).
 
 Start Claude Code in the repository folder, approve the project's servers when asked, and check them with `/mcp`.
 The stack must be up (`make up`): the servers use the running `postgis`, `core-api` and `tipg`.
@@ -65,6 +66,19 @@ The flow, with the person in the loop where Docker is needed:
 
 `make mcp-test` runs this whole flow on Maine data (Washington and Hancock County towns), approves the command
 itself, checks the published project, and removes everything it created.
+
+## analysis tools
+
+| Tool | What it does |
+|---|---|
+| `list_processes()`, `describe_process(id)` | Processes and their inputs (types, defaults, ranges), and whether a worker is online |
+| `submit_job(process_id, inputs)` | Queues a job after core-api checks the inputs against the process and the database |
+| `job_status(job_id)`, `job_result(job_id, wait_seconds)` | Progress; then the report and the LayerSpec of the output layer |
+| `cancel_job(job_id)` | Stops a queued or running job; its output is discarded |
+
+For example: "Where are the hot spots of median household income across Maine towns? Then compare with Local
+Moran's I." Results become layers on `pub.analysis_sandbox__job_<id>`. A person adds them to the Analysis Sandbox map
+in `/admin/analysis`, because the analysis token cannot promote layers. See docs/setup/09-ml-workers.md.
 
 ## Safety
 

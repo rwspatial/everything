@@ -146,16 +146,17 @@ flowchart LR
     mapgen["mapgen + /admin/new<br/>(Phase 3 project creator)"]:::now
     mcp_db["mcp-db: spatial-db MCP server<br/>(read-only, role mcp_ro)"]:::now
     mcp_pipe["mcp-pipeline: project-pipeline MCP<br/>(files + scoped core-api token)"]:::now
+    worker["worker: R + Python processes<br/>(app.jobs queue, ml_out → pub)"]:::now
+    mcp_an["mcp-analysis: analysis MCP<br/>(jobs via core-api token)"]:::now
     cogs[("data/cog/maine/*.tif<br/>+ provenance sidecars")]:::now
   end
 
   maine_views[("more pub.maine_* views<br/>counties, tracts, habitat, …")]:::todo
   rasters["More raster recipes<br/>3DEP DEM, LANDFIRE, SNODAS, VIIRS"]:::todo
   zonal["Zonal stats → vector tables<br/>(NDVI per town)"]:::todo
-  worker["Job queue + worker<br/>(admin Phase B)"]:::todo
+  dataset_jobs["Dataset jobs on the same queue<br/>(admin Phase B: re-download, rebuild)"]:::todo
   pmtiles["PMTiles for heavy layers<br/>(soils fallback)"]:::todo
-  mcp["MCP: analysis server<br/>(needs Phase 5 jobs)"]:::todo
-  ml["R / Python ML API (Phase 5)"]:::todo
+  more_procs["More processes: kriging → COG,<br/>zonal stats, ML models"]:::todo
   aws["AWS (Phase 6): CloudFront + ALB,<br/>RDS PostGIS, S3 COGs"]:::todo
 
   census --> geotools
@@ -164,14 +165,15 @@ flowchart LR
   postgis --> tipg --> maine_proj
   rasters --> geotools --> cogs --> titiler --> maine_proj
   cogs --> zonal --> postgis
-  core_api --> worker --> geotools
+  core_api -->|"app.jobs"| worker -->|"ml_out → pub.analysis_sandbox__job_*"| postgis
+  worker -.-> dataset_jobs
+  more_procs -.-> worker
+  mcp_an -->|"processes, jobs"| core_api
   postgis -.-> pmtiles
-  mcp -.-> core_api
   mcp_db -->|"SELECT pub, src_*"| postgis
   mcp_pipe -->|"validate, stats"| core_api
   mcp_pipe -->|"proposes files; person runs mapgen apply"| mapgen
   mapgen --> maine_proj
-  ml -.-> postgis
   today -.->|later| aws
 ```
 
@@ -206,3 +208,5 @@ One contract, two front doors, one registry:
 | e2e | Playwright browser tests (`make e2e`) | test |
 | mcp-db | spatial-db MCP server for Claude Code: read-only `pub` + `src_*` as role `mcp_ro`, stdio via `.mcp.json` | mcp |
 | mcp-pipeline | project-pipeline MCP server: validates via core-api (scoped token), writes only `projects/`, returns `./mapgen apply` | mcp |
+| mcp-analysis | analysis MCP server: lists processes, submits and follows jobs via core-api (scoped token) | mcp |
+| worker | Analysis worker (FROM geotools): claims `app.jobs`, runs R and Python processes, publishes `pub.analysis_sandbox__job_<id>` | workers |

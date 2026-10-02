@@ -145,6 +145,8 @@ bootstrap() {
   refresh
   say "registering projects"
   "${TOOLS[@]}" python scripts/mapgen.py sync || echo "some projects have errors: ./mapgen validate <slug>"
+  say "starting the analysis worker"
+  "${COMPOSE[@]}" --profile workers up -d --build worker
   echo "bootstrap complete. Next: make verify"
 }
 

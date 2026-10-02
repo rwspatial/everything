@@ -15,6 +15,7 @@
 			<a href="/admin" aria-current={current('/admin')}>Datasets</a>
 			<a href="/admin/jobs" aria-current={current('/admin/jobs') ?? current('/admin/runs')}>Jobs &amp; runs</a>
 			<a href="/admin/new" aria-current={current('/admin/new')}>New project</a>
+			<a href="/admin/analysis" aria-current={current('/admin/analysis')}>Analysis</a>
 		</nav>
 		<span class="mode" title="Datasets are read-only here: re-download and rebuild actions arrive with the job queue (Phase B). Projects can be created under New project.">
 			datasets read-only

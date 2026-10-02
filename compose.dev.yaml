@@ -16,6 +16,10 @@ services:
       # after data or config changes. Dev revalidates every time.
       TIPG_CACHECONTROL: "no-cache"
 
+  worker:
+    environment:
+      TIPG_CATALOG_TTL: "30"   # must match tipg: the worker waits one TTL before declaring a job's layer served
+
 networks:
   # The data network is internal (no published ports possible), so PostGIS
   # joins this extra bridge network in dev to make the host port work.

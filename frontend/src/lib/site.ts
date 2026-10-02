@@ -38,6 +38,15 @@ export const site = {
 
 	stack: ['PostGIS', 'tipg (OGC API)', 'TiTiler', 'GDAL / ogr2ogr', 'SvelteKit', 'MapLibre', 'R + Python', 'Docker', 'Caddy'],
 
+	/** Landing banner photo (frontend/static/) and its credit. Empty image = the plain dark banner. */
+	hero: {
+		image: '/hero-bold-coast.jpg',
+		/** Where the visible part sits when the banner is wider or narrower than the photo (CSS background-position). */
+		position: 'center 15%',
+		credit: "Bold Coast, Downeast Maine · New England Wilderness Trust",
+		creditUrl: 'https://newildernesstrust.org/conservation-collaboration-bold-coast/'
+	},
+
 	/** Projects with this tag are featured on the landing page as selected work. */
 	featuredTag: 'maine',
 

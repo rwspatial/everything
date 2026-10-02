@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "process.v1.schema.json",
+  "title": "ProcessDescriptor",
+  "description": "An R or Python analysis process (plan §5.2). Workers register descriptors in app.processes; core-api, the /admin/analysis page and the analysis MCP server build their input forms from them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "runtime", "version", "title", "inputs", "outputs"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^(py|r)\\.[a-z0-9_]+$" },
+    "runtime": { "enum": ["python", "r"] },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "inputs": { "type": "object", "additionalProperties": { "$ref": "#/definitions/Input" } },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer"],
+      "properties": {
+        "layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "vector-layer" },
+            "geometry": { "type": "string" },
+            "fields": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "report": { "type": "object", "properties": { "type": { "const": "json" } } }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": { "type": "number", "minimum": 0.1 },
+        "memoryMb": { "type": "integer", "minimum": 64 },
+        "timeoutSec": { "type": "integer", "minimum": 10, "maximum": 86400 }
+      }
+    }
+  },
+  "definitions": {
+    "Input": {
+      "type": "object",
+      "required": ["type", "title"],
+      "properties": {
+        "type": { "enum": ["collection-ref", "field-ref", "enum", "integer", "number", "string"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "required": { "type": "boolean" },
+        "geometry": { "type": "array", "items": { "enum": ["Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"] } },
+        "of": { "type": "string" },
+        "dtype": { "enum": ["numeric", "any"] },
+        "values": { "type": "array", "items": { "type": "string" } },
+        "default": {},
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "when": { "type": "object" }
+      }
+    }
+  }
+}

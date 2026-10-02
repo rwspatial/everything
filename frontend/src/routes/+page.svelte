@@ -17,12 +17,13 @@
 </svelte:head>
 
 <main class="landing">
-	<section class="hero" aria-labelledby="hero-title">
-		<svg class="contours" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-			{#each [0, 1, 2, 3, 4, 5, 6, 7] as i (i)}
-				<path d="M-20 {60 + i * 30} C 120 {20 + i * 34}, 220 {110 + i * 26}, 340 {70 + i * 30} S 540 {30 + i * 32}, 640 {80 + i * 28}" />
-			{/each}
-		</svg>
+	<section
+		class="hero"
+		class:photo={!!site.hero.image}
+		style:--hero-image={site.hero.image ? `url('${site.hero.image}')` : undefined}
+		style:--hero-position={site.hero.position}
+		aria-labelledby="hero-title"
+	>
 		<div class="wrap">
 			{#if site.person}
 				<h1 id="hero-title">{site.person}</h1>
@@ -37,6 +38,11 @@
 				<a class="btn" href="#contact">Get in touch</a>
 			</div>
 		</div>
+		{#if site.hero.image && site.hero.credit}
+			<p class="credit">
+				Photo: {#if site.hero.creditUrl}<a href={site.hero.creditUrl} rel="external noopener">{site.hero.credit}</a>{:else}{site.hero.credit}{/if}
+			</p>
+		{/if}
 	</section>
 
 	<section id="work" class="wrap block" aria-labelledby="work-title">
@@ -115,9 +121,15 @@
 	.lede { color: var(--muted); margin: 0 0 1.5rem; max-width: 62ch; }
 
 	.hero { position: relative; overflow: hidden; background: #13202c; color: #fff; }
+	/* Photo banner: darkened on the text side so the heading and buttons keep their contrast. */
+	.hero.photo {
+		background:
+			linear-gradient(90deg, rgb(10 20 30 / 0.88) 0%, rgb(10 20 30 / 0.66) 45%, rgb(10 20 30 / 0.18) 100%),
+			#13202c var(--hero-image) var(--hero-position, center) / cover no-repeat;
+	}
 	.hero .wrap { position: relative; padding-top: 5rem; padding-bottom: 5rem; }
-	.contours { position: absolute; inset: 0; width: 100%; height: 100%; }
-	.contours path { fill: none; stroke: #5cc8e6; stroke-opacity: 0.16; stroke-width: 1.2; }
+	.credit { position: absolute; right: 0.75rem; bottom: 0.4rem; margin: 0; font-size: 0.7rem; color: rgb(255 255 255 / 0.8); text-shadow: 0 1px 2px rgb(0 0 0 / 0.8); }
+	.credit a { color: inherit; text-decoration: underline; }
 	.hero h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0; letter-spacing: -0.01em; }
 	.role { margin: 0.6rem 0 0; color: #a9c7da; font-size: 1.05rem; }
 	.role span { color: #5cc8e6; }

@@ -157,7 +157,8 @@ SELECT c.oid, c.relkind,
           JOIN pg_depend d ON d.objid = r.oid AND d.classid = 'pg_rewrite'::regclass AND d.refclassid = 'pg_class'::regclass
           JOIN pg_class t ON t.oid = d.refobjid
           WHERE r.ev_class = c.oid AND d.refobjid <> c.oid
-            AND NOT (t.relnamespace::regnamespace::text = 'pub' OR t.relnamespace::regnamespace::text LIKE 'src\\_%%')
+            AND NOT (t.relnamespace::regnamespace::text IN ('pub', 'ml_out')
+                     OR t.relnamespace::regnamespace::text LIKE 'src\\_%%')
        ) AS foreign_sources
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'pub' AND c.relname = %s AND c.relkind IN ('v', 'm', 'r')
@@ -217,7 +218,7 @@ def validate_db(m: dict, conn) -> list[Issue]:
             geoms = rel["geoms"] if isinstance(rel["geoms"], list) else json.loads(rel["geoms"])
             if rel["foreign_sources"]:
                 issues.append(Issue("E_VIEW_SOURCE", at, f"{coll} reads {', '.join(sorted(rel['foreign_sources']))}; "
-                                    "published views may only read src_* tables and other pub views"))
+                                    "published views may only read src_* tables, analysis outputs (ml_out) and other pub views"))
             if not rel["served"]:
                 issues.append(Issue("E_NOT_SERVED", at, f"{coll} exists but tipg_ro cannot read it; create pub objects "
                                     "through the migrator (mapgen apply / make seed) so the default grants apply"))

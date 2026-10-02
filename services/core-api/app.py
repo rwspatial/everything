@@ -82,12 +82,28 @@ def require_admin(request: Request) -> None:
 PIPELINE_TOKEN = os.environ.get("MCP_PIPELINE_TOKEN", "")
 
 
-def require_admin_or_pipeline(request: Request) -> None:
+def _bearer_is(request: Request, token: str) -> bool:
     header = request.headers.get("authorization", "")
-    if PIPELINE_TOKEN and header.lower().startswith("bearer ") and hmac.compare_digest(
-            header[7:].strip().encode(), PIPELINE_TOKEN.encode()):
-        return
-    require_admin(request)
+    return bool(token) and header.lower().startswith("bearer ") and hmac.compare_digest(
+        header[7:].strip().encode(), token.encode())
+
+
+def require_admin_or_pipeline(request: Request) -> None:
+    if not _bearer_is(request, PIPELINE_TOKEN):
+        require_admin(request)
+
+
+# The analysis MCP server's token: list processes, submit jobs, read and cancel them. Not promotion, not projects.
+ANALYSIS_TOKEN = os.environ.get("MCP_ANALYSIS_TOKEN", "")
+
+
+def require_admin_or_analysis(request: Request) -> None:
+    if not _bearer_is(request, ANALYSIS_TOKEN):
+        require_admin(request)
+
+
+def _caller(request: Request) -> str:
+    return "mcp:analysis" if _bearer_is(request, ANALYSIS_TOKEN) else _admin_user(request)
 
 
 @app.get("/internal/healthz", include_in_schema=False)
@@ -264,6 +280,7 @@ def list_jobs(limit: int = 100) -> list[dict]:
     return rows(
         """SELECT j.id, j.recipe_name, j.action, j.status, j.concurrency_class, j.attempts, j.max_attempts,
                   j.locked_by, j.created_by, j.created_at, j.heartbeat_at, j.finished_at,
+                  j.kind, j.process_id, j.inputs, j.progress::float8 AS progress, j.progress_message,
                   (SELECT max(r.id) FROM app.runs r WHERE r.job_id = j.id) AS run_id
            FROM app.jobs j ORDER BY j.id DESC LIMIT %s""", (min(max(limit, 1), 500),))
 
@@ -456,3 +473,158 @@ def field_stats(collection: str, field: str, k: int = 5) -> dict:
             "SELECT {c}::text AS value, count(*) AS count FROM {r} GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 13").format(c=col, r=rel)
         ).fetchall()
         return {"field": field, "kind": "categorical", "values": r[:12], "more": len(r) > 12}
+
+
+# ---- analysis processes and jobs (Phase 5) -----------------------------------------------------------------
+# Workers register processes (app.processes); jobs go on app.jobs (kind 'process'). Inputs are checked here against
+# the descriptor and the live database before a job is queued, so workers only see well-formed work.
+
+NUMERIC_TYPES = ("integer", "bigint", "smallint", "numeric", "real", "double precision")
+JOB_COLUMNS = """id, process_id, status, progress::float8 AS progress, progress_message, inputs, result, error,
+                 attempts, created_by, created_at, started_at, finished_at"""
+
+
+def _process(conn, process_id: str) -> dict:
+    p = conn.execute("SELECT id, runtime, version, title, description, descriptor, last_seen_at FROM app.processes "
+                     "WHERE id = %s", (process_id,)).fetchone()
+    if not p:
+        raise HTTPException(404, f"no process {process_id}")
+    return p
+
+
+def _relation_info(conn, collection: str) -> dict | None:
+    if not COLLECTION.match(collection or ""):
+        return None
+    return conn.execute(
+        """SELECT (SELECT postgis_typmod_type(a.atttypmod) FROM pg_attribute a WHERE a.attrelid = c.oid
+                    AND a.atttypid = 'geometry'::regtype AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum LIMIT 1) AS geometry,
+                  (SELECT json_object_agg(a.attname, format_type(a.atttypid, a.atttypmod)) FROM pg_attribute a
+                    WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped) AS columns
+           FROM pg_class c WHERE c.relnamespace = 'pub'::regnamespace AND c.relname = %s""",
+        (collection.split(".", 1)[1],)).fetchone()
+
+
+def check_inputs(conn, descriptor: dict, inputs: Any) -> tuple[dict, list[dict]]:
+    """Defaults filled in, and a list of {input, message} problems (empty = valid)."""
+    if not isinstance(inputs, dict):
+        return {}, [{"input": "(inputs)", "message": "inputs must be an object"}]
+    specs = descriptor.get("inputs", {})
+    errors = [{"input": k, "message": "unknown input"} for k in inputs if k not in specs]
+    values = {k: inputs.get(k, spec.get("default")) for k, spec in specs.items()}
+    rels: dict[str, dict | None] = {}
+    for name, spec in specs.items():
+        when = spec.get("when") or {}
+        if any(values.get(k) != v for k, v in when.items()):
+            values.pop(name, None)
+            continue
+        v = values.get(name)
+        if v is None or v == "":
+            values.pop(name, None)
+            if spec.get("required"):
+                errors.append({"input": name, "message": "required"})
+            continue
+        t = spec["type"]
+        if t == "collection-ref":
+            info = rels.setdefault(name, _relation_info(conn, v))
+            if not info:
+                errors.append({"input": name, "message": f"{v!r} is not a published view (pub.<name>)"})
+            elif spec.get("geometry") and (info["geometry"] or "").lower() not in [g.lower() for g in spec["geometry"]]:
+                errors.append({"input": name, "message": f"{v} has {info['geometry']} geometry; needs {', '.join(spec['geometry'])}"})
+        elif t == "field-ref":
+            parent = spec.get("of")
+            info = rels.get(parent) or (_relation_info(conn, values.get(parent)) if values.get(parent) else None)
+            cols = (info or {}).get("columns") or {}
+            if not isinstance(v, str) or v not in cols:
+                errors.append({"input": name, "message": f"{values.get(parent)} has no field {v!r}"})
+            elif spec.get("dtype") == "numeric" and cols[v].split("(")[0] not in NUMERIC_TYPES:
+                errors.append({"input": name, "message": f"{v} is {cols[v]}, not numeric"})
+        elif t == "enum":
+            if v not in spec.get("values", []):
+                errors.append({"input": name, "message": f"must be one of {', '.join(spec.get('values', []))}"})
+        elif t in ("integer", "number"):
+            ok = isinstance(v, (int, float)) and not isinstance(v, bool) and (t == "number" or float(v).is_integer())
+            if not ok:
+                errors.append({"input": name, "message": f"must be a{'n integer' if t == 'integer' else ' number'}"})
+            elif ("minimum" in spec and v < spec["minimum"]) or ("maximum" in spec and v > spec["maximum"]):
+                errors.append({"input": name, "message": f"must be between {spec.get('minimum')} and {spec.get('maximum')}"})
+            else:
+                values[name] = int(v) if t == "integer" else float(v)
+        elif t == "string" and not isinstance(v, str):
+            errors.append({"input": name, "message": "must be text"})
+    return values, errors
+
+
+@app.get("/api/admin/processes", dependencies=[Depends(require_admin_or_analysis)])
+def list_processes() -> list[dict]:
+    with projects_pool.connection() as conn:
+        return conn.execute("""SELECT id, runtime, version, title, description, descriptor, last_seen_at,
+                                      last_seen_at > now() - interval '2 minutes' AS worker_online
+                               FROM app.processes ORDER BY id""").fetchall()
+
+
+@app.post("/api/admin/jobs", dependencies=[Depends(require_admin_or_analysis)], status_code=201)
+async def submit_job(request: Request, response: Response) -> dict:
+    body = await request.json()
+    if not isinstance(body, dict) or not isinstance(body.get("process"), str):
+        raise HTTPException(400, 'body must be {"process": "<id>", "inputs": {...}}')
+    with projects_pool.connection() as conn:
+        proc = _process(conn, body["process"])
+        values, errors = check_inputs(conn, proc["descriptor"], body.get("inputs", {}))
+        if errors:
+            raise HTTPException(422, {"errors": errors})
+        dedupe = hashlib.sha256(json.dumps([proc["id"], values], sort_keys=True).encode()).hexdigest()
+        timeout = int(proc["descriptor"].get("resources", {}).get("timeoutSec", 900))
+        row = conn.execute(
+            f"""INSERT INTO app.jobs (kind, action, process_id, inputs, concurrency_class, max_attempts, dedupe_key, created_by)
+                VALUES ('process', 'run', %s, %s, 'analysis', 2, %s, %s)
+                ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
+                RETURNING {JOB_COLUMNS}""", (proc["id"], json.dumps(values), dedupe, _caller(request))).fetchone()
+        if row is None:  # the same job is already queued or running
+            row = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
+                               (dedupe,)).fetchone()
+            response.status_code = 200
+            row["deduplicated"] = True
+    row["timeout_seconds"] = timeout
+    return row
+
+
+@app.get("/api/admin/jobs/{job_id}", dependencies=[Depends(require_admin_or_analysis)])
+def get_job(job_id: int) -> dict:
+    with projects_pool.connection() as conn:
+        j = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE id = %s AND kind = 'process'", (job_id,)).fetchone()
+    if not j:
+        raise HTTPException(404, f"no analysis job {job_id}")
+    return j
+
+
+@app.post("/api/admin/jobs/{job_id}/cancel", dependencies=[Depends(require_admin_or_analysis)])
+def cancel_job(job_id: int) -> dict:
+    with projects_pool.connection() as conn:
+        j = conn.execute(
+            """UPDATE app.jobs SET status = CASE status WHEN 'queued' THEN 'cancelled' ELSE 'cancel_requested' END
+               WHERE id = %s AND kind = 'process' AND status IN ('queued', 'running') RETURNING id, status""",
+            (job_id,)).fetchone()
+    if not j:
+        raise HTTPException(409, f"job {job_id} is not queued or running")
+    return j
+
+
+@app.post("/api/admin/jobs/{job_id}/promote", dependencies=[Depends(require_admin)])
+async def promote_job(job_id: int, request: Request) -> dict:
+    """Add a finished job's layer to a project (default: analysis-sandbox), as a new registry version."""
+    body = await request.json() if (await request.body()) else {}
+    slug = (body or {}).get("project", "analysis-sandbox")
+    with projects_pool.connection() as conn:
+        j = conn.execute("SELECT status, result FROM app.jobs WHERE id = %s AND kind = 'process'", (job_id,)).fetchone()
+        if not j or j["status"] != "succeeded":
+            raise HTTPException(409, f"job {job_id} has not succeeded")
+        p = conn.execute("SELECT manifest::text AS manifest FROM app.projects WHERE slug = %s", (slug,)).fetchone()
+        if not p:
+            raise HTTPException(404, f"no project {slug}")
+    m = json.loads(p["manifest"])
+    layer = j["result"]["layerSpec"]
+    m["layers"] = [l for l in m["layers"] if l["id"] != layer["id"]] + [layer]
+    rep = _validate(m, slug)
+    if not rep["ok"]:
+        raise HTTPException(422, rep)
+    return _save(m, rep, _admin_user(request), create=False)
