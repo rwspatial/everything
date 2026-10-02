@@ -76,6 +76,20 @@ def require_admin(request: Request) -> None:
         raise HTTPException(401, "authentication required", headers={"WWW-Authenticate": REALM})
 
 
+# The project-pipeline MCP server has its own credential: a bearer token that only opens project validation and
+# field statistics (read-only), never saving, datasets or runs. Empty = disabled. It reaches core-api on the
+# internal api network; through the proxy, /api/admin/* also needs the admin login (Caddy forward_auth).
+PIPELINE_TOKEN = os.environ.get("MCP_PIPELINE_TOKEN", "")
+
+
+def require_admin_or_pipeline(request: Request) -> None:
+    header = request.headers.get("authorization", "")
+    if PIPELINE_TOKEN and header.lower().startswith("bearer ") and hmac.compare_digest(
+            header[7:].strip().encode(), PIPELINE_TOKEN.encode()):
+        return
+    require_admin(request)
+
+
 @app.get("/internal/healthz", include_in_schema=False)
 def healthz() -> dict:
     """Container healthcheck (not routed by the proxy)."""
@@ -329,7 +343,7 @@ def _validate(m: Any, slug: str | None = None) -> dict:
         return V.validate(m, slug, conn=conn, cog_exists=_cog_exists)
 
 
-@app.post("/api/admin/projects/validate", dependencies=[Depends(require_admin)])
+@app.post("/api/admin/projects/validate", dependencies=[Depends(require_admin_or_pipeline)])
 async def validate_project(request: Request) -> dict:
     return _validate(await _manifest_body(request))
 
@@ -400,7 +414,7 @@ def _collection(collection: str) -> tuple[str, str]:
     return "pub", collection.split(".", 1)[1]
 
 
-@app.get("/api/admin/projects/fields", dependencies=[Depends(require_admin)])
+@app.get("/api/admin/projects/fields", dependencies=[Depends(require_admin_or_pipeline)])
 def collection_fields(collection: str) -> dict:
     """Columns of a pub view (for the wizard's field pickers) and its geometry type."""
     schema, name = _collection(collection)
@@ -421,7 +435,7 @@ def collection_fields(collection: str) -> dict:
                        for c in cols if not c["geometry"]]}
 
 
-@app.get("/api/admin/projects/stats", dependencies=[Depends(require_admin)])
+@app.get("/api/admin/projects/stats", dependencies=[Depends(require_admin_or_pipeline)])
 def field_stats(collection: str, field: str, k: int = 5) -> dict:
     """Breaks for a numeric field (quantiles), or the most common values of a text field, for style presets."""
     schema, name = _collection(collection)

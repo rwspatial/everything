@@ -144,6 +144,8 @@ flowchart LR
     maine_proj["projects/maine-*<br/>5 draft manifests"]:::now
     census["Census API recipes<br/>kind: table (ACS 5-yr)"]:::now
     mapgen["mapgen + /admin/new<br/>(Phase 3 project creator)"]:::now
+    mcp_db["mcp-db: spatial-db MCP server<br/>(read-only, role mcp_ro)"]:::now
+    mcp_pipe["mcp-pipeline: project-pipeline MCP<br/>(files + scoped core-api token)"]:::now
     cogs[("data/cog/maine/*.tif<br/>+ provenance sidecars")]:::now
   end
 
@@ -152,7 +154,7 @@ flowchart LR
   zonal["Zonal stats → vector tables<br/>(NDVI per town)"]:::todo
   worker["Job queue + worker<br/>(admin Phase B)"]:::todo
   pmtiles["PMTiles for heavy layers<br/>(soils fallback)"]:::todo
-  mcp["MCP server (Phase 4)"]:::todo
+  mcp["MCP: analysis server<br/>(needs Phase 5 jobs)"]:::todo
   ml["R / Python ML API (Phase 5)"]:::todo
   aws["AWS (Phase 6): CloudFront + ALB,<br/>RDS PostGIS, S3 COGs"]:::todo
 
@@ -165,6 +167,9 @@ flowchart LR
   core_api --> worker --> geotools
   postgis -.-> pmtiles
   mcp -.-> core_api
+  mcp_db -->|"SELECT pub, src_*"| postgis
+  mcp_pipe -->|"validate, stats"| core_api
+  mcp_pipe -->|"proposes files; person runs mapgen apply"| mapgen
   mapgen --> maine_proj
   ml -.-> postgis
   today -.->|later| aws
@@ -199,3 +204,5 @@ One contract, two front doors, one registry:
 | geotools | GDAL + Python + R: imports, raster work, registry updates | tools |
 | node | Frontend install, dev server, type check | tools |
 | e2e | Playwright browser tests (`make e2e`) | test |
+| mcp-db | spatial-db MCP server for Claude Code: read-only `pub` + `src_*` as role `mcp_ro`, stdio via `.mcp.json` | mcp |
+| mcp-pipeline | project-pipeline MCP server: validates via core-api (scoped token), writes only `projects/`, returns `./mapgen apply` | mcp |

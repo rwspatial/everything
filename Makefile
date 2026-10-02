@@ -19,6 +19,7 @@ OPS     := bash scripts/ops.sh
         r py tools-sh \
         frontend frontend-install frontend-dev frontend-check e2e \
         contracts contracts-check validate-styles projects-sync projects-check \
+        mcp-credentials mcp-build mcp-test \
         recipes-sync health-datasets freshness admin-credentials
 
 help: ## List targets
@@ -185,6 +186,24 @@ projects-sync: check-env ## Register every project in projects/index.json (same 
 
 projects-check: check-env ## Fail if projects/ and the project registry differ
 	@$(TOOLS_T) python scripts/mapgen.py sync --check
+
+## MCP servers (Claude Code; docs/setup/08-mcp.md)
+mcp-credentials: check-env ## Create the MCP credentials in .env if missing, then apply them (migrate, core-api)
+	@python3 -c 'import re, secrets; p = ".env"; s = open(p).read(); \
+	  add = [k + "=" + secrets.token_hex(16 if k.endswith("PASSWORD") else 24) for k in ("MCP_DB_PASSWORD", "MCP_PIPELINE_TOKEN") \
+	         if not re.search("^" + k + "=.", s, re.M)]; \
+	  s = re.sub(r"^MCP_PIPELINE_TOKEN=\n", "", s, flags=re.M) if add else s; \
+	  open(p, "w").write(s.rstrip("\n") + "\n" + "\n".join(add) + "\n") if add else None; \
+	  print("added " + ", ".join(a.split("=")[0] for a in add) + " to .env" if add else "MCP credentials are already set")'
+	@$(MAKE) --no-print-directory migrate > /dev/null && echo "role mcp_ro can log in"
+	@$(COMPOSE) up -d core-api > /dev/null 2>&1 && echo "core-api accepts the project-pipeline token"
+
+mcp-build: check-env ## Build the MCP server image (shared by every MCP server)
+	$(COMPOSE) build mcp-db
+
+mcp-test: check-env ## Smoke-test the MCP servers over stdio (Maine data), incl. propose -> apply -> publish
+	@$(COMPOSE) run --rm -T --no-deps mcp-db python tests/smoke_spatial_db.py
+	@bash scripts/mcp_pipeline_e2e.sh
 
 ## Admin dashboard (http://localhost:8080/admin; docs/setup/06-admin.md)
 recipes-sync: check-env ## Mirror data/recipes/*.yaml into the dataset registry

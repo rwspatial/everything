@@ -5,6 +5,7 @@
 	const c = site.contact;
 	const links = [
 		c.email && { label: 'Email', text: c.email, href: `mailto:${c.email}` },
+		c.phone && { label: 'Phone', text: c.phone, href: `tel:+1${c.phone.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '')}` },
 		c.booking && { label: 'Book a call', text: 'Pick a time', href: c.booking },
 		c.linkedin && { label: 'LinkedIn', text: c.linkedin.replace(/^https?:\/\/(www\.)?/, ''), href: c.linkedin },
 		c.github && { label: 'GitHub', text: c.github.replace(/^https?:\/\/(www\.)?/, ''), href: c.github }

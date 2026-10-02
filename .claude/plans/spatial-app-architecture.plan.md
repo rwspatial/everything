@@ -1,8 +1,10 @@
 # Spatial App Generator — Architecture Plan
 
-Status: **rev 3 — Phases 1–2 complete (2026-09-29); Phase 3 (project creator) complete (2026-10-01); next: Phase 4 (MCP)**
+Status: **rev 3 — Phases 1–2 complete (2026-09-29); Phase 3 (project creator) complete (2026-10-01); Phase 4: spatial-db and project-pipeline MCP servers done (2026-10-02); analysis-mcp waits for Phase 5 jobs**
 
 Phase 3 as built: `contracts/project-manifest.v1.schema.json` (one file with `definitions`, not two) generates the TS types; Python validates directly against the schema (`contracts/validate.py`, shared by mapgen and core-api) instead of generated Pydantic models. Writes, validation and field stats live under `/api/admin/projects` (admin auth, wizard at `/admin/new`); `/api/projects` is public and read-only. Exit-gate project: `maine-overview` (Maine towns × ACS income). Guide: docs/setup/07-projects.md.
+
+Phase 4 so far: `mcp/` package `spatial_mcp` on the Python MCP SDK 2.2 (`MCPServer`), image `spatial/mcp`, compose service `mcp-db` (profile mcp, data network only, read-only fs, no Docker socket), registered for Claude Code in `.mcp.json` (stdio). Role `mcp_ro` (migration 20261002000100). Smoke test `make mcp-test`, part of `make verify`. Guide: docs/setup/08-mcp.md. project-pipeline: no DB credential or Docker socket; scoped bearer token `MCP_PIPELINE_TOKEN` (core-api validate + fields + stats only); writes only projects/; `apply_project` returns `./mapgen apply <slug>` for a person to run (approved in Claude Code) instead of the planned elicitation, because applying needs Docker. New check E_VIEW_SOURCE (pub views read only src_*/pub). Exit gate run by scripts/mcp_pipeline_e2e.sh.
 Date: 2026-09-29
 Repo state at planning time: greenfield (README + empty .gitignore)
 

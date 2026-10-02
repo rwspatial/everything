@@ -23,6 +23,8 @@ test.afterEach(() => {
 test('landing page: identity, live selected work from the manifests, services and contact', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await expect(page).toHaveTitle(/Downeast Geospatial/);
+	await expect(page.getByText('Bold Coast')).toHaveCount(0);
 	const work = page.getByRole('list', { name: 'Selected work' });
 	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure']) {
 		await expect(work.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
@@ -30,6 +32,8 @@ test('landing page: identity, live selected work from the manifests, services an
 	await expect(work.getByRole('link', { name: /World Overview/ })).toHaveCount(0);
 	await expect(page.getByRole('heading', { name: 'What I do' })).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'Work with me' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'rwspatial@gmail.com' })).toHaveAttribute('href', 'mailto:rwspatial@gmail.com');
+	await expect(page.getByRole('link', { name: '(207) 266-1634' })).toHaveAttribute('href', 'tel:+12072661634');
 	await shot(page, '0-landing');
 	await work.getByRole('link', { name: /^Maine Lands/ }).click();
 	await expect(page).toHaveURL(/\/p\/maine-lands/);

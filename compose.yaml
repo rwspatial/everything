@@ -37,9 +37,11 @@ services:
       WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD}
       ANALYST_DB_PASSWORD: ${ANALYST_DB_PASSWORD}
       ADMIN_API_DB_PASSWORD: ${ADMIN_API_DB_PASSWORD:?run make admin-credentials}
+      MCP_DB_PASSWORD: ${MCP_DB_PASSWORD:-}   # empty: mcp_ro cannot log in (make mcp-credentials)
     volumes:
       - ./db:/db:ro
       - ./services/migrator:/migrator:ro
+      - ./projects:/projects:ro     # projects/<slug>/sql/*.sql (make seed, mapgen apply)
     networks: [data]
     depends_on:
       postgis:
@@ -108,10 +110,15 @@ services:
   # Admin API (dashboard backend): read-only over the dataset registry in Phase A.
   # Never holds external API keys; never touches files. Reached only through the proxy.
   core-api:
-    build: ./services/core-api
+    build:
+      context: ./services/core-api
+      additional_contexts:
+        contracts: ./contracts        # manifest schema + validate.py, shared with mapgen
     image: spatial/core-api:local
     environment:
       DATABASE_URL: postgresql://admin_api:${ADMIN_API_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
+      PROJECTS_DATABASE_URL: postgresql://app_rw:${APP_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
+      MCP_PIPELINE_TOKEN: ${MCP_PIPELINE_TOKEN:-}   # project-pipeline MCP server: validate + field stats only
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run make admin-credentials}
     networks: [api, data]
@@ -177,10 +184,50 @@ services:
       BACKEND_URL: http://proxy
     volumes:
       - ./frontend:/app
+      - ./contracts:/contracts:ro   # schema -> src/lib/contracts.gen.ts (make contracts)
+      - ./projects:/projects:ro     # MapLibre style validation (make validate)
     working_dir: /app
     ports:
       - "127.0.0.1:5173:5173"   # only published with `run --service-ports` (make frontend-dev)
     networks: [edge]
+
+  # MCP server: read-only database exploration for Claude Code (plan Phase 4; docs/setup/08-mcp.md).
+  # Started per session over stdio by .mcp.json (`docker compose run --rm -T mcp-db`); no ports, internal network only.
+  mcp-db:
+    profiles: [mcp]
+    build: ./mcp
+    image: spatial/mcp:local
+    command: ["python", "-m", "spatial_mcp.spatial_db"]
+    environment:
+      MCP_SERVER_NAME: spatial-db
+      MCP_DATABASE_URL: postgresql://mcp_ro:${MCP_DB_PASSWORD:-}@postgis:5432/${POSTGRES_DB}
+    networks: [data]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  # MCP server: build map projects (validate, propose views as files, write manifests). No database credential,
+  # no Docker socket: it reaches core-api (scoped token) and tipg on the internal api network, and can write
+  # only projects/. Publishing stays `./mapgen apply <slug>`, run by a person (docs/setup/08-mcp.md).
+  mcp-pipeline:
+    profiles: [mcp]
+    build: ./mcp
+    image: spatial/mcp:local
+    command: ["python", "-m", "spatial_mcp.project_pipeline"]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      MCP_SERVER_NAME: project-pipeline
+      CORE_API_URL: http://core-api:8000
+      TIPG_URL: http://tipg:8000
+      PUBLIC_URL: http://localhost:${HTTP_PORT:-8080}
+      MCP_PIPELINE_TOKEN: ${MCP_PIPELINE_TOKEN:-}
+      PROJECTS_DIR: /projects
+    volumes:
+      - ./projects:/projects
+    networks: [api]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
 
   # Browser tests (Playwright + axe) against the running stack: `make e2e`.
   e2e:
@@ -218,6 +265,7 @@ services:
       LOADER_DB_PASSWORD: ${LOADER_DB_PASSWORD}
       ANALYST_DB_PASSWORD: ${ANALYST_DB_PASSWORD}
       TIPG_DB_PASSWORD: ${TIPG_DB_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}   # service=app: mapgen registers projects as app_rw
       TRIGGERED_BY: cli:${HOST_USER:-unknown}
       # External API keys: only here (and the Phase B worker). Never in core-api, frontend, proxy or tipg.
       CENSUS_API_KEY: ${CENSUS_API_KEY:-}

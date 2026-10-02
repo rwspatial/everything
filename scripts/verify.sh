@@ -223,6 +223,23 @@ curl -s -o /dev/null -X DELETE -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" "$B
 python3 -c 'import json; m = json.load(open("projects/maine-overview/project.json")); m["slug"] = "zz-verify-invalid"; m["layers"][0]["source"]["collection"] = "pub.maine_overview__nope"; print(json.dumps(m))' > "$OUT/bad.json"
 codes=$(curl -s -X POST -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" --data-binary @"$OUT/bad.json" "$BASE/api/admin/projects" | python3 -c 'import sys, json; print(",".join(e["code"] for e in json.load(sys.stdin)["detail"]["errors"]))' 2>/dev/null)
 [[ $codes == E_VIEW_MISSING ]]; check "a manifest pointing at a missing view is refused with E_VIEW_MISSING" $? "${codes:-no answer}"
+# A published view may only read src_* and pub (otherwise it could expose e.g. the app registry through tiPG).
+psql_owner() { docker compose exec -T postgis sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atq'; }
+echo "CREATE OR REPLACE VIEW pub.zz_verify__leak AS SELECT row_number() OVER ()::int AS id, ST_SetSRID(ST_MakePoint(-69, 45), 4326)::geometry(Point, 4326) AS geom, name FROM app.recipes;" | psql_owner
+python3 -c 'import json; m = json.load(open("projects/maine-overview/project.json")); m["slug"] = "zz-verify-leak"; l = m["layers"][0]; l["source"] = {"type": "tipg-vector", "collection": "pub.zz_verify__leak"}; l["interaction"] = {"inspect": True}; l["style"]["layers"] = l["style"]["layers"][1:]; print(json.dumps(m))' > "$OUT/leak.json"
+codes=$(curl -s -X POST -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" --data-binary @"$OUT/leak.json" "$BASE/api/admin/projects/validate" | python3 -c 'import sys, json; print(",".join(e["code"] for e in json.load(sys.stdin)["errors"]))' 2>/dev/null)
+echo "DROP VIEW IF EXISTS pub.zz_verify__leak;" | psql_owner
+[[ $codes == E_VIEW_SOURCE ]]; check "a view reading the app registry is refused with E_VIEW_SOURCE" $? "${codes:-no answer}"
+
+echo "-- MCP servers (Phase 4)"
+if grep -qE '^MCP_DB_PASSWORD=.' .env; then
+  docker compose run --rm -T --no-deps mcp-db python tests/smoke_spatial_db.py 2>/dev/null | sed 's/^/      /'
+  check "spatial-db MCP server: Maine answers over stdio, writes and slow queries refused" ${PIPESTATUS[0]}
+  bash scripts/mcp_pipeline_e2e.sh 2>/dev/null | sed 's/^/      /'
+  check "project-pipeline MCP server: explore -> propose -> validate -> apply (approved) -> published" ${PIPESTATUS[0]}
+else
+  echo "  --    MCP_DB_PASSWORD not set (make mcp-credentials); MCP checks skipped"
+fi
 
 echo "-- architecture doc"
 bash scripts/check_architecture.sh

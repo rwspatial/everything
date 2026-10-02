@@ -114,6 +114,7 @@ Errors (`E_*`) block `apply` and saving; warnings (`W_*`) don't.
 | `E_NO_LAYERS` | A `draft` or `ready` project has nothing to draw | Add a layer or set the status to `stub` |
 | `E_ZOOM_RANGE`, `E_CONTROL_PARAM` | `minzoom` > `maxzoom`; a slider without a default in `source.params` | Edit the layer |
 | `E_VIEW_MISSING` | The collection is not in `pub` | Run the SQL (`./mapgen apply`), then refresh |
+| `E_VIEW_SOURCE` | The view reads something other than `src_*` tables or `pub` views (e.g. `app.*`), which would publish it through tiPG | Select from `src_*` / `pub` only |
 | `E_NOT_SERVED` | The view exists but `tipg_ro` cannot read it | Create `pub` objects through the migrator (`./mapgen apply`, `make seed`), not by hand |
 | `E_NO_GEOM`, `E_MULTI_GEOM` | No geometry column, or more than one | Publish exactly one |
 | `E_SRID` | The geometry column has no declared SRID | Cast it: `geom::geometry(MultiPolygon, 4326)` |

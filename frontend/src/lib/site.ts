@@ -7,7 +7,7 @@ export const site = {
 	/** Role shown next to your name. */
 	role: 'Geospatial engineer',
 	/** Practice / studio name, used in the header and page titles. */
-	studio: 'Bold Coast Geospatial',
+	studio: 'Downeast Geospatial',
 	location: 'Maine, USA',
 	tagline: 'From raw public data to maps people can use: pipelines, spatial databases, tile services and web maps.',
 
@@ -42,7 +42,9 @@ export const site = {
 	featuredTag: 'maine',
 
 	contact: {
-		email: '',
+		email: 'rwspatial@gmail.com',
+		/** Shown as written; the link dials the digits (US numbers get +1). */
+		phone: '(207) 266-1634',
 		github: '',
 		linkedin: '',
 		/** e.g. a scheduling link */

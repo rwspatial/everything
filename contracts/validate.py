@@ -2,7 +2,7 @@
 
   validate_schema(m)       JSON Schema (contracts/project-manifest.v1.schema.json), with readable paths
   validate_rules(m, slug)  status-aware rules the schema can't express (duplicate ids, ready vs to-do, ...)
-  validate_db(m, conn)     the live database: the pub view/function exists, tiPG can read it, one geometry
+  validate_db(m, conn)     the live database: the pub view/function exists, reads only src_* / pub, tiPG can read it, one geometry
                            column with a declared SRID, an id column, a GiST index, and field names used by
                            properties / popups / styles exist. To-do layers are skipped.
   validate_cogs(m, fn)     raster-cog layers: titiler can open data/cog/<name>.tif
@@ -152,7 +152,13 @@ SELECT c.oid, c.relkind,
        (SELECT coalesce(sum(greatest(t.reltuples, 0)), 0)::bigint FROM pg_rewrite r
           JOIN pg_depend d ON d.objid = r.oid AND d.classid = 'pg_rewrite'::regclass AND d.refclassid = 'pg_class'::regclass
           JOIN pg_class t ON t.oid = d.refobjid AND t.relkind = 'r'
-          WHERE r.ev_class = c.oid) AS est_rows
+          WHERE r.ev_class = c.oid) AS est_rows,
+       (SELECT array_agg(DISTINCT t.relnamespace::regnamespace::text || '.' || t.relname) FROM pg_rewrite r
+          JOIN pg_depend d ON d.objid = r.oid AND d.classid = 'pg_rewrite'::regclass AND d.refclassid = 'pg_class'::regclass
+          JOIN pg_class t ON t.oid = d.refobjid
+          WHERE r.ev_class = c.oid AND d.refobjid <> c.oid
+            AND NOT (t.relnamespace::regnamespace::text = 'pub' OR t.relnamespace::regnamespace::text LIKE 'src\\_%%')
+       ) AS foreign_sources
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'pub' AND c.relname = %s AND c.relkind IN ('v', 'm', 'r')
 """
@@ -209,6 +215,9 @@ def validate_db(m: dict, conn) -> list[Issue]:
         if rel:
             columns = set(rel["columns"] or [])
             geoms = rel["geoms"] if isinstance(rel["geoms"], list) else json.loads(rel["geoms"])
+            if rel["foreign_sources"]:
+                issues.append(Issue("E_VIEW_SOURCE", at, f"{coll} reads {', '.join(sorted(rel['foreign_sources']))}; "
+                                    "published views may only read src_* tables and other pub views"))
             if not rel["served"]:
                 issues.append(Issue("E_NOT_SERVED", at, f"{coll} exists but tipg_ro cannot read it; create pub objects "
                                     "through the migrator (mapgen apply / make seed) so the default grants apply"))
