@@ -3,7 +3,7 @@
   "slug": "maine-overview",
   "title": "Maine Overview",
   "status": "draft",
-  "description": "Median household income for every Maine town, city, plantation and unorganized territory (ACS 2020-2024 5-year estimates on TIGER/Line 2024 boundaries).",
+  "description": "Median household income, poverty and more for Maine towns, census tracts and counties (ACS 2020-2024 5-year estimates on TIGER/Line 2024 boundaries).",
   "tags": [
     "maine",
     "demographics",
@@ -18,6 +18,526 @@
     "basemap": "positron"
   },
   "layers": [
+    {
+      "id": "blocks-density",
+      "title": "Population density by census block (2020)",
+      "group": "Demographics",
+      "visible": false,
+      "minzoom": 9,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__blocks",
+        "properties": [
+          "name",
+          "pop",
+          "housing_units",
+          "vacant_units",
+          "pop_per_sq_mi"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "filter": [
+              ">",
+              [
+                "coalesce",
+                [
+                  "get",
+                  "pop"
+                ],
+                0
+              ],
+              0
+            ],
+            "paint": {
+              "fill-color": [
+                "step",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "pop_per_sq_mi"
+                  ],
+                  0
+                ],
+                "#ffffcc",
+                50,
+                "#c7e9b4",
+                250,
+                "#7fcdbb",
+                1000,
+                "#41b6c4",
+                5000,
+                "#2c7fb8",
+                10000,
+                "#253494"
+              ],
+              "fill-opacity": 0.75
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 12,
+            "paint": {
+              "line-color": "#7f7f7f",
+              "line-width": 0.2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "People per square mile of land (2020 Census; empty blocks not shaded)",
+        "items": [
+          {
+            "label": "under 50",
+            "color": "#ffffcc"
+          },
+          {
+            "label": "50–250",
+            "color": "#c7e9b4"
+          },
+          {
+            "label": "250–1,000",
+            "color": "#7fcdbb"
+          },
+          {
+            "label": "1,000–5,000",
+            "color": "#41b6c4"
+          },
+          {
+            "label": "5,000–10,000",
+            "color": "#2c7fb8"
+          },
+          {
+            "label": "10,000 and over",
+            "color": "#253494"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: {pop} people, {housing_units} housing units ({vacant_units} vacant), {pop_per_sq_mi} per sq mi"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Census Bureau: 2020 Census DHC, TIGER/Line 2024"
+    },
+    {
+      "id": "bg-poverty",
+      "title": "Poverty rate by block group",
+      "group": "Demographics",
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__blockgroups",
+        "properties": [
+          "name",
+          "county",
+          "pop",
+          "median_hh_income",
+          "median_hh_income_moe",
+          "median_home_value",
+          "median_age",
+          "poverty_pct"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "poverty_pct"
+                  ],
+                  null
+                ],
+                "#d9d9d9",
+                [
+                  "step",
+                  [
+                    "get",
+                    "poverty_pct"
+                  ],
+                  "#fef0d9",
+                  3.6,
+                  "#fdcc8a",
+                  6.9,
+                  "#fc8d59",
+                  10.9,
+                  "#e34a33",
+                  17.1,
+                  "#b30000"
+                ]
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "People below the poverty line (block group quintiles)",
+        "items": [
+          {
+            "label": "under 3.6 %",
+            "color": "#fef0d9"
+          },
+          {
+            "label": "3.6–6.9 %",
+            "color": "#fdcc8a"
+          },
+          {
+            "label": "6.9–10.9 %",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "10.9–17.1 %",
+            "color": "#e34a33"
+          },
+          {
+            "label": "17.1 % and over",
+            "color": "#b30000"
+          },
+          {
+            "label": "suppressed",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {county}: {poverty_pct} % below the poverty line"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
+    },
+    {
+      "id": "bg-income",
+      "title": "Median household income by block group",
+      "group": "Demographics",
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__blockgroups",
+        "properties": [
+          "name",
+          "county",
+          "pop",
+          "median_hh_income",
+          "median_hh_income_moe",
+          "median_home_value",
+          "median_age",
+          "poverty_pct"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "median_hh_income"
+                  ],
+                  null
+                ],
+                "#d9d9d9",
+                [
+                  "step",
+                  [
+                    "get",
+                    "median_hh_income"
+                  ],
+                  "#f1eef6",
+                  54930,
+                  "#bdc9e1",
+                  68030,
+                  "#74a9cf",
+                  81901,
+                  "#2b8cbe",
+                  100050,
+                  "#045a8d"
+                ]
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Median household income (block group quintiles; wide margins of error)",
+        "items": [
+          {
+            "label": "under $54,900",
+            "color": "#f1eef6"
+          },
+          {
+            "label": "$54,900–68,000",
+            "color": "#bdc9e1"
+          },
+          {
+            "label": "$68,000–81,900",
+            "color": "#74a9cf"
+          },
+          {
+            "label": "$81,900–100,000",
+            "color": "#2b8cbe"
+          },
+          {
+            "label": "$100,000 and over",
+            "color": "#045a8d"
+          },
+          {
+            "label": "suppressed",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {county}: median household income ${median_hh_income} (±{median_hh_income_moe})"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
+    },
+    {
+      "id": "tracts-poverty",
+      "title": "Poverty rate by census tract",
+      "group": "Demographics",
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__tracts",
+        "properties": [
+          "name",
+          "county",
+          "pop",
+          "median_hh_income",
+          "median_hh_income_moe",
+          "median_home_value",
+          "median_age",
+          "poverty_pct"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "poverty_pct"
+                  ],
+                  null
+                ],
+                "#d9d9d9",
+                [
+                  "step",
+                  [
+                    "get",
+                    "poverty_pct"
+                  ],
+                  "#fef0d9",
+                  5.5,
+                  "#fdcc8a",
+                  8.4,
+                  "#fc8d59",
+                  12.0,
+                  "#e34a33",
+                  16.1,
+                  "#b30000"
+                ]
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "People below the poverty line (tract quintiles)",
+        "items": [
+          {
+            "label": "under 5.5 %",
+            "color": "#fef0d9"
+          },
+          {
+            "label": "5.5–8.4 %",
+            "color": "#fdcc8a"
+          },
+          {
+            "label": "8.4–12 %",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "12–16.1 %",
+            "color": "#e34a33"
+          },
+          {
+            "label": "16.1 % and over",
+            "color": "#b30000"
+          },
+          {
+            "label": "no data",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {county}: {poverty_pct} % below the poverty line"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
+    },
+    {
+      "id": "tracts-income",
+      "title": "Median household income by census tract",
+      "group": "Demographics",
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__tracts",
+        "properties": [
+          "name",
+          "county",
+          "pop",
+          "median_hh_income",
+          "median_hh_income_moe",
+          "median_home_value",
+          "median_age",
+          "poverty_pct"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "median_hh_income"
+                  ],
+                  null
+                ],
+                "#d9d9d9",
+                [
+                  "step",
+                  [
+                    "get",
+                    "median_hh_income"
+                  ],
+                  "#f1eef6",
+                  56140,
+                  "#bdc9e1",
+                  66890,
+                  "#74a9cf",
+                  78229,
+                  "#2b8cbe",
+                  95066,
+                  "#045a8d"
+                ]
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Median household income (tract quintiles)",
+        "items": [
+          {
+            "label": "under $56,100",
+            "color": "#f1eef6"
+          },
+          {
+            "label": "$56,100–66,900",
+            "color": "#bdc9e1"
+          },
+          {
+            "label": "$66,900–78,200",
+            "color": "#74a9cf"
+          },
+          {
+            "label": "$78,200–95,100",
+            "color": "#2b8cbe"
+          },
+          {
+            "label": "$95,100 and over",
+            "color": "#045a8d"
+          },
+          {
+            "label": "suppressed",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {county}: median household income ${median_hh_income} (±{median_hh_income_moe})"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
+    },
     {
       "id": "towns",
       "title": "Median household income by town",
@@ -116,6 +636,48 @@
         "inspect": true
       },
       "group": "Demographics",
+      "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
+    },
+    {
+      "id": "counties",
+      "title": "Counties",
+      "group": "Boundaries",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__counties",
+        "properties": [
+          "name",
+          "pop",
+          "median_hh_income",
+          "median_hh_income_moe",
+          "median_home_value",
+          "median_age",
+          "poverty_pct"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#13202c",
+              "line-width": 1.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#13202c",
+        "label": "County boundary"
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: median household income ${median_hh_income}, {poverty_pct} % in poverty, median home value ${median_home_value}"
+        },
+        "inspect": true
+      },
       "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
     }
   ]

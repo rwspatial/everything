@@ -140,6 +140,8 @@ SELECT c.oid, c.relkind,
                    AND a.attnum > 0 AND NOT a.attisdropped), '[]') AS geoms,
        (SELECT array_agg(a.attname::text) FROM pg_attribute a
          WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped) AS columns,
+       (SELECT array_agg(a.attname::text) FROM pg_attribute a
+         WHERE a.attrelid = c.oid AND a.atttypid = 'numeric'::regtype AND a.attnum > 0 AND NOT a.attisdropped) AS numeric_columns,
        CASE WHEN c.relkind = 'v' THEN
          (SELECT coalesce(bool_or(EXISTS (
                    SELECT 1 FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_am am ON am.oid = ic.relam
@@ -258,6 +260,11 @@ def validate_db(m: dict, conn) -> list[Issue]:
                     issues.append(Issue("E_PARAM_UNKNOWN", f"layers[{i}].source.params.{p}",
                                         f"{coll} has no argument {p!r} (arguments: {', '.join(sorted(ins)) or 'none'})"))
         issues += _check_fields(i, layer, coll, columns)
+        if rel:
+            for f in sorted(_style_fields((layer.get("style") or {}).get("layers")) & set(rel["numeric_columns"] or [])):
+                issues.append(Issue("W_STYLE_NUMERIC", f"layers[{i}].style",
+                                    f"the style reads {f!r}, a numeric column: tiPG sends numeric as text in vector tiles, so "
+                                    f"number expressions fail; cast it in the view ({f}::float8)"))
     return issues
 
 

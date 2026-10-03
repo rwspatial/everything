@@ -167,6 +167,22 @@
           "additionalItems": false
         },
         "colormap": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "categories": {
+          "description": "Classes of a categorical raster (soil groups, vegetation types): each pixel value gets its own colour, values not listed are transparent, and a click shows the label. Use instead of rescale/colormap.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 400,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "color"],
+            "properties": {
+              "value": { "type": "integer" },
+              "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+              "label": { "type": "string" }
+            }
+          }
+        },
         "bidx": { "type": "integer", "minimum": 1 },
         "maxzoom": { "type": "number", "minimum": 0, "maximum": 24 },
         "units": {

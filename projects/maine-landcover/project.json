@@ -1,0 +1,1399 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-landcover",
+  "title": "Maine Land Cover, Crops & Wildfire Fuels",
+  "status": "draft",
+  "description": "Maine at 30 m: Annual NLCD 2025 land cover, the USDA Cropland Data Layer 2025 (potatoes, blueberries, hay ...), LANDFIRE 2024 existing vegetation type (105 ecological systems, grouped by structure) and Scott & Burgan fire behavior fuel models. Click the map for the exact class.",
+  "tags": [
+    "maine",
+    "vegetation",
+    "landcover",
+    "wildfire",
+    "landfire"
+  ],
+  "view": {
+    "center": [
+      -69.0,
+      45.25
+    ],
+    "zoom": 6.5,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "evt",
+      "title": "Existing vegetation type",
+      "group": "Vegetation",
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/landfire_evt",
+        "categories": [
+          {
+            "value": 7238,
+            "color": "#9ccc65",
+            "label": "Laurentian-Acadian Northern Oak Forest"
+          },
+          {
+            "value": 7239,
+            "color": "#558b2f",
+            "label": "Laurentian-Acadian Northern Pine-(Oak) Forest"
+          },
+          {
+            "value": 7240,
+            "color": "#9ccc65",
+            "label": "Laurentian-Acadian Hardwood Forest"
+          },
+          {
+            "value": 7241,
+            "color": "#558b2f",
+            "label": "Laurentian-Acadian Pine-Hemlock-Hardwood Forest"
+          },
+          {
+            "value": 7288,
+            "color": "#bcaaa4",
+            "label": "Acadian-Appalachian Alpine Tundra Meadow"
+          },
+          {
+            "value": 7289,
+            "color": "#bcaaa4",
+            "label": "Acadian-Appalachian Subalpine Heath-Krummholz"
+          },
+          {
+            "value": 7292,
+            "color": "#64b5f6",
+            "label": "Open Water"
+          },
+          {
+            "value": 7295,
+            "color": "#757575",
+            "label": "Quarries-Strip Mines-Gravel Pits-Well and Wind Pads"
+          },
+          {
+            "value": 7296,
+            "color": "#e57373",
+            "label": "Developed-Low Intensity"
+          },
+          {
+            "value": 7297,
+            "color": "#e57373",
+            "label": "Developed-Medium Intensity"
+          },
+          {
+            "value": 7298,
+            "color": "#e57373",
+            "label": "Developed-High Intensity"
+          },
+          {
+            "value": 7299,
+            "color": "#e57373",
+            "label": "Developed-Roads"
+          },
+          {
+            "value": 7302,
+            "color": "#9ccc65",
+            "label": "Laurentian-Acadian Northern Hardwoods Forest"
+          },
+          {
+            "value": 7303,
+            "color": "#9ccc65",
+            "label": "Northeastern Interior Dry-Mesic Oak Forest"
+          },
+          {
+            "value": 7324,
+            "color": "#9ccc65",
+            "label": "Northern Atlantic Coastal Plain Hardwood Forest"
+          },
+          {
+            "value": 7354,
+            "color": "#1b5e20",
+            "label": "Northeastern Interior Pine Barrens"
+          },
+          {
+            "value": 7362,
+            "color": "#1b5e20",
+            "label": "Laurentian-Acadian Northern Pine Forest"
+          },
+          {
+            "value": 7366,
+            "color": "#1b5e20",
+            "label": "Laurentian-Acadian Pine-Hemlock Forest"
+          },
+          {
+            "value": 7369,
+            "color": "#1b5e20",
+            "label": "Central Appalachian Dry Pine Forest"
+          },
+          {
+            "value": 7370,
+            "color": "#1b5e20",
+            "label": "Appalachian Hemlock Forest"
+          },
+          {
+            "value": 7373,
+            "color": "#1b5e20",
+            "label": "Acadian Low-Elevation Spruce-Fir Forest"
+          },
+          {
+            "value": 7374,
+            "color": "#558b2f",
+            "label": "Acadian-Appalachian Montane Spruce-Fir Forest"
+          },
+          {
+            "value": 7377,
+            "color": "#1b5e20",
+            "label": "Central Appalachian Pine Rocky Woodland"
+          },
+          {
+            "value": 7379,
+            "color": "#9ccc65",
+            "label": "Northern Atlantic Coastal Plain Maritime Forest"
+          },
+          {
+            "value": 7386,
+            "color": "#bcaaa4",
+            "label": "Acadian-Appalachian Alpine Tundra Shrubland"
+          },
+          {
+            "value": 7389,
+            "color": "#1b5e20",
+            "label": "Acadian-Appalachian Subalpine Woodland"
+          },
+          {
+            "value": 7463,
+            "color": "#9ccc65",
+            "label": "Central Appalachian Dry Oak Forest"
+          },
+          {
+            "value": 7464,
+            "color": "#1b5e20",
+            "label": "Acadian Sub-Boreal Spruce Barrens"
+          },
+          {
+            "value": 7465,
+            "color": "#1b5e20",
+            "label": "Acadian Sub-Boreal Spruce Flat"
+          },
+          {
+            "value": 7481,
+            "color": "#00796b",
+            "label": "Laurentian-Acadian Alkaline Conifer-Hardwood Swamp"
+          },
+          {
+            "value": 7502,
+            "color": "#558b2f",
+            "label": "Central Appalachian Dry Oak-Pine Forest"
+          },
+          {
+            "value": 7511,
+            "color": "#9ccc65",
+            "label": "Appalachian Northern Hardwood Forest"
+          },
+          {
+            "value": 7512,
+            "color": "#558b2f",
+            "label": "Appalachian (Hemlock)-Northern Hardwood Forest"
+          },
+          {
+            "value": 7522,
+            "color": "#bcaaa4",
+            "label": "Northern Atlantic Coastal Plain Heathland"
+          },
+          {
+            "value": 7554,
+            "color": "#9ccc65",
+            "label": "Acadian Low-Elevation Hardwood Forest"
+          },
+          {
+            "value": 7555,
+            "color": "#558b2f",
+            "label": "Acadian Low-Elevation Spruce-Fir-Hardwood Forest"
+          },
+          {
+            "value": 7556,
+            "color": "#9ccc65",
+            "label": "Central Appalachian Oak Rocky Woodland"
+          },
+          {
+            "value": 7557,
+            "color": "#558b2f",
+            "label": "Central Appalachian Pine-Oak Rocky Woodland"
+          },
+          {
+            "value": 7755,
+            "color": "#f9a825",
+            "label": "Agriculture-Cultivated Crops and Irrigated Agriculture"
+          },
+          {
+            "value": 7905,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Urban Deciduous Forest"
+          },
+          {
+            "value": 7906,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Urban Evergreen Forest"
+          },
+          {
+            "value": 7907,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Urban Mixed Forest"
+          },
+          {
+            "value": 7908,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Urban Herbaceous"
+          },
+          {
+            "value": 7909,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Urban Shrubland"
+          },
+          {
+            "value": 7925,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Developed Deciduous Forest"
+          },
+          {
+            "value": 7926,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Developed Evergreen Forest"
+          },
+          {
+            "value": 7927,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Developed Mixed Forest"
+          },
+          {
+            "value": 7928,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Developed Shrubland"
+          },
+          {
+            "value": 7929,
+            "color": "#e57373",
+            "label": "Eastern Cool Temperate Developed Herbaceous"
+          },
+          {
+            "value": 7970,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Orchard"
+          },
+          {
+            "value": 7971,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Vineyard"
+          },
+          {
+            "value": 7972,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Bush fruit and berries"
+          },
+          {
+            "value": 7973,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Row Crop - Close Grown Crop"
+          },
+          {
+            "value": 7974,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Row Crop"
+          },
+          {
+            "value": 7975,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Close Grown Crop"
+          },
+          {
+            "value": 7976,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Fallow/Idle Cropland"
+          },
+          {
+            "value": 7977,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Pasture and Hayland"
+          },
+          {
+            "value": 7978,
+            "color": "#f9a825",
+            "label": "Eastern Cool Temperate Wheat"
+          },
+          {
+            "value": 9036,
+            "color": "#4db6ac",
+            "label": "Acadian Coastal Salt Marsh"
+          },
+          {
+            "value": 9037,
+            "color": "#4db6ac",
+            "label": "Acadian Estuary Marsh"
+          },
+          {
+            "value": 9038,
+            "color": "#4db6ac",
+            "label": "Acadian Maritime Bog"
+          },
+          {
+            "value": 9039,
+            "color": "#00796b",
+            "label": "Acadian-Appalachian Conifer Seepage Forest"
+          },
+          {
+            "value": 9040,
+            "color": "#bcaaa4",
+            "label": "Acadian-North Atlantic Rocky Coast"
+          },
+          {
+            "value": 9055,
+            "color": "#4db6ac",
+            "label": "Boreal-Laurentian Bog"
+          },
+          {
+            "value": 9056,
+            "color": "#00796b",
+            "label": "Boreal-Laurentian Conifer Acidic Swamp and Treed Poor Fen"
+          },
+          {
+            "value": 9057,
+            "color": "#4db6ac",
+            "label": "Boreal-Laurentian-Acadian Acidic Basin Fen"
+          },
+          {
+            "value": 9059,
+            "color": "#00796b",
+            "label": "Central Appalachian River Floodplain Forest"
+          },
+          {
+            "value": 9060,
+            "color": "#00796b",
+            "label": "Central Appalachian Stream and Riparian Woodland"
+          },
+          {
+            "value": 9101,
+            "color": "#bcaaa4",
+            "label": "Great Lakes Dune"
+          },
+          {
+            "value": 9113,
+            "color": "#bcaaa4",
+            "label": "Laurentian-Acadian Acidic Cliff and Talus"
+          },
+          {
+            "value": 9114,
+            "color": "#4db6ac",
+            "label": "Laurentian-Acadian Alkaline Fen"
+          },
+          {
+            "value": 9116,
+            "color": "#558b2f",
+            "label": "Laurentian-Acadian Calcareous Rocky Outcrop Woodland"
+          },
+          {
+            "value": 9117,
+            "color": "#00796b",
+            "label": "Laurentian-Acadian Floodplain Forest"
+          },
+          {
+            "value": 9118,
+            "color": "#4db6ac",
+            "label": "Laurentian-Acadian Freshwater Marsh"
+          },
+          {
+            "value": 9119,
+            "color": "#bcaaa4",
+            "label": "Laurentian-Acadian Lakeshore Beach"
+          },
+          {
+            "value": 9120,
+            "color": "#4db6ac",
+            "label": "Laurentian-Acadian Wet Meadow"
+          },
+          {
+            "value": 9173,
+            "color": "#bcaaa4",
+            "label": "North-Central Appalachian Acidic Cliff and Talus"
+          },
+          {
+            "value": 9174,
+            "color": "#00796b",
+            "label": "North-Central Appalachian Acidic Swamp"
+          },
+          {
+            "value": 9175,
+            "color": "#bcaaa4",
+            "label": "North-Central Appalachian Circumneutral Cliff and Talus"
+          },
+          {
+            "value": 9176,
+            "color": "#4db6ac",
+            "label": "North-Central Appalachian Seepage Fen"
+          },
+          {
+            "value": 9177,
+            "color": "#00796b",
+            "label": "North-Central Interior and Appalachian Acidic Peatland Woodland"
+          },
+          {
+            "value": 9178,
+            "color": "#00796b",
+            "label": "North-Central Interior and Appalachian Rich Swamp"
+          },
+          {
+            "value": 9185,
+            "color": "#00796b",
+            "label": "Northern Appalachian-Acadian Conifer-Hardwood Acidic Swamp"
+          },
+          {
+            "value": 9186,
+            "color": "#1b5e20",
+            "label": "Northern Appalachian-Acadian Rocky Heath Outcrop Woodland"
+          },
+          {
+            "value": 9187,
+            "color": "#00796b",
+            "label": "Northern Atlantic Coastal Plain Basin Peat Swamp"
+          },
+          {
+            "value": 9189,
+            "color": "#4db6ac",
+            "label": "Northern Atlantic Coastal Plain Brackish Tidal Marsh"
+          },
+          {
+            "value": 9192,
+            "color": "#4db6ac",
+            "label": "Northern Atlantic Coastal Plain Pond"
+          },
+          {
+            "value": 9193,
+            "color": "#bcaaa4",
+            "label": "Northern Atlantic Coastal Plain Sandy Beach"
+          },
+          {
+            "value": 9195,
+            "color": "#00796b",
+            "label": "Northern Atlantic Coastal Plain Riparian and Floodplain Forest"
+          },
+          {
+            "value": 9197,
+            "color": "#4db6ac",
+            "label": "Northern Atlantic Coastal Plain Tidal Salt Marsh"
+          },
+          {
+            "value": 9198,
+            "color": "#00796b",
+            "label": "Northern Atlantic Coastal Plain Tidal Swamp"
+          },
+          {
+            "value": 9288,
+            "color": "#9ccc65",
+            "label": "Northeastern Interior Calcareous Oak Forest"
+          },
+          {
+            "value": 9312,
+            "color": "#1b5e20",
+            "label": "Northeastern North American Temperate Forest Plantation"
+          },
+          {
+            "value": 9314,
+            "color": "#00796b",
+            "label": "Northern & Central Native Ruderal Flooded & Swamp Forest"
+          },
+          {
+            "value": 9315,
+            "color": "#558b2f",
+            "label": "Northern & Central Native Ruderal Forest"
+          },
+          {
+            "value": 9317,
+            "color": "#bcaaa4",
+            "label": "Northern & Central Ruderal Shrubland"
+          },
+          {
+            "value": 9318,
+            "color": "#4db6ac",
+            "label": "Northern & Central Ruderal Wet Meadow & Marsh"
+          },
+          {
+            "value": 9560,
+            "color": "#4db6ac",
+            "label": "Central Appalachian Stream and Riparian Shrubland"
+          },
+          {
+            "value": 9616,
+            "color": "#bcaaa4",
+            "label": "Laurentian-Acadian Calcareous Rocky Outcrop Shrubland"
+          },
+          {
+            "value": 9617,
+            "color": "#4db6ac",
+            "label": "Laurentian-Acadian Floodplain Shrubland"
+          },
+          {
+            "value": 9620,
+            "color": "#4db6ac",
+            "label": "Laurentian-Acadian Shrub Swamp"
+          },
+          {
+            "value": 9677,
+            "color": "#4db6ac",
+            "label": "North-Central Interior and Appalachian Acidic Peatland Shrubland"
+          },
+          {
+            "value": 9679,
+            "color": "#4db6ac",
+            "label": "North-Central Interior Floodplain Shrubland"
+          },
+          {
+            "value": 9686,
+            "color": "#bcaaa4",
+            "label": "Northern Appalachian-Acadian Rocky Heath Outcrop Shrubland"
+          },
+          {
+            "value": 9817,
+            "color": "#bcaaa4",
+            "label": "Northern & Central Ruderal Meadow"
+          }
+        ],
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.75,
+              "raster-resampling": "nearest"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Vegetation (click for the ecological system)",
+        "items": [
+          {
+            "label": "Conifer forest",
+            "color": "#1b5e20"
+          },
+          {
+            "label": "Mixed conifer-hardwood forest",
+            "color": "#558b2f"
+          },
+          {
+            "label": "Hardwood forest",
+            "color": "#9ccc65"
+          },
+          {
+            "label": "Forested wetland and floodplain",
+            "color": "#00796b"
+          },
+          {
+            "label": "Shrub and herbaceous wetland",
+            "color": "#4db6ac"
+          },
+          {
+            "label": "Agriculture",
+            "color": "#f9a825"
+          },
+          {
+            "label": "Developed and roads",
+            "color": "#e57373"
+          },
+          {
+            "label": "Grass, shrub and introduced vegetation",
+            "color": "#bcaaa4"
+          },
+          {
+            "label": "Barren, quarries and pits",
+            "color": "#757575"
+          },
+          {
+            "label": "Open water",
+            "color": "#64b5f6"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "LANDFIRE 2024, U.S. Department of the Interior and U.S. Department of Agriculture"
+    },
+    {
+      "id": "fbfm40",
+      "title": "Fire behavior fuel model (40)",
+      "group": "Wildfire",
+      "visible": false,
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/landfire_fbfm40",
+        "categories": [
+          {
+            "value": 91,
+            "color": "#9e9e9e",
+            "label": "Urban or developed (non-burnable)"
+          },
+          {
+            "value": 93,
+            "color": "#fff59d",
+            "label": "Agricultural (non-burnable)"
+          },
+          {
+            "value": 98,
+            "color": "#90caf9",
+            "label": "Open water (non-burnable)"
+          },
+          {
+            "value": 99,
+            "color": "#e0e0e0",
+            "label": "Bare ground (non-burnable)"
+          },
+          {
+            "value": 101,
+            "color": "#ffe082",
+            "label": "GR1 (grass)"
+          },
+          {
+            "value": 102,
+            "color": "#ffe082",
+            "label": "GR2 (grass)"
+          },
+          {
+            "value": 103,
+            "color": "#ffe082",
+            "label": "GR3 (grass)"
+          },
+          {
+            "value": 105,
+            "color": "#ffe082",
+            "label": "GR5 (grass)"
+          },
+          {
+            "value": 106,
+            "color": "#ffe082",
+            "label": "GR6 (grass)"
+          },
+          {
+            "value": 121,
+            "color": "#ffb74d",
+            "label": "GS1 (grass-shrub)"
+          },
+          {
+            "value": 122,
+            "color": "#ffb74d",
+            "label": "GS2 (grass-shrub)"
+          },
+          {
+            "value": 123,
+            "color": "#ffb74d",
+            "label": "GS3 (grass-shrub)"
+          },
+          {
+            "value": 141,
+            "color": "#f4511e",
+            "label": "SH1 (shrub)"
+          },
+          {
+            "value": 142,
+            "color": "#f4511e",
+            "label": "SH2 (shrub)"
+          },
+          {
+            "value": 143,
+            "color": "#f4511e",
+            "label": "SH3 (shrub)"
+          },
+          {
+            "value": 144,
+            "color": "#f4511e",
+            "label": "SH4 (shrub)"
+          },
+          {
+            "value": 146,
+            "color": "#f4511e",
+            "label": "SH6 (shrub)"
+          },
+          {
+            "value": 147,
+            "color": "#f4511e",
+            "label": "SH7 (shrub)"
+          },
+          {
+            "value": 148,
+            "color": "#f4511e",
+            "label": "SH8 (shrub)"
+          },
+          {
+            "value": 161,
+            "color": "#8d6e63",
+            "label": "TU1 (timber with grass or shrub understory)"
+          },
+          {
+            "value": 162,
+            "color": "#8d6e63",
+            "label": "TU2 (timber with grass or shrub understory)"
+          },
+          {
+            "value": 163,
+            "color": "#8d6e63",
+            "label": "TU3 (timber with grass or shrub understory)"
+          },
+          {
+            "value": 165,
+            "color": "#8d6e63",
+            "label": "TU5 (timber with grass or shrub understory)"
+          },
+          {
+            "value": 181,
+            "color": "#2e7d32",
+            "label": "TL1 (timber litter)"
+          },
+          {
+            "value": 182,
+            "color": "#2e7d32",
+            "label": "TL2 (timber litter)"
+          },
+          {
+            "value": 183,
+            "color": "#2e7d32",
+            "label": "TL3 (timber litter)"
+          },
+          {
+            "value": 184,
+            "color": "#2e7d32",
+            "label": "TL4 (timber litter)"
+          },
+          {
+            "value": 185,
+            "color": "#2e7d32",
+            "label": "TL5 (timber litter)"
+          },
+          {
+            "value": 186,
+            "color": "#2e7d32",
+            "label": "TL6 (timber litter)"
+          },
+          {
+            "value": 188,
+            "color": "#2e7d32",
+            "label": "TL8 (timber litter)"
+          },
+          {
+            "value": 189,
+            "color": "#2e7d32",
+            "label": "TL9 (timber litter)"
+          },
+          {
+            "value": 201,
+            "color": "#4e342e",
+            "label": "SB1 (slash and blowdown)"
+          },
+          {
+            "value": 202,
+            "color": "#4e342e",
+            "label": "SB2 (slash and blowdown)"
+          },
+          {
+            "value": 203,
+            "color": "#4e342e",
+            "label": "SB3 (slash and blowdown)"
+          }
+        ],
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.75,
+              "raster-resampling": "nearest"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Fuel model family (click for the model)",
+        "items": [
+          {
+            "label": "Grass",
+            "color": "#ffe082"
+          },
+          {
+            "label": "Grass-shrub",
+            "color": "#ffb74d"
+          },
+          {
+            "label": "Shrub",
+            "color": "#f4511e"
+          },
+          {
+            "label": "Timber with grass or shrub understory",
+            "color": "#8d6e63"
+          },
+          {
+            "label": "Timber litter",
+            "color": "#2e7d32"
+          },
+          {
+            "label": "Slash and blowdown",
+            "color": "#4e342e"
+          },
+          {
+            "label": "Urban or developed (non-burnable)",
+            "color": "#9e9e9e"
+          },
+          {
+            "label": "Agricultural (non-burnable)",
+            "color": "#fff59d"
+          },
+          {
+            "label": "Open water (non-burnable)",
+            "color": "#90caf9"
+          },
+          {
+            "label": "Bare ground (non-burnable)",
+            "color": "#e0e0e0"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "LANDFIRE 2024, U.S. Department of the Interior and U.S. Department of Agriculture"
+    },
+    {
+      "id": "nlcd-2025",
+      "title": "Land cover 2025 (Annual NLCD)",
+      "group": "Land cover",
+      "visible": false,
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/nlcd_2025_landcover",
+        "categories": [
+          {
+            "value": 11,
+            "color": "#466b9f",
+            "label": "Open water"
+          },
+          {
+            "value": 12,
+            "color": "#d1def8",
+            "label": "Perennial ice/snow"
+          },
+          {
+            "value": 21,
+            "color": "#dec5c5",
+            "label": "Developed, open space"
+          },
+          {
+            "value": 22,
+            "color": "#d99282",
+            "label": "Developed, low intensity"
+          },
+          {
+            "value": 23,
+            "color": "#eb0000",
+            "label": "Developed, medium intensity"
+          },
+          {
+            "value": 24,
+            "color": "#ab0000",
+            "label": "Developed, high intensity"
+          },
+          {
+            "value": 31,
+            "color": "#b3ac9f",
+            "label": "Barren land"
+          },
+          {
+            "value": 41,
+            "color": "#68ab5f",
+            "label": "Deciduous forest"
+          },
+          {
+            "value": 42,
+            "color": "#1c5f2c",
+            "label": "Evergreen forest"
+          },
+          {
+            "value": 43,
+            "color": "#b5c58f",
+            "label": "Mixed forest"
+          },
+          {
+            "value": 52,
+            "color": "#ccb879",
+            "label": "Shrub/scrub"
+          },
+          {
+            "value": 71,
+            "color": "#dfdfc2",
+            "label": "Grassland/herbaceous"
+          },
+          {
+            "value": 81,
+            "color": "#dcd939",
+            "label": "Pasture/hay"
+          },
+          {
+            "value": 82,
+            "color": "#ab6c28",
+            "label": "Cultivated crops"
+          },
+          {
+            "value": 90,
+            "color": "#b8d9eb",
+            "label": "Woody wetlands"
+          },
+          {
+            "value": 95,
+            "color": "#6c9fb8",
+            "label": "Emergent herbaceous wetlands"
+          }
+        ],
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.8,
+              "raster-resampling": "nearest"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "NLCD land cover class",
+        "items": [
+          {
+            "label": "Open water",
+            "color": "#466b9f"
+          },
+          {
+            "label": "Developed, open space",
+            "color": "#dec5c5"
+          },
+          {
+            "label": "Developed, low intensity",
+            "color": "#d99282"
+          },
+          {
+            "label": "Developed, medium intensity",
+            "color": "#eb0000"
+          },
+          {
+            "label": "Developed, high intensity",
+            "color": "#ab0000"
+          },
+          {
+            "label": "Barren land",
+            "color": "#b3ac9f"
+          },
+          {
+            "label": "Deciduous forest",
+            "color": "#68ab5f"
+          },
+          {
+            "label": "Evergreen forest",
+            "color": "#1c5f2c"
+          },
+          {
+            "label": "Mixed forest",
+            "color": "#b5c58f"
+          },
+          {
+            "label": "Shrub/scrub",
+            "color": "#ccb879"
+          },
+          {
+            "label": "Grassland/herbaceous",
+            "color": "#dfdfc2"
+          },
+          {
+            "label": "Pasture/hay",
+            "color": "#dcd939"
+          },
+          {
+            "label": "Cultivated crops",
+            "color": "#ab6c28"
+          },
+          {
+            "label": "Woody wetlands",
+            "color": "#b8d9eb"
+          },
+          {
+            "label": "Emergent herbaceous wetlands",
+            "color": "#6c9fb8"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "USGS Annual National Land Cover Database, Collection 1.2 (2025)"
+    },
+    {
+      "id": "cdl-2025",
+      "title": "Crops and land cover 2025 (Cropland Data Layer)",
+      "group": "Agriculture",
+      "visible": false,
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/cdl_2025",
+        "categories": [
+          {
+            "value": 1,
+            "color": "#ffd200",
+            "label": "Corn"
+          },
+          {
+            "value": 4,
+            "color": "#ff9e09",
+            "label": "Sorghum"
+          },
+          {
+            "value": 5,
+            "color": "#246e00",
+            "label": "Soybeans"
+          },
+          {
+            "value": 6,
+            "color": "#ffff00",
+            "label": "Sunflower"
+          },
+          {
+            "value": 12,
+            "color": "#dda309",
+            "label": "Sweet corn"
+          },
+          {
+            "value": 21,
+            "color": "#e0007a",
+            "label": "Barley"
+          },
+          {
+            "value": 23,
+            "color": "#d6b56b",
+            "label": "Spring wheat"
+          },
+          {
+            "value": 24,
+            "color": "#a36e00",
+            "label": "Winter wheat"
+          },
+          {
+            "value": 27,
+            "color": "#ac007a",
+            "label": "Rye"
+          },
+          {
+            "value": 28,
+            "color": "#9f5787",
+            "label": "Oats"
+          },
+          {
+            "value": 30,
+            "color": "#d49eba",
+            "label": "Speltz"
+          },
+          {
+            "value": 35,
+            "color": "#00ad49",
+            "label": "Mustard"
+          },
+          {
+            "value": 36,
+            "color": "#ffa3e0",
+            "label": "Alfalfa"
+          },
+          {
+            "value": 37,
+            "color": "#a3f08a",
+            "label": "Other hay / non-alfalfa"
+          },
+          {
+            "value": 39,
+            "color": "#d49eba",
+            "label": "Buckwheat"
+          },
+          {
+            "value": 41,
+            "color": "#a800e2",
+            "label": "Sugar beets"
+          },
+          {
+            "value": 42,
+            "color": "#a30000",
+            "label": "Dry beans"
+          },
+          {
+            "value": 43,
+            "color": "#6e2400",
+            "label": "Potatoes"
+          },
+          {
+            "value": 47,
+            "color": "#ff6666",
+            "label": "Misc. vegetables and fruits"
+          },
+          {
+            "value": 58,
+            "color": "#e8bdff",
+            "label": "Clover / wildflowers"
+          },
+          {
+            "value": 59,
+            "color": "#adffdd",
+            "label": "Sod / grass seed"
+          },
+          {
+            "value": 61,
+            "color": "#bdbd77",
+            "label": "Fallow / idle cropland"
+          },
+          {
+            "value": 68,
+            "color": "#b8004f",
+            "label": "Apples"
+          },
+          {
+            "value": 69,
+            "color": "#6e4487",
+            "label": "Grapes"
+          },
+          {
+            "value": 70,
+            "color": "#007777",
+            "label": "Christmas trees"
+          },
+          {
+            "value": 71,
+            "color": "#af9a6e",
+            "label": "Other tree crops"
+          },
+          {
+            "value": 77,
+            "color": "#af9a6e",
+            "label": "Pears"
+          },
+          {
+            "value": 92,
+            "color": "#00ffff",
+            "label": "Aquaculture"
+          },
+          {
+            "value": 111,
+            "color": "#496ea1",
+            "label": "Open water"
+          },
+          {
+            "value": 121,
+            "color": "#9a9a9a",
+            "label": "Developed, open space"
+          },
+          {
+            "value": 122,
+            "color": "#9a9a9a",
+            "label": "Developed, low intensity"
+          },
+          {
+            "value": 123,
+            "color": "#9a9a9a",
+            "label": "Developed, medium intensity"
+          },
+          {
+            "value": 124,
+            "color": "#9a9a9a",
+            "label": "Developed, high intensity"
+          },
+          {
+            "value": 131,
+            "color": "#ccbda1",
+            "label": "Barren"
+          },
+          {
+            "value": 141,
+            "color": "#92cc92",
+            "label": "Deciduous forest"
+          },
+          {
+            "value": 142,
+            "color": "#92cc92",
+            "label": "Evergreen forest"
+          },
+          {
+            "value": 143,
+            "color": "#92cc92",
+            "label": "Mixed forest"
+          },
+          {
+            "value": 152,
+            "color": "#c5d49e",
+            "label": "Shrubland"
+          },
+          {
+            "value": 176,
+            "color": "#e8ffbd",
+            "label": "Grass / pasture"
+          },
+          {
+            "value": 190,
+            "color": "#7cafaf",
+            "label": "Woody wetlands"
+          },
+          {
+            "value": 195,
+            "color": "#7cafaf",
+            "label": "Herbaceous wetlands"
+          },
+          {
+            "value": 206,
+            "color": "#ff6666",
+            "label": "Carrots"
+          },
+          {
+            "value": 208,
+            "color": "#ff6666",
+            "label": "Garlic"
+          },
+          {
+            "value": 214,
+            "color": "#ff6666",
+            "label": "Broccoli"
+          },
+          {
+            "value": 220,
+            "color": "#ff8eaa",
+            "label": "Plums"
+          },
+          {
+            "value": 221,
+            "color": "#ff6666",
+            "label": "Strawberries"
+          },
+          {
+            "value": 242,
+            "color": "#000099",
+            "label": "Blueberries"
+          },
+          {
+            "value": 244,
+            "color": "#ff6666",
+            "label": "Cauliflower"
+          },
+          {
+            "value": 246,
+            "color": "#ff6666",
+            "label": "Radishes"
+          }
+        ],
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.8,
+              "raster-resampling": "nearest"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Main classes in Maine (click for any of the 49)",
+        "items": [
+          {
+            "label": "Potatoes",
+            "color": "#6e2400"
+          },
+          {
+            "label": "Blueberries",
+            "color": "#000099"
+          },
+          {
+            "label": "Other hay / non-alfalfa",
+            "color": "#a3f08a"
+          },
+          {
+            "label": "Alfalfa",
+            "color": "#ffa3e0"
+          },
+          {
+            "label": "Corn",
+            "color": "#ffd200"
+          },
+          {
+            "label": "Oats",
+            "color": "#9f5787"
+          },
+          {
+            "label": "Barley",
+            "color": "#e0007a"
+          },
+          {
+            "label": "Fallow / idle cropland",
+            "color": "#bdbd77"
+          },
+          {
+            "label": "Christmas trees",
+            "color": "#007777"
+          },
+          {
+            "label": "Apples",
+            "color": "#b8004f"
+          },
+          {
+            "label": "Grass / pasture",
+            "color": "#e8ffbd"
+          },
+          {
+            "label": "Deciduous forest",
+            "color": "#92cc92"
+          },
+          {
+            "label": "Evergreen forest",
+            "color": "#92cc92"
+          },
+          {
+            "label": "Mixed forest",
+            "color": "#92cc92"
+          },
+          {
+            "label": "Woody wetlands",
+            "color": "#7cafaf"
+          },
+          {
+            "label": "Herbaceous wetlands",
+            "color": "#7cafaf"
+          },
+          {
+            "label": "Shrubland",
+            "color": "#c5d49e"
+          },
+          {
+            "label": "Developed, low intensity",
+            "color": "#9a9a9a"
+          },
+          {
+            "label": "Open water",
+            "color": "#496ea1"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "USDA NASS Cropland Data Layer 2025"
+    }
+  ]
+}

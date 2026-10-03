@@ -1,0 +1,212 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-terrain",
+  "title": "Maine Terrain",
+  "status": "draft",
+  "description": "Elevation, hillshade, slope and 100-foot contours for all of Maine, from the USGS 3D Elevation Program (30 m). Click the map for the elevation or slope at that spot.",
+  "tags": [
+    "maine",
+    "terrain",
+    "elevation"
+  ],
+  "view": {
+    "center": [
+      -69.25,
+      45.3
+    ],
+    "zoom": 6.3,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "hillshade",
+      "title": "Hillshade",
+      "group": "Terrain",
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/hillshade_30m",
+        "rescale": [
+          0,
+          255
+        ],
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.55
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "none"
+      },
+      "interaction": {
+        "inspect": false
+      },
+      "attribution": "USGS 3D Elevation Program"
+    },
+    {
+      "id": "elevation",
+      "title": "Elevation",
+      "group": "Terrain",
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/dem_30m",
+        "rescale": [
+          -600,
+          1600
+        ],
+        "colormap": "terrain",
+        "units": "m",
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.5
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "gradient",
+        "title": "Elevation (m)",
+        "stops": [
+          {
+            "value": "0",
+            "color": "#19d16b"
+          },
+          {
+            "value": "300",
+            "color": "#a1ec86"
+          },
+          {
+            "value": "600",
+            "color": "#e8e18c"
+          },
+          {
+            "value": "900",
+            "color": "#a28766"
+          },
+          {
+            "value": "1600",
+            "color": "#ffffff"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "USGS 3D Elevation Program"
+    },
+    {
+      "id": "slope",
+      "title": "Slope",
+      "group": "Terrain",
+      "visible": false,
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/slope_30m",
+        "rescale": [
+          0,
+          35
+        ],
+        "colormap": "magma",
+        "units": "°",
+        "maxzoom": 13
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.7
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "gradient",
+        "title": "Slope (degrees)",
+        "stops": [
+          {
+            "value": "0",
+            "color": "#000003"
+          },
+          {
+            "value": "10",
+            "color": "#5e177f"
+          },
+          {
+            "value": "20",
+            "color": "#d3426d"
+          },
+          {
+            "value": "35+",
+            "color": "#fbfcbf"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "USGS 3D Elevation Program"
+    },
+    {
+      "id": "contours",
+      "title": "Contours (100 ft)",
+      "group": "Terrain",
+      "minzoom": 10,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_terrain__contours",
+        "properties": [
+          "elev_ft",
+          "index_line"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#7a5230",
+              "line-opacity": 0.75,
+              "line-width": [
+                "case",
+                [
+                  "get",
+                  "index_line"
+                ],
+                1.4,
+                0.6
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#7a5230",
+        "label": "Contour (every 500 ft heavier); zoom in to see"
+      },
+      "interaction": {
+        "popup": {
+          "template": "{elev_ft} ft"
+        },
+        "inspect": true
+      },
+      "attribution": "USGS 3D Elevation Program"
+    }
+  ]
+}

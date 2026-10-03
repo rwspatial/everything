@@ -1,5 +1,8 @@
 """Run history: every execution gets an app.jobs row (inline for the CLI) and an app.runs row.
 
+Run by the dataset worker, JOB_ID is set: the run is recorded against that queued job, and the worker (not this
+recorder) moves the job through its states (retries, cancel).
+
     with RunRecorder("import", recipe="ne_lakes") as run:
         ...                        # anything printed (and child-process output via run_cmd) is captured
         run.rows = 1355
@@ -79,12 +82,16 @@ class RunRecorder:
     def __enter__(self) -> "RunRecorder":
         self.conn = psycopg.connect(self.conninfo, autocommit=True)
         who, host = triggered_by(), socket.gethostname()
-        self.job_id = self.conn.execute(
-            """INSERT INTO app.jobs (recipe_name, action, params, concurrency_class, status, attempts,
-                                     locked_by, locked_at, heartbeat_at, created_by)
-               VALUES (%s, %s, %s, %s, 'running', 1, %s, now(), now(), %s) RETURNING id""",
-            (self.recipe, self.action, json.dumps(self.params), self.concurrency, f"inline@{host}", who),
-        ).fetchone()[0]
+        self.queued = bool(os.environ.get("JOB_ID"))
+        if self.queued:
+            self.job_id = int(os.environ["JOB_ID"])
+        else:
+            self.job_id = self.conn.execute(
+                """INSERT INTO app.jobs (recipe_name, action, params, concurrency_class, status, attempts,
+                                         locked_by, locked_at, heartbeat_at, created_by)
+                   VALUES (%s, %s, %s, %s, 'running', 1, %s, now(), now(), %s) RETURNING id""",
+                (self.recipe, self.action, json.dumps(self.params), self.concurrency, f"inline@{host}", who),
+            ).fetchone()[0]
         self.run_id = self.conn.execute(
             """INSERT INTO app.runs (job_id, recipe_name, action, params, status, triggered_by, host, started_at)
                VALUES (%s, %s, %s, %s, 'running', %s, %s, now()) RETURNING id""",
@@ -120,10 +127,11 @@ class RunRecorder:
                 (status, error, self.log_tail(), self.rows, self.bytes, self.outcome,
                  json.dumps(self.report), self.run_id),
             )
-            self.conn.execute(
-                "UPDATE app.jobs SET status = %s, finished_at = now(), heartbeat_at = now() WHERE id = %s",
-                (status, self.job_id),
-            )
+            if not self.queued:
+                self.conn.execute(
+                    "UPDATE app.jobs SET status = %s, finished_at = now(), heartbeat_at = now() WHERE id = %s",
+                    (status, self.job_id),
+                )
         finally:
             self.conn.close()
         return False  # never swallow the exception

@@ -54,8 +54,10 @@ services:
       DATABASE_URL: postgresql://tipg_ro:${TIPG_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
       PORT: "8000"
       WEB_CONCURRENCY: "2"
-      TIPG_NAME: "Spatial tiles"
+      TIPG_NAME: "Downeast Geospatial Data API"
       TIPG_ROOT_PATH: /tiles
+      # Site theme for tiPG's HTML pages (header, footer, viewer); everything else is tiPG's own templates.
+      TIPG_TEMPLATE_DIRECTORY: /templates
       TIPG_DB_SCHEMAS: '["pub"]'
       TIPG_CATALOG_TTL: ${TIPG_CATALOG_TTL:-300}
       # FALSE on purpose: with TRUE, tiPG 1.6.1 names tile layers by table name but its
@@ -65,6 +67,8 @@ services:
       TIPG_DEFAULT_FEATURES_LIMIT: "1000"
       TIPG_MAX_FEATURES_PER_QUERY: "10000"
       TIPG_CORS_ORIGIN: http://localhost:${HTTP_PORT:-8080}
+    volumes:
+      - ./services/tipg/templates:/templates:ro   # directory mount (single-file mounts break on Docker Desktop/WSL)
     networks: [api, data]
     depends_on:
       postgis:
@@ -285,6 +289,45 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
+  # Dataset worker (admin plan Phase B; docs/setup/06-admin.md): runs dataset jobs queued from the dashboard or its
+  # scheduler (re-download, import, freshness, health, dry run, enable/disable) with scripts/geoimport.py, as the
+  # loader role. Same image and mounts as geotools; no Docker socket. Start: make workers-up.
+  dataset-worker:
+    profiles: [workers]
+    image: spatial/geotools:${ROCKER_TAG:?set in .env}
+    command: ["python", "scripts/dataset_worker.py"]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /tmp/home
+      PGHOST: postgis
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB}
+      LOADER_DB_PASSWORD: ${LOADER_DB_PASSWORD}
+      TIPG_DB_PASSWORD: ${TIPG_DB_PASSWORD}       # health checks read pub views as tipg_ro
+      ANALYST_DB_PASSWORD: ""                       # not needed here: the entrypoint's analyst service stays unusable
+      CENSUS_API_KEY: ${CENSUS_API_KEY:-}
+      LANDFIRE_EMAIL: ${LANDFIRE_EMAIL:-}   # LANDFIRE Product Service jobs require an email address
+      DATASET_RETRY_BASE: ${DATASET_RETRY_BASE:-30}
+      DATASET_SCHEDULER: ${DATASET_SCHEDULER:-on}
+    volumes:
+      - ./:/work
+      - ./data/incoming:/data:ro
+    working_dir: /work
+    networks: [data, egress, api]
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, time, sys; sys.exit(time.time() - os.path.getmtime('/tmp/dataset-worker-alive') > 90)"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    restart: unless-stopped
+
   # Browser tests (Playwright + axe) against the running stack: `make e2e`.
   e2e:
     profiles: [test]
@@ -325,6 +368,7 @@ services:
       TRIGGERED_BY: cli:${HOST_USER:-unknown}
       # External API keys: only here (and the Phase B worker). Never in core-api, frontend, proxy or tipg.
       CENSUS_API_KEY: ${CENSUS_API_KEY:-}
+      LANDFIRE_EMAIL: ${LANDFIRE_EMAIL:-}   # LANDFIRE Product Service jobs require an email address
     volumes:
       - ./:/work
       - ./data/incoming:/data:ro

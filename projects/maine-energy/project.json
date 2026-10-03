@@ -1,0 +1,299 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-energy",
+  "title": "Maine Energy",
+  "status": "draft",
+  "description": "Maine's power plants by energy source and capacity, the high-voltage transmission grid and fuel pipelines, from the EIA U.S. Energy Atlas (EIA-860 plant data).",
+  "tags": [
+    "maine",
+    "energy",
+    "electricity",
+    "infrastructure",
+    "eia"
+  ],
+  "view": {
+    "center": [
+      -69.2,
+      45.0
+    ],
+    "zoom": 7,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "pipelines",
+      "title": "Pipelines",
+      "group": "Fuel",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_energy__pipelines",
+        "properties": [
+          "product",
+          "operator",
+          "kind"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "product"
+                ],
+                "natural gas",
+                "#8c510a",
+                "petroleum products",
+                "#4d4d4d",
+                "#4d4d4d"
+              ],
+              "line-width": 2,
+              "line-dasharray": [
+                3,
+                1.5
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Pipelines",
+        "items": [
+          {
+            "label": "Natural gas",
+            "color": "#8c510a"
+          },
+          {
+            "label": "Petroleum products",
+            "color": "#4d4d4d"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{product}: {operator} ({kind})"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Energy Information Administration, U.S. Energy Atlas"
+    },
+    {
+      "id": "transmission-lines",
+      "title": "Transmission lines",
+      "group": "Grid",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_energy__transmission_lines",
+        "properties": [
+          "owner",
+          "voltage_kv",
+          "volt_class",
+          "status",
+          "sub_1",
+          "sub_2"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "layout": {
+              "line-cap": "round"
+            },
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "volt_class"
+                ],
+                "345",
+                "#b2182b",
+                "100-161",
+                "#ef8a62",
+                "UNDER 100",
+                "#fddbc7",
+                "NOT AVAILABLE",
+                "#bdbdbd",
+                "#bdbdbd"
+              ],
+              "line-width": [
+                "match",
+                [
+                  "get",
+                  "volt_class"
+                ],
+                "345",
+                3.2,
+                "100-161",
+                2.0,
+                "UNDER 100",
+                1.2,
+                "NOT AVAILABLE",
+                1.0,
+                1.0
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Voltage class (kV)",
+        "items": [
+          {
+            "label": "345 kV",
+            "color": "#b2182b"
+          },
+          {
+            "label": "100–161 kV",
+            "color": "#ef8a62"
+          },
+          {
+            "label": "under 100 kV",
+            "color": "#fddbc7"
+          },
+          {
+            "label": "not available",
+            "color": "#bdbdbd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{owner}: {voltage_kv} kV ({sub_1} to {sub_2})"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Energy Information Administration, U.S. Energy Atlas"
+    },
+    {
+      "id": "power-plants",
+      "title": "Power plants",
+      "group": "Generation",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_energy__power_plants",
+        "properties": [
+          "name",
+          "source",
+          "technology",
+          "total_mw",
+          "operator",
+          "city",
+          "period"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "source"
+                ],
+                "solar",
+                "#f2b701",
+                "hydroelectric",
+                "#1f78b4",
+                "wind",
+                "#33a02c",
+                "biomass",
+                "#8c510a",
+                "natural gas",
+                "#e31a1c",
+                "petroleum",
+                "#6a3d9a",
+                "batteries",
+                "#ff7f00",
+                "other",
+                "#999999",
+                "#999999"
+              ],
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "total_mw"
+                  ],
+                  0
+                ],
+                0,
+                3,
+                10,
+                5,
+                100,
+                9,
+                500,
+                15
+              ],
+              "circle-opacity": 0.85,
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Primary energy source (size: capacity, MW)",
+        "items": [
+          {
+            "label": "Solar",
+            "color": "#f2b701"
+          },
+          {
+            "label": "Hydroelectric",
+            "color": "#1f78b4"
+          },
+          {
+            "label": "Wind",
+            "color": "#33a02c"
+          },
+          {
+            "label": "Biomass",
+            "color": "#8c510a"
+          },
+          {
+            "label": "Natural gas",
+            "color": "#e31a1c"
+          },
+          {
+            "label": "Petroleum",
+            "color": "#6a3d9a"
+          },
+          {
+            "label": "Batteries",
+            "color": "#ff7f00"
+          },
+          {
+            "label": "Other",
+            "color": "#999999"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({source}, {technology}): {total_mw} MW, {operator}"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Energy Information Administration, U.S. Energy Atlas"
+    }
+  ]
+}

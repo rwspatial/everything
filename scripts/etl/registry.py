@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 
 # Keys a recipe may declare, and keys the dashboard knows about even before a recipe needs them.
-KNOWN_KEYS = ["CENSUS_API_KEY", "EARTHDATA_TOKEN", "PC_SDK_SUBSCRIPTION_KEY"]
+KNOWN_KEYS = ["CENSUS_API_KEY", "EARTHDATA_TOKEN", "LANDFIRE_EMAIL", "PC_SDK_SUBSCRIPTION_KEY"]
 
 
 def _normalize(r: dict) -> dict:

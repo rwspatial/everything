@@ -231,6 +231,10 @@ def get_dataset(name: str) -> dict:
     d["keys"] = rows(
         "SELECT key_name, configured, fingerprint, last_used_ok_at, last_error_at, reported_at "
         "FROM app.secrets_status WHERE key_name = ANY(%s) ORDER BY key_name", (d.get("requires_keys") or [],))
+    d["active_jobs"] = rows(
+        """SELECT id, action, status, progress_message, attempts, max_attempts, run_after, created_by, created_at
+           FROM app.jobs WHERE recipe_name = %s AND kind = 'dataset' AND status IN ('queued', 'running', 'cancel_requested')
+             AND coalesce(locked_by, '') NOT LIKE 'inline@%%' ORDER BY id""", (name,))
     d["runs"] = rows(
         """SELECT id, action, status, outcome, triggered_by, started_at, finished_at,
                   extract(epoch FROM duration)::float8 AS seconds, rows_written, bytes_downloaded, error
@@ -411,6 +415,18 @@ async def update_project(slug: str, request: Request) -> dict:
     return _save(m, rep, _admin_user(request), create=False)
 
 
+@app.get("/api/admin/projects", dependencies=[Depends(require_admin)])
+def admin_list_projects() -> list[dict]:
+    """Every registered project with where it is managed: origin 'file' (projects/<slug>/, git) or 'api' (wizard)."""
+    with projects_pool.connection() as conn:
+        ps = conn.execute(
+            """SELECT p.slug, p.title, p.status, p.origin, p.version, p.updated_at, p.updated_by,
+                      coalesce((p.validation->>'ok')::boolean, true) AS valid,
+                      json_array_length(p.manifest->'layers') AS layers
+               FROM app.projects p ORDER BY p.position, p.slug""").fetchall()
+    return ps
+
+
 @app.delete("/api/admin/projects/{slug}", dependencies=[Depends(require_admin)], status_code=204)
 def delete_project(slug: str) -> Response:
     """Remove a project saved in the wizard. File-managed projects come back on the next `mapgen sync`,
@@ -480,8 +496,10 @@ def field_stats(collection: str, field: str, k: int = 5) -> dict:
 # the descriptor and the live database before a job is queued, so workers only see well-formed work.
 
 NUMERIC_TYPES = ("integer", "bigint", "smallint", "numeric", "real", "double precision")
-JOB_COLUMNS = """id, process_id, status, progress::float8 AS progress, progress_message, inputs, result, error,
-                 attempts, created_by, created_at, started_at, finished_at"""
+JOB_COLUMNS = """id, kind, process_id, recipe_name, action, status, progress::float8 AS progress, progress_message,
+                 inputs, params, result, error, concurrency_class, attempts, max_attempts, run_after, created_by,
+                 created_at, started_at, finished_at,
+                 (SELECT max(r.id) FROM app.runs r WHERE r.job_id = app.jobs.id) AS run_id"""
 
 
 def _process(conn, process_id: str) -> dict:
@@ -591,9 +609,9 @@ async def submit_job(request: Request, response: Response) -> dict:
 @app.get("/api/admin/jobs/{job_id}", dependencies=[Depends(require_admin_or_analysis)])
 def get_job(job_id: int) -> dict:
     with projects_pool.connection() as conn:
-        j = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE id = %s AND kind = 'process'", (job_id,)).fetchone()
+        j = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE id = %s", (job_id,)).fetchone()
     if not j:
-        raise HTTPException(404, f"no analysis job {job_id}")
+        raise HTTPException(404, f"no job {job_id}")
     return j
 
 
@@ -602,7 +620,8 @@ def cancel_job(job_id: int) -> dict:
     with projects_pool.connection() as conn:
         j = conn.execute(
             """UPDATE app.jobs SET status = CASE status WHEN 'queued' THEN 'cancelled' ELSE 'cancel_requested' END
-               WHERE id = %s AND kind = 'process' AND status IN ('queued', 'running') RETURNING id, status""",
+               WHERE id = %s AND status IN ('queued', 'running') AND coalesce(locked_by, '') NOT LIKE 'inline@%%'
+               RETURNING id, status""",
             (job_id,)).fetchone()
     if not j:
         raise HTTPException(409, f"job {job_id} is not queued or running")
@@ -628,3 +647,66 @@ async def promote_job(job_id: int, request: Request) -> dict:
     if not rep["ok"]:
         raise HTTPException(422, rep)
     return _save(m, rep, _admin_user(request), create=False)
+
+
+# ---- dataset actions (admin plan Phase B) -----------------------------------------------------------------------
+# Queued as kind='dataset' jobs; the dataset worker (scripts/dataset_worker.py) runs them with scripts/geoimport.py.
+
+DATASET_ACTIONS = ("freshness", "dry_run", "import", "redownload", "healthcheck", "enable", "disable")
+
+
+def _queue_dataset_job(conn, recipe: dict, action: str, who: str) -> tuple[dict, bool]:
+    job_action = "set_enabled" if action in ("enable", "disable") else action
+    params = {"enabled": action == "enable"} if job_action == "set_enabled" else {}
+    if job_action in ("import", "redownload"):
+        cls = "raster_heavy" if recipe["kind"] == "raster" else "network"
+    else:
+        cls = "network" if job_action in ("freshness", "dry_run") else "db"
+    attempts = {"import": 4, "redownload": 4, "freshness": 3}.get(job_action, 1)
+    key = f"{'import' if job_action in ('import', 'redownload') else job_action}:{recipe['name']}"
+    row = conn.execute(
+        f"""INSERT INTO app.jobs (kind, recipe_name, action, params, concurrency_class, max_attempts, dedupe_key, created_by)
+            VALUES ('dataset', %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
+            RETURNING {JOB_COLUMNS}""", (recipe["name"], job_action, json.dumps(params), cls, attempts, key, who)).fetchone()
+    if row:
+        return row, False
+    return conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
+                        (key,)).fetchone(), True
+
+
+@app.post("/api/admin/datasets/actions", dependencies=[Depends(require_admin)])
+async def dataset_action_all(request: Request) -> dict:
+    """Queue one action (freshness or healthcheck) for every enabled dataset."""
+    action = ((await request.json()) or {}).get("action")
+    if action not in ("freshness", "healthcheck"):
+        raise HTTPException(400, "action must be freshness or healthcheck")
+    queued = existing = 0
+    with projects_pool.connection() as conn:
+        for r in conn.execute("SELECT name, kind, enabled FROM app.recipes WHERE enabled AND yaml_path IS NOT NULL "
+                              "ORDER BY name").fetchall():
+            _, dedup = _queue_dataset_job(conn, r, action, _admin_user(request))
+            existing += dedup
+            queued += not dedup
+    return {"action": action, "queued": queued, "already_queued": existing}
+
+
+@app.post("/api/admin/datasets/{name}/actions", dependencies=[Depends(require_admin)], status_code=201)
+async def dataset_action(name: str, request: Request, response: Response) -> dict:
+    body = await request.json()
+    action = (body or {}).get("action")
+    if action not in DATASET_ACTIONS:
+        raise HTTPException(400, f"action must be one of {', '.join(DATASET_ACTIONS)}")
+    with projects_pool.connection() as conn:
+        r = conn.execute("SELECT name, kind, enabled, yaml_path FROM app.recipes WHERE name = %s", (name,)).fetchone()
+        if not r or r["yaml_path"] is None:
+            raise HTTPException(404, f"no dataset recipe {name}")
+        if action in ("import", "redownload") and not r["enabled"]:
+            raise HTTPException(409, f"{name} is disabled; enable it first")
+        if (action == "enable" and r["enabled"]) or (action == "disable" and not r["enabled"]):
+            raise HTTPException(409, f"{name} is already {'enabled' if r['enabled'] else 'disabled'}")
+        job, dedup = _queue_dataset_job(conn, r, action, _admin_user(request))
+    if dedup:
+        response.status_code = 200
+        job["deduplicated"] = True
+    return job

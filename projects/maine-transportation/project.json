@@ -1,0 +1,801 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-transportation",
+  "title": "Maine Transportation",
+  "status": "draft",
+  "description": "MaineDOT's road network by functional class, posted speed limits and scenic byways; bridges and large culverts by condition; traffic signals and park-and-ride lots; railroads and grade crossings; and airports, seaplane bases and heliports (USGS National Transportation Dataset).",
+  "tags": [
+    "maine",
+    "transportation",
+    "roads",
+    "bridges",
+    "rail",
+    "mainedot"
+  ],
+  "view": {
+    "center": [
+      -69.78,
+      44.31
+    ],
+    "zoom": 9,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "public-roads",
+      "title": "Public roads by functional class",
+      "group": "Roads",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__public_roads",
+        "properties": [
+          "name",
+          "route",
+          "functional_class",
+          "town",
+          "jurisdiction",
+          "aadt",
+          "lanes",
+          "speed_limit",
+          "nhs"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "layout": {
+              "line-cap": "round"
+            },
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "functional_class"
+                ],
+                "Interstate",
+                "#d7301f",
+                "Other freeway / expressway",
+                "#ef6548",
+                "Other principal arterial",
+                "#fc8d59",
+                "Minor arterial",
+                "#fdbb84",
+                "Major collector",
+                "#41b6c4",
+                "Minor collector",
+                "#7fcdbb",
+                "Local",
+                "#bdbdbd",
+                "#bdbdbd"
+              ],
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                [
+                  "*",
+                  0.5,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "functional_class"
+                    ],
+                    "Interstate",
+                    3.0,
+                    "Other freeway / expressway",
+                    2.6,
+                    "Other principal arterial",
+                    2.2,
+                    "Minor arterial",
+                    1.8,
+                    "Major collector",
+                    1.4,
+                    "Minor collector",
+                    1.1,
+                    "Local",
+                    0.6,
+                    0.6
+                  ]
+                ],
+                13,
+                [
+                  "*",
+                  2,
+                  [
+                    "match",
+                    [
+                      "get",
+                      "functional_class"
+                    ],
+                    "Interstate",
+                    3.0,
+                    "Other freeway / expressway",
+                    2.6,
+                    "Other principal arterial",
+                    2.2,
+                    "Minor arterial",
+                    1.8,
+                    "Major collector",
+                    1.4,
+                    "Minor collector",
+                    1.1,
+                    "Local",
+                    0.6,
+                    0.6
+                  ]
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Federal functional class",
+        "items": [
+          {
+            "label": "Interstate",
+            "color": "#d7301f"
+          },
+          {
+            "label": "Other freeway / expressway",
+            "color": "#ef6548"
+          },
+          {
+            "label": "Other principal arterial",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "Minor arterial",
+            "color": "#fdbb84"
+          },
+          {
+            "label": "Major collector",
+            "color": "#41b6c4"
+          },
+          {
+            "label": "Minor collector",
+            "color": "#7fcdbb"
+          },
+          {
+            "label": "Local",
+            "color": "#bdbdbd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({route}), {town}: {functional_class}, {aadt} vehicles/day, {lanes} lanes, {speed_limit} mph"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data"
+    },
+    {
+      "id": "speed-limits",
+      "title": "Posted speed limits",
+      "group": "Roads",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__speed_limits",
+        "properties": [
+          "mph",
+          "comments"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "step",
+                [
+                  "get",
+                  "mph"
+                ],
+                "#1a9850",
+                30,
+                "#a6d96a",
+                45,
+                "#fee08b",
+                55,
+                "#fc8d59",
+                65,
+                "#d73027"
+              ],
+              "line-width": 2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Posted speed limit",
+        "items": [
+          {
+            "label": "under 30 mph",
+            "color": "#1a9850"
+          },
+          {
+            "label": "30–40 mph",
+            "color": "#a6d96a"
+          },
+          {
+            "label": "45–50 mph",
+            "color": "#fee08b"
+          },
+          {
+            "label": "55–60 mph",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "65 mph and over",
+            "color": "#d73027"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{mph} mph"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data",
+      "visible": false
+    },
+    {
+      "id": "scenic-byways",
+      "title": "Scenic byways",
+      "group": "Roads",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__scenic_byways",
+        "properties": [
+          "name",
+          "designation",
+          "status",
+          "description"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "layout": {
+              "line-cap": "round"
+            },
+            "paint": {
+              "line-color": "#6a51a3",
+              "line-width": 4,
+              "line-opacity": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Scenic byway",
+        "items": [
+          {
+            "label": "Scenic byway",
+            "color": "#6a51a3"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({designation})"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data",
+      "visible": false
+    },
+    {
+      "id": "rail",
+      "title": "Railroads",
+      "group": "Rail",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__rail",
+        "properties": [
+          "name",
+          "owner",
+          "usage",
+          "fra_class"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "usage"
+                ],
+                "Main",
+                "#252525",
+                "Non-Mainline Active",
+                "#737373",
+                "Out of Service",
+                "#bdbdbd",
+                "#737373"
+              ],
+              "line-width": 2,
+              "line-dasharray": [
+                4,
+                1
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Rail",
+        "items": [
+          {
+            "label": "Main line",
+            "color": "#252525"
+          },
+          {
+            "label": "Other active",
+            "color": "#737373"
+          },
+          {
+            "label": "Out of service",
+            "color": "#bdbdbd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: {owner}, {usage}"
+        },
+        "inspect": true
+      },
+      "attribution": "USGS The National Map, National Transportation Dataset"
+    },
+    {
+      "id": "rail-crossings",
+      "title": "Railroad crossings",
+      "group": "Rail",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__railroad_crossings",
+        "properties": [
+          "federal_crossing_number",
+          "road",
+          "town",
+          "crossing_type",
+          "signalized",
+          "surface_condition"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#000000",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                5
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Rail crossing",
+        "items": [
+          {
+            "label": "Rail crossing",
+            "color": "#000000"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{road}, {town}: {crossing_type} crossing, signalized {signalized}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data",
+      "visible": false,
+      "minzoom": 10
+    },
+    {
+      "id": "bridges",
+      "title": "Bridges by condition",
+      "group": "Structures",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__bridges",
+        "properties": [
+          "bridge_no",
+          "name",
+          "facility",
+          "crosses",
+          "year_built",
+          "daily_traffic",
+          "condition",
+          "sufficiency",
+          "owner"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "condition"
+                ],
+                "good",
+                "#1a9850",
+                "fair",
+                "#fee08b",
+                "poor",
+                "#d73027",
+                "not rated",
+                "#bdbdbd",
+                "#bdbdbd"
+              ],
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2.5,
+                14,
+                7
+              ],
+              "circle-stroke-color": "#333333",
+              "circle-stroke-width": 0.5
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Bridge condition (lowest NBI rating)",
+        "items": [
+          {
+            "label": "Good (7–9)",
+            "color": "#1a9850"
+          },
+          {
+            "label": "Fair (5–6)",
+            "color": "#fee08b"
+          },
+          {
+            "label": "Poor (0–4)",
+            "color": "#d73027"
+          },
+          {
+            "label": "Not rated",
+            "color": "#bdbdbd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({bridge_no}): {facility} over {crosses}, built {year_built}; {condition}, {daily_traffic} vehicles/day"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data"
+    },
+    {
+      "id": "large-culverts",
+      "title": "Large culverts by condition",
+      "group": "Structures",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__large_culverts",
+        "properties": [
+          "route",
+          "town",
+          "structure",
+          "condition",
+          "span_ft",
+          "length_ft",
+          "last_inspected"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "condition"
+                ],
+                "good",
+                "#1a9850",
+                "fair",
+                "#fee08b",
+                "poor",
+                "#fc8d59",
+                "critical",
+                "#d73027",
+                "#bdbdbd"
+              ],
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#333333",
+              "circle-stroke-width": 0.5
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Culvert condition",
+        "items": [
+          {
+            "label": "Good",
+            "color": "#1a9850"
+          },
+          {
+            "label": "Fair",
+            "color": "#fee08b"
+          },
+          {
+            "label": "Poor",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "Critical",
+            "color": "#d73027"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Culvert on {route}, {town}: {condition}, {span_ft} ft span"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data",
+      "visible": false
+    },
+    {
+      "id": "traffic-signals",
+      "title": "Traffic signals",
+      "group": "Traffic",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__traffic_signals",
+        "properties": [
+          "intersection",
+          "kind",
+          "maintained_by"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#e7298a",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                5
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Traffic signal",
+        "items": [
+          {
+            "label": "Traffic signal",
+            "color": "#e7298a"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{intersection} ({kind}), maintained by {maintained_by}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data",
+      "visible": false,
+      "minzoom": 10
+    },
+    {
+      "id": "park-and-ride",
+      "title": "Park and ride lots",
+      "group": "Traffic",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__park_and_ride",
+        "properties": [
+          "location",
+          "town",
+          "spaces",
+          "transit"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#1f78b4",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                3,
+                14,
+                7
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Park and ride",
+        "items": [
+          {
+            "label": "Park and ride",
+            "color": "#1f78b4"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{location}, {town}: {spaces} spaces; transit: {transit}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Transportation (MaineDOT) open data"
+    },
+    {
+      "id": "airports",
+      "title": "Airports, seaplane bases and heliports",
+      "group": "Air",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_transportation__airports",
+        "properties": [
+          "name",
+          "faa_code",
+          "kind",
+          "ownership"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "kind"
+                ],
+                "airport",
+                "#08519c",
+                "seaplane base",
+                "#4eb3d3",
+                "heliport",
+                "#8c6bb1",
+                "#08519c"
+              ],
+              "circle-radius": 5,
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 1
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Aviation",
+        "items": [
+          {
+            "label": "Airport",
+            "color": "#08519c"
+          },
+          {
+            "label": "Seaplane base",
+            "color": "#4eb3d3"
+          },
+          {
+            "label": "Heliport",
+            "color": "#8c6bb1"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({faa_code}): {kind}, {ownership}"
+        },
+        "inspect": true
+      },
+      "attribution": "USGS The National Map, National Transportation Dataset"
+    }
+  ]
+}

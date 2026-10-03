@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <!-- Downeast Geospatial theme for tiPG (services/tipg/templates; TIPG_TEMPLATE_DIRECTORY). Overrides tiPG's
+       header.html and footer.html only: every other page template is tiPG's own, so tiPG upgrades keep working. -->
+  <head>
+    <title>{{ template.title }} · Data API · Downeast Geospatial</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+      /* Downeast Geospatial site bar (same as the web app's header). */
+      .dg-site { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 2rem; padding: 0.7rem 1.5rem;
+                 background: #13202c; color: #fff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      .dg-brand { color: #fff !important; font-weight: 700; font-size: 1.05rem; text-decoration: none !important; }
+      .dg-brand span { color: #5cc8e6; }
+      .dg-site nav { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
+      .dg-site nav a { color: #d4e1ec; text-decoration: none; font-size: 0.9rem; padding: 0.2rem 0; border-bottom: 2px solid transparent; }
+      .dg-site nav a:hover { color: #fff; }
+      .dg-site nav a[aria-current='page'] { color: #fff; border-bottom-color: #5cc8e6; }
+      body { background: #eef1f4; color: #1d2733; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      a { color: #08566c; }
+      /* The same banner photo as the landing page, shorter. */
+      .dg-hero { position: relative; color: #fff;
+                 background: linear-gradient(90deg, rgb(10 20 30 / 0.88) 0%, rgb(10 20 30 / 0.66) 45%, rgb(10 20 30 / 0.18) 100%),
+                             #13202c url('/hero-bold-coast.jpg') center 15% / cover no-repeat; }
+      .dg-hero .inner { padding: 2.2rem 1.5rem 2rem; max-width: 1200px; }
+      .dg-hero .title { font-size: 2rem; margin: 0; font-weight: 600; color: #fff; }
+      .dg-hero p { margin: 0.4rem 0 0; color: #e3edf4; max-width: 62ch; }
+      .dg-hero .credit { position: absolute; right: 0.75rem; bottom: 0.3rem; margin: 0; font-size: 0.7rem; color: rgb(255 255 255 / 0.8); }
+      .dg-hero .credit a { color: inherit; text-decoration: underline; }
+      #page { padding: 1.5rem; max-width: 1400px; }
+      .breadcrumb { background: #fff !important; border: 1px solid #d9dfe6; }
+      .json-link { font-weight: normal; }
+      .dg-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; padding: 1rem 1.5rem;
+                 border-top: 1px solid #d9dfe6; color: #4f5d6b; font-size: 0.85rem; }
+      .dg-foot nav { display: flex; gap: 1.2rem; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  </head>
+  <body>
+    <header class="dg-site">
+      <a class="dg-brand" href="/"><span aria-hidden="true">&#9672;</span> Downeast Geospatial</a>
+      <nav aria-label="Main">
+        <a href="/#work">Work</a>
+        <a href="/maps">Maps</a>
+        <a href="/about">About &amp; contact</a>
+        <a href="/admin">Admin</a>
+        <a href="{{ template.api_root }}/" aria-current="page">Data API</a>
+      </nav>
+    </header>
+    <section class="dg-hero" aria-label="Data API">
+      <div class="inner">
+        <p class="title">Data API</p>
+        <p>Every published map layer as OGC API Features (GeoJSON, CSV) and vector tiles, served live from PostGIS.
+           <a href="{{ template.api_root }}/collections" style="color:#5cc8e6">Browse the collections</a> or open one in
+           a viewer.</p>
+      </div>
+      <p class="credit">Photo: <a href="https://newildernesstrust.org/conservation-collaboration-bold-coast/" rel="external noopener">Bold Coast, Downeast Maine · New England Wilderness Trust</a></p>
+    </section>
+
+    <main role="main" class="container-fluid">
+      <div id="page">

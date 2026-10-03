@@ -1,6 +1,9 @@
 <script lang="ts">
 	import Badge from '$lib/admin/Badge.svelte';
+	import SortTh from '$lib/admin/SortTh.svelte';
+	import { TableSort } from '$lib/admin/sort.svelte';
 	import FootprintMap from '$lib/admin/FootprintMap.svelte';
+	import DatasetActions from '$lib/admin/DatasetActions.svelte';
 	import { fmtAgo, fmtBBox, fmtBytes, fmtDate, fmtDuration, fmtNum } from '$lib/admin/api';
 
 	let { data } = $props();
@@ -25,6 +28,19 @@
 		cog: 'Cloud Optimized GeoTIFF',
 		tile_url: 'Tile URL'
 	};
+	type D = typeof data.d;
+	const outSort = new TableSort<D['outputs'][number]>({
+		kind: (o) => kindLabel[o.kind] ?? o.kind, locator: (o) => o.locator, used: (o) => (o.projects ?? []).join(', '),
+		rows: (o) => o.row_count, health: (o) => o.health, checked: (o) => o.health_checked_at
+	});
+	const partSort = new TableSort<D['parts'][number]>({
+		part: (p) => p.part_key, upstream: (p) => p.upstream_version ?? p.upstream_etag, loaded: (p) => p.loaded_version,
+		rows: (p) => p.row_count, status: (p) => p.status
+	});
+	const runSort = new TableSort<D['runs'][number]>({
+		run: (r) => r.id, action: (r) => r.action, status: (r) => r.status, started: (r) => r.started_at,
+		duration: (r) => r.seconds, rows: (r) => r.rows_written, downloaded: (r) => r.bytes_downloaded, by: (r) => r.triggered_by
+	});
 	const cli = $derived(`make import-recipe r=${d.name}${d.enabled ? '' : ' force=1'}`);
 </script>
 
@@ -111,9 +127,12 @@
 	<h2 id="out-h">Outputs &amp; health</h2>
 	{#if d.outputs.length}
 		<table>
-			<thead><tr><th scope="col">Kind</th><th scope="col">Locator</th><th scope="col">Used by</th><th scope="col" class="num">Rows</th><th scope="col">Health</th><th scope="col">Checked</th></tr></thead>
+			<thead><tr>
+				<SortTh sort={outSort} key="kind">Kind</SortTh><SortTh sort={outSort} key="locator">Locator</SortTh><SortTh sort={outSort} key="used">Used by</SortTh>
+				<SortTh sort={outSort} key="rows" class="num">Rows</SortTh><SortTh sort={outSort} key="health">Health</SortTh><SortTh sort={outSort} key="checked">Checked</SortTh>
+			</tr></thead>
 			<tbody>
-				{#each d.outputs as o (o.kind + o.locator)}
+				{#each outSort.apply(d.outputs) as o (o.kind + o.locator)}
 					<tr>
 						<td>{kindLabel[o.kind] ?? o.kind}</td>
 						<td>
@@ -144,9 +163,12 @@
 	<section class="card wide" aria-labelledby="parts-h">
 		<h2 id="parts-h">Parts ({d.parts_current}/{d.parts_total} current)</h2>
 		<table>
-			<thead><tr><th scope="col">Part</th><th scope="col">Upstream</th><th scope="col">Loaded</th><th scope="col" class="num">Rows</th><th scope="col">Status</th></tr></thead>
+			<thead><tr>
+				<SortTh sort={partSort} key="part">Part</SortTh><SortTh sort={partSort} key="upstream">Upstream</SortTh><SortTh sort={partSort} key="loaded">Loaded</SortTh>
+				<SortTh sort={partSort} key="rows" class="num">Rows</SortTh><SortTh sort={partSort} key="status">Status</SortTh>
+			</tr></thead>
 			<tbody>
-				{#each d.parts as p (p.part_key)}
+				{#each partSort.apply(d.parts) as p (p.part_key)}
 					<tr>
 						<td><code>{p.part_key}</code></td>
 						<td>{p.upstream_version ?? p.upstream_etag ?? '–'}</td>
@@ -164,9 +186,13 @@
 	<h2 id="runs-h">Run history</h2>
 	{#if d.runs.length}
 		<table>
-			<thead><tr><th scope="col">Run</th><th scope="col">Action</th><th scope="col">Status</th><th scope="col">Started</th><th scope="col">Duration</th><th scope="col" class="num">Rows</th><th scope="col" class="num">Downloaded</th><th scope="col">By</th></tr></thead>
+			<thead><tr>
+				<SortTh sort={runSort} key="run">Run</SortTh><SortTh sort={runSort} key="action">Action</SortTh><SortTh sort={runSort} key="status">Status</SortTh>
+				<SortTh sort={runSort} key="started">Started</SortTh><SortTh sort={runSort} key="duration">Duration</SortTh>
+				<SortTh sort={runSort} key="rows" class="num">Rows</SortTh><SortTh sort={runSort} key="downloaded" class="num">Downloaded</SortTh><SortTh sort={runSort} key="by">By</SortTh>
+			</tr></thead>
 			<tbody>
-				{#each d.runs as r (r.id)}
+				{#each runSort.apply(d.runs) as r (r.id)}
 					<tr>
 						<td><a href="/admin/runs/{r.id}">#{r.id}</a></td>
 						<td>{r.action}</td>
@@ -187,10 +213,8 @@
 
 <section class="card wide actions" aria-labelledby="act-h">
 	<h2 id="act-h">Actions</h2>
-	<p>
-		Re-download, dry run, rebuild and enable/disable buttons arrive with the job queue (Phase B). Until then, from the
-		repo: <code>{cli}</code>. CLI runs appear in the history above.
-	</p>
+	<DatasetActions name={d.name} enabled={d.enabled} kind={d.kind} active={d.active_jobs ?? []} />
+	<p class="hint">From the repo: <code>{cli}</code></p>
 </section>
 
 {#if d.yaml_text}
@@ -215,8 +239,9 @@
 	dt { color: var(--muted); }
 	dd { margin: 0; word-break: break-word; }
 	table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-	th, td { text-align: left; padding: 0.45rem 0.55rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-	th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+	table :global(th), td { text-align: left; padding: 0.45rem 0.55rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+	table :global(th.num) { text-align: right; }
+	table :global(th) { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 	.num { text-align: right; font-variant-numeric: tabular-nums; }
 	.sub { font-size: 0.75rem; color: var(--muted); }
 	.err { font-size: 0.75rem; color: #8a1c14; }

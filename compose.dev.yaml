@@ -16,6 +16,10 @@ services:
       # after data or config changes. Dev revalidates every time.
       TIPG_CACHECONTROL: "no-cache"
 
+  dataset-worker:
+    environment:
+      DATASET_RETRY_BASE: "3"   # dev: retries after 3, 6, 12 s (default 30, 60, 120 s)
+
   worker:
     environment:
       TIPG_CATALOG_TTL: "30"   # must match tipg: the worker waits one TTL before declaring a job's layer served

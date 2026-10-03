@@ -178,6 +178,29 @@ is COG and that there are valid pixels, then swaps the file in atomically. The p
 The COG and its tile URL are registered in the admin dashboard and health-checked. COGs live on disk, so `make reset-db` does not
 touch them, and `make import-all` skips raster recipes unless you pass `rasters=1`.
 
+### More source types
+
+| `source:` | What it does | Example recipe |
+|---|---|---|
+| `tiles: {template, north: [a, b], west: [c, d]}` | A grid of remote COG tiles (`{tile}` = `n44w070`): the tiles that exist become a VRT read over HTTP | `me_terrain_dem_30m` (USGS 3DEP) |
+| `derive: {from: <cog>, gdaldem: [hillshade, …]}` | A raster made from another COG with `gdaldem` (hillshade, slope, aspect, …) | `me_terrain_hillshade`, `me_terrain_slope` |
+| `derive: {from: <cog>, contour: {interval, attribute}}` | Contour lines from a COG (`gdal_contour`), imported as a vector table | `me_terrain_contours_100ft` |
+| `overture: {release, theme, type, columns, where, clip_sql}` | Overture Maps GeoParquet read from S3 with DuckDB, only for the area of `clip_sql` (`release: latest` uses the newest) | `me_overture_buildings`, `me_overture_places` |
+| `landfire: {layer, resolution, projection}` | A LANDFIRE layer through the LANDFIRE Product Service (an asynchronous job; needs `LANDFIRE_EMAIL`). New versions roll out by region: an unreleased region returns only nodata, so the import stops with a message; use the previous version (LF2024 for Maine as of October 2026) | `me_landfire_evt`, `me_landfire_fbfm40` |
+| `census_api: {dataset, get, for, in, geoid}` | A Census Data API table (`kind: table`; needs `CENSUS_API_KEY`) | `me_acs5_2024_tract` |
+| `ssurgo: {areas: "ME%", layer: soilmu_a}` | SSURGO soil polygons from Web Soil Survey, one zip per survey area (cached per save date, so a refresh only fetches re-published areas), merged into one table; freshness `sda_sacatalog` compares each area's save date | `me_ssurgo_mupolygon` |
+| `sda: {query, key, text_columns}` | A USDA Soil Data Access SQL query as a table (`kind: table`; no key). Columns of all numbers become numeric unless listed in `text_columns` | `me_ssurgo_mapunit` |
+| `geoparquet: {url, s3_url_style, columns, where, clip_sql}` | Any GeoParquet with a `bbox` column on S3, read with DuckDB and clipped to `clip_sql` (Overture uses the same code). `s3_url_style: path` for buckets with dots in the name | `me_hifld_hospitals` (HIFLD archive on Source Cooperative) |
+| `url` + `inner` + `stream: true` (raster) | Read a remote COG, optionally inside a zip stored without compression, with HTTP range requests: only the blocks inside the cutline are fetched | `me_nlcd_2025_landcover` (1.5 GB national zip, about 40 MB read) |
+| `cdl: {year, fips}` | USDA NASS Cropland Data Layer for one state from CropScape (keeps NASS's colour table) | `me_cdl_2025` |
+| `rasterize: {sql, attribute, type}` | Burn PostGIS polygons into a categorical COG (overviews use nearest, so classes never blend) | `me_ssurgo_hsg_30m` |
+
+Raster recipes also take:
+- `cutline_sql`: an SQL query returning the polygon to clip to (e.g. Maine's towns), run against PostGIS.
+- `cog_options`: extra COG creation options, e.g. `[PREDICTOR=YES]` for elevation.
+
+`depends_on: [recipe, …]` orders `make import-all`, so derived layers are built after their source.
+
 One-off conversion without a recipe:
 
 ```bash
@@ -208,3 +231,18 @@ gdf = gpd.read_postgis("SELECT * FROM src_ne.countries", eng, geom_col="geom")
 
 Scripts in `analysis/` are available at `/work/analysis` inside geotools:
 `make tools-sh`, then `Rscript analysis/foo.R` or `python analysis/foo.py`.
+
+### Notes on specific sources
+
+- **HIFLD**: DHS retired HIFLD Open on 2025-08-26. The `me_hifld_*` recipes read the final snapshot archived on
+  Source Cooperative (`seerai/hifld`); they will not change, so their freshness method is `none`.
+- **EIA Energy Atlas** layers are hosted by the federal GeoPlatform (`services2.arcgis.com/FiaPA4ga0iQKduv3`). Some
+  of its services key on `FID` rather than `OBJECTID`: set `order_by: FID` or paging fails.
+- **Broadband**: the Maine Connectivity Authority's own map server (`gis.cgs.earth`) did not respond in October 2026,
+  so `me_broadband_fcc_*` load the FCC Broadband Data Collection (December 2025) aggregated by Esri PolicyMap.
+- **NAIP** is not downloaded (statewide 60 cm imagery is around a terabyte); it is a basemap (`naip`, `naip-labels`)
+  served live by The National Map's image service.
+- **3DEP lidar**: `me_terrain_dem_10m` is the 1/3 arc-second DEM (lidar-derived across Maine); `me_3dep_lidar_projects`
+  (WESM) shows each lidar collection's footprint, dates, quality level and links to the 1 m DEM and point clouds.
+- **Sensitive locations**: the MDIFW Essential Habitat recipes use MDIFW's published habitat polygons, not the
+  nest-site points some services also expose.

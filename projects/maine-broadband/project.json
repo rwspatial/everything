@@ -1,0 +1,288 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-broadband",
+  "title": "Maine Broadband",
+  "status": "draft",
+  "description": "Where Maine homes and businesses can get 100/20 Mbps broadband: share of broadband serviceable locations that are unserved (under 25/3) or underserved (under 100/20), and fiber availability, from the FCC Broadband Data Collection (December 2025). Block groups statewide, census blocks from zoom 11.",
+  "tags": [
+    "maine",
+    "broadband",
+    "internet",
+    "bead",
+    "fcc"
+  ],
+  "view": {
+    "center": [
+      -69.2,
+      45.0
+    ],
+    "zoom": 7,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "bg-not-served",
+      "title": "Locations without 100/20 Mbps, by block group",
+      "group": "Broadband",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_broadband__blockgroups",
+        "properties": [
+          "geoid",
+          "county",
+          "locations",
+          "served",
+          "underserved",
+          "unserved",
+          "pct_not_served",
+          "pct_unserved",
+          "pct_fiber"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "step",
+                [
+                  "get",
+                  "pct_not_served"
+                ],
+                "#1a9850",
+                2,
+                "#a6d96a",
+                10,
+                "#fee08b",
+                25,
+                "#fc8d59",
+                50,
+                "#d73027"
+              ],
+              "fill-opacity": 0.75
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Share of locations unserved or underserved",
+        "items": [
+          {
+            "label": "under 2 %",
+            "color": "#1a9850"
+          },
+          {
+            "label": "2–10 %",
+            "color": "#a6d96a"
+          },
+          {
+            "label": "10–25 %",
+            "color": "#fee08b"
+          },
+          {
+            "label": "25–50 %",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "50 % and over",
+            "color": "#d73027"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{county}: {locations} locations; {served} served (100/20), {underserved} underserved, {unserved} unserved (under 25/3); fiber {pct_fiber} %"
+        },
+        "inspect": true
+      },
+      "attribution": "FCC Broadband Data Collection (December 2025), via Esri PolicyMap",
+      "maxzoom": 11
+    },
+    {
+      "id": "blocks-not-served",
+      "title": "Locations without 100/20 Mbps, by census block",
+      "group": "Broadband",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_broadband__blocks",
+        "properties": [
+          "geoid",
+          "county",
+          "locations",
+          "served",
+          "underserved",
+          "unserved",
+          "pct_not_served",
+          "pct_unserved",
+          "pct_fiber"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "step",
+                [
+                  "get",
+                  "pct_not_served"
+                ],
+                "#1a9850",
+                2,
+                "#a6d96a",
+                10,
+                "#fee08b",
+                25,
+                "#fc8d59",
+                50,
+                "#d73027"
+              ],
+              "fill-opacity": 0.75
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Share of locations unserved or underserved",
+        "items": [
+          {
+            "label": "under 2 %",
+            "color": "#1a9850"
+          },
+          {
+            "label": "2–10 %",
+            "color": "#a6d96a"
+          },
+          {
+            "label": "10–25 %",
+            "color": "#fee08b"
+          },
+          {
+            "label": "25–50 %",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "50 % and over",
+            "color": "#d73027"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{county}: {locations} locations; {served} served (100/20), {underserved} underserved, {unserved} unserved (under 25/3); fiber {pct_fiber} %"
+        },
+        "inspect": true
+      },
+      "attribution": "FCC Broadband Data Collection (December 2025), via Esri PolicyMap",
+      "minzoom": 11
+    },
+    {
+      "id": "bg-fiber",
+      "title": "Fiber availability, by block group",
+      "group": "Broadband",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_broadband__blockgroups",
+        "properties": [
+          "geoid",
+          "county",
+          "locations",
+          "served",
+          "underserved",
+          "unserved",
+          "pct_not_served",
+          "pct_unserved",
+          "pct_fiber"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "step",
+                [
+                  "get",
+                  "pct_fiber"
+                ],
+                "#d73027",
+                20,
+                "#fc8d59",
+                40,
+                "#fee08b",
+                60,
+                "#a6d96a",
+                80,
+                "#1a9850"
+              ],
+              "fill-opacity": 0.75
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Share of locations with fiber (low = red)",
+        "items": [
+          {
+            "label": "under 20 %",
+            "color": "#d73027"
+          },
+          {
+            "label": "20–40 %",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "40–60 %",
+            "color": "#fee08b"
+          },
+          {
+            "label": "60–80 %",
+            "color": "#a6d96a"
+          },
+          {
+            "label": "80 % and over",
+            "color": "#1a9850"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{county}: {locations} locations; {served} served (100/20), {underserved} underserved, {unserved} unserved (under 25/3); fiber {pct_fiber} %"
+        },
+        "inspect": true
+      },
+      "attribution": "FCC Broadband Data Collection (December 2025), via Esri PolicyMap",
+      "visible": false
+    }
+  ]
+}

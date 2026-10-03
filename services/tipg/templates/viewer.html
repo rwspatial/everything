@@ -1,0 +1,171 @@
+<!-- Downeast Geospatial: tiPG's viewer.html with the site bar instead of the Development Seed navbar. -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{ template.title }} · Data API · Downeast Geospatial</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" />
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.css' />
+    <style>
+      /* Downeast Geospatial site bar (same as the web app's header). */
+      .dg-site { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 2rem; padding: 0.7rem 1.5rem;
+                 background: #13202c; color: #fff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      .dg-brand { color: #fff !important; font-weight: 700; font-size: 1.05rem; text-decoration: none !important; }
+      .dg-brand span { color: #5cc8e6; }
+      .dg-site nav { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
+      .dg-site nav a { color: #d4e1ec; text-decoration: none; font-size: 0.9rem; padding: 0.2rem 0; border-bottom: 2px solid transparent; }
+      .dg-site nav a:hover { color: #fff; }
+      .dg-site nav a[aria-current='page'] { color: #fff; border-bottom-color: #5cc8e6; }
+      html { position: relative; min-height: 100%; }
+      body { padding-top: 0; margin-bottom: 40px; width: 100%; height: 100%;}
+      #page { padding: 1.5rem 1.5rem; }
+      .json-link { font-weight: normal; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/js/bootstrap.min.js"></script>
+    <script src='https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.js'></script>
+  </head>
+  <body>
+    <header class="dg-site">
+      <a class="dg-brand" href="/"><span aria-hidden="true">&#9672;</span> Downeast Geospatial</a>
+      <nav aria-label="Main">
+        <a href="/#work">Work</a>
+        <a href="/maps">Maps</a>
+        <a href="/about">About &amp; contact</a>
+        <a href="/admin">Admin</a>
+        <a href="{{ template.api_root }}/" aria-current="page">Data API</a>
+      </nav>
+    </header>
+
+    <main role="main" class="container-fluid">
+      <div id="page">
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb bg-light">
+    {% for crumb in crumbs %}
+      {% if not loop.last %}
+    <li class="breadcrumb-item"><a href="{{ crumb.url }}/">{{ crumb.part }}</a></li>
+      {% else %}<li class="breadcrumb-item active" aria-current="page">{{ crumb.part }}</li>
+      {% endif %}
+    {% endfor %}
+
+  </ol>
+</nav>
+
+<h1>Collection  {{ response.title }}</h1>
+
+<div id="map" class="rounded" style="width:100%; min-height: 75vh;"></div>
+
+<script type="text/javascript">
+  var layers = {
+    pts: [],
+    lines: [],
+    polygons: []
+  }
+
+  const map = new maplibregl.Map({
+      container: 'map',
+      zoom: 2,
+      center: [0, 0],
+      style: {
+          'version': 8,
+          'sources': {
+              'raster-tiles': {
+                  'type': 'raster',
+                  'tiles': ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                  'tileSize': 256,
+                  'minzoom': 0,
+                  'maxzoom': 19
+              }
+          },
+          'layers': [
+              {
+                  'id': 'simple-tiles',
+                  'type': 'raster',
+                  'source': 'raster-tiles',
+                  'attribution': "© OpenStreetMap contributors",
+              }
+          ],
+          'id': 'blank'
+      },
+      canvasContextAttributes: {antialias: true} // create the gl context with MSAA antialiasing, so custom layers are antialiased
+  });
+
+  map.on('load', () => {
+    fetch('{{ response.stylejson_endpoint|safe }}')
+      .then(res => {
+        if (res.ok) return res.json()
+        throw new Error('Network response was not ok.')
+      })
+      .then(data => {
+        console.log(data)
+        const source = Object.values(data.sources)[0];
+        const id = Object.keys(data.sources)[0];
+
+        map.fitBounds([[source.bounds[0], source.bounds[1]], [source.bounds[2], source.bounds[3]]]);
+        
+        // Add Source
+        map.addSource(id, source);
+        
+        // Add Layers
+        data.layers.forEach((layer, idx) => {
+          console.log(layer)
+          switch(layer.type) {
+            case "fill":
+              layers.polygons.push(layer.id)
+              break;
+            case "line":
+              layers.lines.push(layer.id)
+              break;
+            case "circle":
+              layers.pts.push(layer.id)
+          }
+          map.addLayer(layer)
+        });
+
+        var popup = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false
+        });
+
+        map.on('mousemove', function (e) {
+          // set a bbox around the pointer
+          var selectThreshold = 3;
+          var queryBox = [
+            [
+              e.point.x - selectThreshold,
+              e.point.y + selectThreshold
+            ], // bottom left (SW)
+            [
+              e.point.x + selectThreshold,
+              e.point.y - selectThreshold
+            ] // top right (NE)
+          ];
+
+          var features = map.queryRenderedFeatures(queryBox, {
+            layers: layers.polygons.concat(layers.lines.concat(layers.pts))
+          }) || [];
+          map.getCanvas().style.cursor = (features.length) ? 'pointer' : '';
+          
+          if (!features.length) {
+            popup.remove();
+          } else {
+            let html = '<table><tr><th class="align-l">property</th><th class="px3 align-r">value</th></tr>'
+            let properties = Object.values(features[0].properties)
+            for (let key in features[0].properties) {
+               html += `<tr><td class="align-l">${key}</td><td class="px3 align-r">${features[0].properties[key]}</td></tr>`
+            }
+            html += '</table>'  
+            popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+          }
+        });
+
+      })
+      .catch(err => {
+        console.warn(err)
+      }) 
+  });
+</script>
+
+{% include "footer.html" %}

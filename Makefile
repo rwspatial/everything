@@ -189,11 +189,11 @@ projects-check: check-env ## Fail if projects/ and the project registry differ
 	@$(TOOLS_T) python scripts/mapgen.py sync --check
 
 ## Analysis workers (R/Python processes; docs/setup/09-ml-workers.md)
-workers-up: check-env ## Build and start the analysis worker (needs the geotools image: make build-tools)
-	$(COMPOSE) --profile workers up -d --build worker
+workers-up: check-env ## Start the dataset worker and the analysis worker (needs the geotools image: make build-tools)
+	$(COMPOSE) --profile workers up -d --build worker dataset-worker
 
-workers-logs: check-env ## Follow the worker log
-	$(COMPOSE) --profile workers logs -f worker
+workers-logs: check-env ## Follow both workers' logs
+	$(COMPOSE) --profile workers logs -f worker dataset-worker
 
 ## MCP servers (Claude Code; docs/setup/08-mcp.md)
 mcp-credentials: check-env ## Create the MCP credentials in .env if missing, then apply them (migrate, core-api)

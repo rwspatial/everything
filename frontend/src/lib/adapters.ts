@@ -136,6 +136,8 @@ const rasterCog: Adapter<'raster-cog'> = (spec, ctx) => {
 	const q = new URLSearchParams();
 	if (spec.source.rescale) q.set('rescale', spec.source.rescale.join(','));
 	if (spec.source.colormap) q.set('colormap_name', spec.source.colormap);
+	// Categorical: titiler's explicit colormap ({"value": "#rrggbb"}); unlisted values render transparent.
+	if (spec.source.categories) q.set('colormap', JSON.stringify(Object.fromEntries(spec.source.categories.map((c) => [c.value, c.color]))));
 	if (spec.source.bidx) q.set('bidx', String(spec.source.bidx));
 	const qs = q.toString();
 	return {

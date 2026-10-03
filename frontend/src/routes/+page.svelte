@@ -2,14 +2,6 @@
 	import { site, title } from '$lib/site';
 
 	let { data } = $props();
-	const c = site.contact;
-	const links = [
-		c.email && { label: 'Email', text: c.email, href: `mailto:${c.email}` },
-		c.phone && { label: 'Phone', text: c.phone, href: `tel:+1${c.phone.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '')}` },
-		c.booking && { label: 'Book a call', text: 'Pick a time', href: c.booking },
-		c.linkedin && { label: 'LinkedIn', text: c.linkedin.replace(/^https?:\/\/(www\.)?/, ''), href: c.linkedin },
-		c.github && { label: 'GitHub', text: c.github.replace(/^https?:\/\/(www\.)?/, ''), href: c.github }
-	].filter(Boolean) as { label: string; text: string; href: string }[];
 </script>
 
 <svelte:head>
@@ -35,7 +27,7 @@
 			<p class="tagline">{site.tagline}</p>
 			<div class="cta">
 				<a class="btn primary" href="#work">See the work</a>
-				<a class="btn" href="#contact">Get in touch</a>
+				<a class="btn" href="/about#contact">Get in touch</a>
 			</div>
 		</div>
 		{#if site.hero.image && site.hero.credit}
@@ -69,47 +61,10 @@
 		<p><a href="/maps">All {data.total || ''} map projects, including experiments →</a></p>
 	</section>
 
-	<section id="services" class="band" aria-labelledby="services-title">
-		<div class="wrap block">
-			<h2 id="services-title">What I do</h2>
-			<ul class="services">
-				{#each site.services as s (s.title)}
-					<li><h3>{s.title}</h3><p>{s.body}</p></li>
-				{/each}
-			</ul>
-		</div>
-	</section>
-
-	<section id="about" class="wrap block two" aria-labelledby="about-title">
-		<div>
-			<h2 id="about-title">About</h2>
-			{#each site.about as para (para)}<p>{para}</p>{/each}
-		</div>
-		<div>
-			<h3>How this site is built</h3>
-			<ul class="stack" aria-label="Technology">
-				{#each site.stack as t (t)}<li>{t}</li>{/each}
-			</ul>
-			<p class="small">
-				Vector layers come from PostGIS views through an OGC API (<a href="/tiles/collections" rel="external">browse the data API</a>),
-				rasters are Cloud-Optimized GeoTIFFs rendered on the fly, and the whole stack runs in Docker.
-			</p>
-		</div>
-	</section>
-
-	<section id="contact" class="band dark" aria-labelledby="contact-title">
-		<div class="wrap block">
-			<h2 id="contact-title">Work with me</h2>
-			<p class="lede">Available for freelance projects and open to full-time geospatial roles.</p>
-			{#if links.length}
-				<ul class="contact">
-					{#each links as l (l.label)}
-						<li><span>{l.label}</span><a href={l.href} rel={l.href.startsWith('http') ? 'external noopener' : undefined}>{l.text}</a></li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="todo">Contact details not set yet: add them to <code>frontend/src/lib/site.ts</code>.</p>
-			{/if}
+	<section class="band" aria-label="About, services and contact">
+		<div class="wrap teaser">
+			<p>Pipelines, spatial databases, tile services and web maps for Maine and beyond.</p>
+			<a class="btn primary" href="/about">About, services and contact →</a>
 		</div>
 	</section>
 </main>
@@ -154,30 +109,14 @@
 	.desc { color: var(--muted); font-size: 0.88rem; }
 	.meta { margin-top: auto; font-size: 0.82rem; font-weight: 600; color: var(--accent-strong); }
 
+	.teaser { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 2rem; padding-bottom: 2rem; }
+	.teaser p { margin: 0; font-size: 1.1rem; }
 	.band { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-	.services { list-style: none; padding: 0; margin: 1.25rem 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.75rem; }
-	.services h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
-	.services p { margin: 0; color: var(--muted); font-size: 0.93rem; }
 
-	.two { display: grid; grid-template-columns: 1.3fr 1fr; gap: 3rem; }
-	.two p { max-width: 62ch; }
-	.two h3 { margin: 0.3rem 0 0.8rem; font-size: 1.05rem; }
-	.stack { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
-	.stack li { font-size: 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.65rem; }
-	.small { font-size: 0.85rem; color: var(--muted); }
 
-	.dark { background: #13202c; color: #fff; border: 0; }
-	.dark .lede { color: #a9c7da; }
-	.contact { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
-	.contact li { display: flex; gap: 1rem; align-items: baseline; }
-	.contact span { width: 6.5rem; color: #a9c7da; font-size: 0.85rem; }
-	.contact a { color: #5cc8e6; font-weight: 600; }
-	.todo { color: #f6d58e; }
-	.todo code { color: #fff; }
 
 	@media (max-width: 760px) {
-		.two { grid-template-columns: 1fr; gap: 1.5rem; }
-		.hero .wrap { padding-top: 3.5rem; padding-bottom: 3.5rem; }
+			.hero .wrap { padding-top: 3.5rem; padding-bottom: 3.5rem; }
 	}
 	@media (prefers-reduced-motion: reduce) { .case { transition: none; } .case:hover { transform: none; } }
 </style>

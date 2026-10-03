@@ -1,0 +1,445 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-soils",
+  "title": "Maine Soils",
+  "status": "draft",
+  "description": "SSURGO soil survey for all of Maine from USDA-NRCS: hydrologic soil group (runoff potential) statewide, and from town scale (zoom 11) the individual soil map units with drainage class and farmland classification.",
+  "tags": [
+    "maine",
+    "soils",
+    "ssurgo",
+    "agriculture",
+    "hydrology"
+  ],
+  "view": {
+    "center": [
+      -69.0,
+      45.25
+    ],
+    "zoom": 6.5,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "hsg-grid",
+      "title": "Hydrologic soil group (statewide)",
+      "group": "Soils",
+      "maxzoom": 11,
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/soils_hsg_30m",
+        "categories": [
+          {
+            "value": 1,
+            "color": "#1a9850",
+            "label": "Hydrologic soil group A"
+          },
+          {
+            "value": 2,
+            "color": "#91cf60",
+            "label": "Hydrologic soil group B"
+          },
+          {
+            "value": 3,
+            "color": "#fdae61",
+            "label": "Hydrologic soil group C"
+          },
+          {
+            "value": 4,
+            "color": "#d73027",
+            "label": "Hydrologic soil group D"
+          },
+          {
+            "value": 5,
+            "color": "#4575b4",
+            "label": "Hydrologic soil group A/D"
+          },
+          {
+            "value": 6,
+            "color": "#74add1",
+            "label": "Hydrologic soil group B/D"
+          },
+          {
+            "value": 7,
+            "color": "#abd9e9",
+            "label": "Hydrologic soil group C/D"
+          },
+          {
+            "value": 8,
+            "color": "#d9d9d9",
+            "label": "Not rated (water, pits, urban land)"
+          }
+        ],
+        "maxzoom": 12
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.7,
+              "raster-resampling": "nearest"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Hydrologic soil group (A: low runoff … D: high; X/D: D until drained)",
+        "items": [
+          {
+            "label": "A",
+            "color": "#1a9850"
+          },
+          {
+            "label": "B",
+            "color": "#91cf60"
+          },
+          {
+            "label": "C",
+            "color": "#fdae61"
+          },
+          {
+            "label": "D",
+            "color": "#d73027"
+          },
+          {
+            "label": "A/D",
+            "color": "#4575b4"
+          },
+          {
+            "label": "B/D",
+            "color": "#74add1"
+          },
+          {
+            "label": "C/D",
+            "color": "#abd9e9"
+          },
+          {
+            "label": "not rated (water, pits, urban land)",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "Soil Survey Staff, NRCS, USDA: SSURGO"
+    },
+    {
+      "id": "hsg",
+      "title": "Hydrologic soil group (map units)",
+      "group": "Soils",
+      "minzoom": 11,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_soils__mapunits",
+        "properties": [
+          "muname",
+          "musym",
+          "hsg",
+          "drainage",
+          "farmland",
+          "slope_pct",
+          "bedrock_cm",
+          "watertable_cm",
+          "flooding",
+          "capability_class",
+          "mukey"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "hsg"
+                ],
+                "A",
+                "#1a9850",
+                "B",
+                "#91cf60",
+                "C",
+                "#fdae61",
+                "D",
+                "#d73027",
+                "A/D",
+                "#4575b4",
+                "B/D",
+                "#74add1",
+                "C/D",
+                "#abd9e9",
+                "#d9d9d9"
+              ],
+              "fill-opacity": 0.7
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 12,
+            "paint": {
+              "line-color": "#5d4037",
+              "line-width": 0.3,
+              "line-opacity": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Hydrologic soil group (A: low runoff … D: high; X/D: D until drained)",
+        "items": [
+          {
+            "label": "A",
+            "color": "#1a9850"
+          },
+          {
+            "label": "B",
+            "color": "#91cf60"
+          },
+          {
+            "label": "C",
+            "color": "#fdae61"
+          },
+          {
+            "label": "D",
+            "color": "#d73027"
+          },
+          {
+            "label": "A/D",
+            "color": "#4575b4"
+          },
+          {
+            "label": "B/D",
+            "color": "#74add1"
+          },
+          {
+            "label": "C/D",
+            "color": "#abd9e9"
+          },
+          {
+            "label": "not rated (water, pits, urban land)",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{muname} ({musym}): group {hsg}, {drainage}"
+        },
+        "inspect": true
+      },
+      "attribution": "Soil Survey Staff, NRCS, USDA: SSURGO"
+    },
+    {
+      "id": "drainage",
+      "title": "Drainage class",
+      "group": "Soils",
+      "minzoom": 11,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_soils__mapunits",
+        "properties": [
+          "muname",
+          "musym",
+          "hsg",
+          "drainage",
+          "farmland",
+          "slope_pct",
+          "bedrock_cm",
+          "watertable_cm",
+          "flooding",
+          "capability_class",
+          "mukey"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "drainage"
+                ],
+                "Excessively drained",
+                "#8c510a",
+                "Somewhat excessively drained",
+                "#d8b365",
+                "Well drained",
+                "#f6e8c3",
+                "Moderately well drained",
+                "#c7eae5",
+                "Somewhat poorly drained",
+                "#5ab4ac",
+                "Poorly drained",
+                "#01665e",
+                "Very poorly drained",
+                "#003c30",
+                "#d9d9d9"
+              ],
+              "fill-opacity": 0.7
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 12,
+            "paint": {
+              "line-color": "#5d4037",
+              "line-width": 0.3,
+              "line-opacity": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Drainage class (dominant condition)",
+        "items": [
+          {
+            "label": "Excessively drained",
+            "color": "#8c510a"
+          },
+          {
+            "label": "Somewhat excessively drained",
+            "color": "#d8b365"
+          },
+          {
+            "label": "Well drained",
+            "color": "#f6e8c3"
+          },
+          {
+            "label": "Moderately well drained",
+            "color": "#c7eae5"
+          },
+          {
+            "label": "Somewhat poorly drained",
+            "color": "#5ab4ac"
+          },
+          {
+            "label": "Poorly drained",
+            "color": "#01665e"
+          },
+          {
+            "label": "Very poorly drained",
+            "color": "#003c30"
+          },
+          {
+            "label": "not rated (water, pits, urban land)",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{muname} ({musym}): {drainage}, water table from {watertable_cm} cm"
+        },
+        "inspect": true
+      },
+      "attribution": "Soil Survey Staff, NRCS, USDA: SSURGO",
+      "visible": false
+    },
+    {
+      "id": "farmland",
+      "title": "Farmland classification",
+      "group": "Soils",
+      "minzoom": 11,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_soils__mapunits",
+        "properties": [
+          "muname",
+          "musym",
+          "hsg",
+          "drainage",
+          "farmland",
+          "slope_pct",
+          "bedrock_cm",
+          "watertable_cm",
+          "flooding",
+          "capability_class",
+          "mukey"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "farmland"
+                ],
+                "All areas are prime farmland",
+                "#1b7837",
+                "Farmland of statewide importance",
+                "#7fbf7b",
+                "Farmland of local importance",
+                "#d9f0d3",
+                "Not prime farmland",
+                "#f2f2f2",
+                "#d9d9d9"
+              ],
+              "fill-opacity": 0.7
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 12,
+            "paint": {
+              "line-color": "#5d4037",
+              "line-width": 0.3,
+              "line-opacity": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Farmland classification",
+        "items": [
+          {
+            "label": "All areas are prime farmland",
+            "color": "#1b7837"
+          },
+          {
+            "label": "Farmland of statewide importance",
+            "color": "#7fbf7b"
+          },
+          {
+            "label": "Farmland of local importance",
+            "color": "#d9f0d3"
+          },
+          {
+            "label": "Not prime farmland",
+            "color": "#f2f2f2"
+          },
+          {
+            "label": "not rated (water, pits, urban land)",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{muname} ({musym}): {farmland}"
+        },
+        "inspect": true
+      },
+      "attribution": "Soil Survey Staff, NRCS, USDA: SSURGO",
+      "visible": false
+    }
+  ]
+}

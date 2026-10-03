@@ -7,6 +7,15 @@
     "maine-water",
     "maine-lands",
     "maine-infrastructure",
-    "maine-overview"
+    "maine-overview",
+    "maine-terrain",
+    "maine-places",
+    "maine-soils",
+    "maine-landcover",
+    "maine-facilities",
+    "maine-energy",
+    "maine-habitat",
+    "maine-transportation",
+    "maine-broadband"
   ]
 }

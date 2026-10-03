@@ -175,6 +175,24 @@ export interface RasterCogSource {
 	 */
 	rescale?: [number, number];
 	colormap?: string;
+	/**
+	 * Classes of a categorical raster (soil groups, vegetation types): each pixel value gets its own colour, values not listed are transparent, and a click shows the label. Use instead of rescale/colormap.
+	 *
+	 * @minItems 1
+	 * @maxItems 400
+	 */
+	categories?: [
+		{
+			value: number;
+			color: string;
+			label?: string;
+		},
+		...{
+			value: number;
+			color: string;
+			label?: string;
+		}[]
+	];
 	bidx?: number;
 	maxzoom?: number;
 	/**

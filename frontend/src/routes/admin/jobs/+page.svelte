@@ -1,12 +1,25 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Badge from '$lib/admin/Badge.svelte';
-	import { api, fmtAgo, fmtBytes, fmtDuration, fmtNum, type Job, type RunSummary } from '$lib/admin/api';
+	import SortTh from '$lib/admin/SortTh.svelte';
+	import { TableSort } from '$lib/admin/sort.svelte';
+	import { api, fmtAgo, fmtBytes, fmtDuration, fmtNum, post, type Job, type RunSummary } from '$lib/admin/api';
 
 	let jobs = $state<Job[]>([]);
 	let recent = $state<RunSummary[]>([]);
 	let error = $state<string | null>(null);
 	let updated = $state<Date | null>(null);
+	const sort = new TableSort<RunSummary>({
+		run: (r) => r.id,
+		dataset: (r) => r.recipe_name,
+		action: (r) => r.action,
+		status: (r) => r.status,
+		when: (r) => r.finished_at ?? r.started_at,
+		duration: (r) => r.seconds,
+		rows: (r) => r.rows_written,
+		downloaded: (r) => r.bytes_downloaded,
+		by: (r) => r.triggered_by
+	});
 
 	async function load() {
 		try {
@@ -24,6 +37,11 @@
 		return () => clearInterval(t);
 	});
 
+	async function cancel(id: number) {
+		await post(fetch, `/jobs/${id}/cancel`).catch((e) => (error = (e as Error).message));
+		load();
+	}
+
 	const active = $derived(jobs.filter((j) => ['queued', 'running', 'cancel_requested'].includes(j.status)));
 </script>
 
@@ -31,8 +49,8 @@
 
 <h1>Jobs &amp; runs</h1>
 <p class="lead">
-	Every download and import, whether started from the CLI (<code>make import-recipe …</code>) or, from Phase B, from this
-	dashboard. Refreshes every 5 s{updated ? `; last update ${updated.toLocaleTimeString()}` : ''}.
+	Every download, import and check, whether started from the CLI (<code>make import-recipe …</code>), from a dataset's
+	Actions, or by the dataset worker's scheduler (update checks on each recipe's schedule, daily health checks). Refreshes every 5 s{updated ? `; last update ${updated.toLocaleTimeString()}` : ''}.
 </p>
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 
@@ -41,7 +59,14 @@
 	{#if active.length}
 		<ul class="active">
 			{#each active as j (j.id)}
-				<li><Badge value={j.status} /> #{j.id} {j.action} {j.recipe_name ?? ''} · {j.locked_by ?? 'waiting'} · heartbeat {fmtAgo(j.heartbeat_at)}</li>
+				<li>
+					<Badge value={j.status} /> #{j.id} {j.action}
+					{#if j.recipe_name}<a href="/admin/datasets/{j.recipe_name}">{j.recipe_name}</a>{/if}
+					· {j.locked_by ?? 'waiting'}{j.progress_message ? ` · ${j.progress_message}` : ''} · heartbeat {fmtAgo(j.heartbeat_at)}
+					{#if !(j.locked_by ?? '').startsWith('inline@') && j.status !== 'cancel_requested'}
+						<button type="button" class="cancel" onclick={() => cancel(j.id)}>Cancel</button>
+					{/if}
+				</li>
 			{/each}
 		</ul>
 	{:else}
@@ -54,10 +79,14 @@
 	<div class="table-wrap">
 		<table>
 			<thead>
-				<tr><th scope="col">Run</th><th scope="col">Dataset</th><th scope="col">Action</th><th scope="col">Status</th><th scope="col">When</th><th scope="col">Duration</th><th scope="col" class="num">Rows</th><th scope="col" class="num">Downloaded</th><th scope="col">By</th></tr>
+				<tr>
+					<SortTh {sort} key="run">Run</SortTh><SortTh {sort} key="dataset">Dataset</SortTh><SortTh {sort} key="action">Action</SortTh>
+					<SortTh {sort} key="status">Status</SortTh><SortTh {sort} key="when">When</SortTh><SortTh {sort} key="duration">Duration</SortTh>
+					<SortTh {sort} key="rows" class="num">Rows</SortTh><SortTh {sort} key="downloaded" class="num">Downloaded</SortTh><SortTh {sort} key="by">By</SortTh>
+				</tr>
 			</thead>
 			<tbody>
-				{#each recent as r (r.id)}
+				{#each sort.apply(recent) as r (r.id)}
 					<tr>
 						<td><a href="/admin/runs/{r.id}">#{r.id}</a></td>
 						<td>{#if r.recipe_name}<a href="/admin/datasets/{r.recipe_name}">{r.recipe_name}</a>{:else}<span class="sub">ad hoc</span>{/if}</td>
@@ -84,9 +113,11 @@
 	.active { padding-left: 1.1rem; font-size: 0.85rem; }
 	.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
 	table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-	th, td { text-align: left; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-	th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-muted); }
+	table :global(th), td { text-align: left; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+	table :global(th.num) { text-align: right; }
+	table :global(th) { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-muted); }
 	.num { text-align: right; font-variant-numeric: tabular-nums; }
 	.sub { font-size: 0.75rem; color: var(--muted); }
 	.err { background: #fde3e1; color: #8a1c14; padding: 0.5rem 0.8rem; border-radius: 8px; }
+	.cancel { font: inherit; font-size: 0.8rem; padding: 0.1rem 0.5rem; margin-left: 0.4rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
 </style>

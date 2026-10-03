@@ -131,6 +131,44 @@ export interface DatasetDetail extends DatasetRow {
 	freshness_checks: { method: string; verdict: string; detail: string | null; observed: Record<string, unknown>; checked_at: string }[];
 	keys: { key_name: string; configured: boolean; fingerprint: string | null; reported_at: string }[];
 	runs: RunSummary[];
+	active_jobs: ActiveJob[];
+}
+
+export interface ActiveJob {
+	id: number;
+	action: string;
+	status: string;
+	progress_message: string | null;
+	attempts: number;
+	max_attempts: number;
+	run_after: string;
+	created_by: string;
+	created_at: string;
+}
+
+/** A queued job as returned by GET /api/admin/jobs/{id}. */
+export interface JobDetail extends ActiveJob {
+	kind: string;
+	recipe_name: string | null;
+	result: { plan?: Record<string, unknown> } | null;
+	error: { message: string; log_tail?: string } | null;
+	run_id: number | null;
+	finished_at: string | null;
+	deduplicated?: boolean;
+}
+
+export const ACTIVE_STATES = ['queued', 'running', 'cancel_requested'];
+
+/** POST to /api/admin/*; throws AdminApiError with the server's message. */
+export async function post<T>(fetchFn: typeof fetch, path: string, body: unknown = {}): Promise<T> {
+	const res = await fetchFn(`/api/admin${path}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+		body: JSON.stringify(body)
+	});
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) throw new AdminApiError(res.status, typeof data.detail === 'string' ? data.detail : `${res.status} ${res.statusText}`);
+	return data as T;
 }
 
 export interface RunDetail extends RunSummary {
@@ -158,6 +196,8 @@ export interface Job {
 	heartbeat_at: string | null;
 	finished_at: string | null;
 	run_id: number | null;
+	kind?: string;
+	progress_message?: string | null;
 }
 
 export class AdminApiError extends Error {

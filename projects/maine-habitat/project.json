@@ -1,0 +1,743 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-habitat",
+  "title": "Maine Habitat",
+  "status": "draft",
+  "description": "Beginning with Habitat for Maine: undeveloped habitat blocks and their road-crossing connectors, focus areas of statewide ecological significance and concentrations of at-risk species, with MDIFW's significant wildlife habitats (deer wintering areas, waterfowl and wading bird habitat, shorebird areas, seabird islands, vernal pools) and Essential Habitats.",
+  "tags": [
+    "maine",
+    "habitat",
+    "wildlife",
+    "conservation",
+    "beginning-with-habitat"
+  ],
+  "view": {
+    "center": [
+      -69.4,
+      44.6
+    ],
+    "zoom": 8,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "undeveloped-blocks-grid",
+      "title": "Undeveloped habitat blocks (statewide)",
+      "group": "Landscape",
+      "maxzoom": 10,
+      "source": {
+        "type": "raster-cog",
+        "cog": "maine/bwh_undeveloped_blocks_30m",
+        "categories": [
+          {
+            "value": 1,
+            "color": "#b8e186",
+            "label": "Undeveloped habitat block"
+          }
+        ],
+        "maxzoom": 12
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "raster",
+            "paint": {
+              "raster-opacity": 0.55,
+              "raster-resampling": "nearest"
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Undeveloped block",
+        "items": [
+          {
+            "label": "Undeveloped block",
+            "color": "#b8e186"
+          }
+        ]
+      },
+      "interaction": {
+        "inspect": true
+      },
+      "attribution": "Beginning with Habitat (MDIFW, MNAP and partners)"
+    },
+    {
+      "id": "undeveloped-blocks",
+      "title": "Undeveloped habitat blocks",
+      "group": "Landscape",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__undeveloped_blocks",
+        "properties": [
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#b8e186",
+              "fill-opacity": 0.35
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#7fbc41",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Undeveloped block",
+        "items": [
+          {
+            "label": "Undeveloped block",
+            "color": "#b8e186"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Undeveloped habitat block: {acres} acres"
+        },
+        "inspect": true
+      },
+      "attribution": "Beginning with Habitat (MDIFW, MNAP and partners)",
+      "minzoom": 10
+    },
+    {
+      "id": "habitat-connectors",
+      "title": "Habitat connectors (likely wildlife crossings)",
+      "group": "Landscape",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__habitat_connectors",
+        "properties": [
+          "length_ft",
+          "riparian_or_wetland"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#e08214",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                8,
+                1,
+                14,
+                4
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Connector across a road",
+        "items": [
+          {
+            "label": "Connector across a road",
+            "color": "#e08214"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Habitat connector: {length_ft} ft of road ({riparian_or_wetland})"
+        },
+        "inspect": true
+      },
+      "attribution": "Beginning with Habitat (MDIFW, MNAP and partners)",
+      "visible": false,
+      "minzoom": 9
+    },
+    {
+      "id": "at-risk",
+      "title": "Concentrations of at-risk species and habitats",
+      "group": "Landscape",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__at_risk_concentrations",
+        "properties": [
+          "score",
+          "etsc",
+          "rare_plants",
+          "rare_communities",
+          "multiple_sig_habs"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "step",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "score"
+                  ],
+                  0
+                ],
+                "#fff5eb",
+                2,
+                "#fdd0a2",
+                4,
+                "#fd8d3c",
+                6,
+                "#d94801",
+                8,
+                "#7f2704"
+              ],
+              "fill-opacity": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Score (sum of at-risk features)",
+        "items": [
+          {
+            "label": "under 2",
+            "color": "#fff5eb"
+          },
+          {
+            "label": "2–4",
+            "color": "#fdd0a2"
+          },
+          {
+            "label": "4–6",
+            "color": "#fd8d3c"
+          },
+          {
+            "label": "6–8",
+            "color": "#d94801"
+          },
+          {
+            "label": "8 and over",
+            "color": "#7f2704"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Score {score}: {etsc} ETSC species, {rare_plants} rare plants, {rare_communities} rare communities"
+        },
+        "inspect": true
+      },
+      "attribution": "Beginning with Habitat (MDIFW, MNAP and partners)",
+      "visible": false
+    },
+    {
+      "id": "focus-areas",
+      "title": "Focus areas of statewide ecological significance",
+      "group": "Landscape",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__focus_areas",
+        "properties": [
+          "name",
+          "region"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#5e3c99",
+              "fill-opacity": 0.12
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#5e3c99",
+              "line-width": 2
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Focus area",
+        "items": [
+          {
+            "label": "Focus area",
+            "color": "#5e3c99"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} focus area"
+        },
+        "inspect": true
+      },
+      "attribution": "Beginning with Habitat (MDIFW, MNAP and partners)"
+    },
+    {
+      "id": "deer-wintering",
+      "title": "Deer wintering areas",
+      "group": "Significant wildlife habitat",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__deer_wintering_areas",
+        "properties": [
+          "identifier"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#8c510a",
+              "fill-opacity": 0.4
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#8c510a",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Deer wintering area",
+        "items": [
+          {
+            "label": "Deer wintering area",
+            "color": "#8c510a"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Deer wintering area {identifier}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife",
+      "visible": false
+    },
+    {
+      "id": "iwwh",
+      "title": "Inland waterfowl and wading bird habitat",
+      "group": "Significant wildlife habitat",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__inland_waterfowl",
+        "properties": [
+          "iwwh_id",
+          "rating",
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "rating"
+                ],
+                "high",
+                "#2166ac",
+                "moderate",
+                "#67a9cf",
+                "#67a9cf"
+              ],
+              "fill-opacity": 0.5
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Inland waterfowl / wading bird habitat",
+        "items": [
+          {
+            "label": "High value",
+            "color": "#2166ac"
+          },
+          {
+            "label": "Moderate value",
+            "color": "#67a9cf"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "IWWH {iwwh_id}: {rating} value, {acres} acres"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife"
+    },
+    {
+      "id": "twwh",
+      "title": "Tidal waterfowl and wading bird habitat",
+      "group": "Significant wildlife habitat",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__tidal_waterfowl",
+        "properties": [
+          "twwh_id",
+          "value",
+          "habitat",
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "value"
+                ],
+                "high",
+                "#01665e",
+                "moderate",
+                "#5ab4ac",
+                "#5ab4ac"
+              ],
+              "fill-opacity": 0.55
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Tidal waterfowl / wading bird habitat",
+        "items": [
+          {
+            "label": "High value",
+            "color": "#01665e"
+          },
+          {
+            "label": "Moderate value",
+            "color": "#5ab4ac"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "TWWH: {habitat}, {value} value, {acres} acres"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife"
+    },
+    {
+      "id": "shorebird",
+      "title": "Shorebird areas",
+      "group": "Significant wildlife habitat",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__shorebird_areas",
+        "properties": [
+          "sitenum",
+          "use",
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#d6604d",
+              "fill-opacity": 0.5
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#d6604d",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Shorebird area",
+        "items": [
+          {
+            "label": "Shorebird area",
+            "color": "#d6604d"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Shorebird area {sitenum} ({use}), {acres} acres"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife"
+    },
+    {
+      "id": "seabird-islands",
+      "title": "Seabird nesting islands",
+      "group": "Significant wildlife habitat",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__seabird_islands",
+        "properties": [
+          "name",
+          "owner",
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#f46d43",
+              "fill-opacity": 0.7
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#a50026",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Seabird nesting island",
+        "items": [
+          {
+            "label": "Seabird nesting island",
+            "color": "#f46d43"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: seabird nesting island ({owner})"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife"
+    },
+    {
+      "id": "vernal-pools",
+      "title": "Significant vernal pools",
+      "group": "Significant wildlife habitat",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__vernal_pools",
+        "properties": [
+          "poolid",
+          "status",
+          "township",
+          "habitat_acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "status"
+                ],
+                "Significant",
+                "#1b7837",
+                "#a6dba0"
+              ],
+              "fill-opacity": 0.55
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Vernal pools (with 250 ft habitat)",
+        "items": [
+          {
+            "label": "Significant",
+            "color": "#1b7837"
+          },
+          {
+            "label": "Potentially significant",
+            "color": "#a6dba0"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Vernal pool {poolid} in {township}: {status}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife",
+      "minzoom": 9
+    },
+    {
+      "id": "essential-habitats",
+      "title": "Essential habitats (endangered species)",
+      "group": "Endangered species",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__essential_habitats",
+        "properties": [
+          "species",
+          "site",
+          "town",
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#c51b7d",
+              "fill-opacity": 0.6
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#8e0152",
+              "line-width": 1
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Essential habitat",
+        "items": [
+          {
+            "label": "Essential habitat",
+            "color": "#c51b7d"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Essential habitat for {species}: {site}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife"
+    },
+    {
+      "id": "etsc",
+      "title": "Endangered, threatened and special concern wildlife",
+      "group": "Endangered species",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_habitat__etsc_wildlife",
+        "properties": [
+          "common_name",
+          "scientific_name",
+          "state_status",
+          "srank",
+          "last_observed"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "state_status"
+                ],
+                "E",
+                "#67001f",
+                "T",
+                "#d6604d",
+                "#f4a582"
+              ],
+              "fill-opacity": 0.45
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "State status",
+        "items": [
+          {
+            "label": "Endangered",
+            "color": "#67001f"
+          },
+          {
+            "label": "Threatened",
+            "color": "#d6604d"
+          },
+          {
+            "label": "Special concern",
+            "color": "#f4a582"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{common_name} ({scientific_name}): state status {state_status}, last observed {last_observed}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Department of Inland Fisheries and Wildlife",
+      "visible": false
+    }
+  ]
+}

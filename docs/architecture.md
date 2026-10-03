@@ -120,11 +120,11 @@ Layer adapters (`frontend/src/lib/adapters.ts`), one per `source.type`:
 
 | Adapter | Fetches from | Used today by |
 |---|---|---|
-| `tipg-vector` | `/tiles/collections/<pub view>/tiles/…` (MVT) | world-overview, hydrology-sketch, analysis-sandbox, maine-coast, maine-water, maine-lands, maine-infrastructure, maine-overview |
+| `tipg-vector` | `/tiles/collections/<pub view>/tiles/…` (MVT) | world-overview, hydrology-sketch, analysis-sandbox, maine-coast, maine-water, maine-lands, maine-infrastructure, maine-overview, maine-terrain, maine-places, maine-soils, maine-facilities, maine-energy, maine-transportation, maine-habitat, maine-broadband |
 | `tipg-geojson` | `/tiles/collections/<pub view>/items?f=geojson` | hydrology-sketch |
 | `geojson-url` | any GeoJSON URL | nothing yet |
 | `raster-xyz` | any XYZ raster tile URL | analysis-sandbox (stub) |
-| `raster-cog` | `/raster/<name>/{z}/{x}/{y}.png` (titiler) | maine-lands (hardiness temperature grid) |
+| `raster-cog` | `/raster/<name>/{z}/{x}/{y}.png` (titiler) | maine-lands (hardiness temperature grid), maine-terrain (elevation, hillshade, slope), maine-soils (hydrologic soil group grid), maine-landcover (NLCD 2025, Cropland Data Layer 2025, LANDFIRE vegetation and fuels; categorical) |
 
 ## 4. Proposed
 
@@ -141,20 +141,20 @@ flowchart LR
     postgis[("postgis")]:::now
     core_api["core-api"]:::now
     geotools["geotools"]:::now
-    maine_proj["projects/maine-*<br/>5 draft manifests"]:::now
+    maine_proj["projects/maine-*<br/>14 draft manifests"]:::now
     census["Census API recipes<br/>kind: table (ACS 5-yr)"]:::now
     mapgen["mapgen + /admin/new<br/>(Phase 3 project creator)"]:::now
     mcp_db["mcp-db: spatial-db MCP server<br/>(read-only, role mcp_ro)"]:::now
     mcp_pipe["mcp-pipeline: project-pipeline MCP<br/>(files + scoped core-api token)"]:::now
     worker["worker: R + Python processes<br/>(app.jobs queue, ml_out → pub)"]:::now
+    dataset_worker["dataset-worker: re-download, import,<br/>update + health checks (scheduler)"]:::now
     mcp_an["mcp-analysis: analysis MCP<br/>(jobs via core-api token)"]:::now
     cogs[("data/cog/maine/*.tif<br/>+ provenance sidecars")]:::now
   end
 
   maine_views[("more pub.maine_* views<br/>counties, tracts, habitat, …")]:::todo
-  rasters["More raster recipes<br/>3DEP DEM, LANDFIRE, SNODAS, VIIRS"]:::todo
+  rasters["More raster recipes<br/>LANDFIRE, SNODAS, VIIRS"]:::todo
   zonal["Zonal stats → vector tables<br/>(NDVI per town)"]:::todo
-  dataset_jobs["Dataset jobs on the same queue<br/>(admin Phase B: re-download, rebuild)"]:::todo
   pmtiles["PMTiles for heavy layers<br/>(soils fallback)"]:::todo
   more_procs["More processes: kriging → COG,<br/>zonal stats, ML models"]:::todo
   aws["AWS (Phase 6): CloudFront + ALB,<br/>RDS PostGIS, S3 COGs"]:::todo
@@ -166,7 +166,7 @@ flowchart LR
   rasters --> geotools --> cogs --> titiler --> maine_proj
   cogs --> zonal --> postgis
   core_api -->|"app.jobs"| worker -->|"ml_out → pub.analysis_sandbox__job_*"| postgis
-  worker -.-> dataset_jobs
+  core_api -->|"app.jobs (dataset)"| dataset_worker -->|"geoimport.py"| postgis
   more_procs -.-> worker
   mcp_an -->|"processes, jobs"| core_api
   postgis -.-> pmtiles
@@ -210,3 +210,4 @@ One contract, two front doors, one registry:
 | mcp-pipeline | project-pipeline MCP server: validates via core-api (scoped token), writes only `projects/`, returns `./mapgen apply` | mcp |
 | mcp-analysis | analysis MCP server: lists processes, submits and follows jobs via core-api (scoped token) | mcp |
 | worker | Analysis worker (FROM geotools): claims `app.jobs`, runs R and Python processes, publishes `pub.analysis_sandbox__job_<id>` | workers |
+| dataset-worker | Dataset jobs from the dashboard and its scheduler (update checks, re-download, import, health, enable/disable) via `scripts/geoimport.py`, as `loader` | workers |

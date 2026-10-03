@@ -76,6 +76,64 @@ def record_loaded_part(conn, recipe: str, path: Path, run_id: int | None, checks
     )
 
 
+SDA = "https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest"
+SSURGO_AREAS = re.compile(r"[A-Z]{2}[0-9]{0,3}%?")
+
+
+def ssurgo_versions(areas: str) -> dict[str, str]:
+    """{areasymbol: save date (YYYY-MM-DD)} for the SSURGO survey areas matching e.g. 'ME%', from SDA's sacatalog."""
+    import datetime
+    if not SSURGO_AREAS.fullmatch(areas):
+        raise ValueError(f"bad survey area pattern {areas!r}")
+    q = f"SELECT areasymbol, saverest FROM sacatalog WHERE areasymbol LIKE '{areas}' ORDER BY areasymbol"
+    req = urllib.request.Request(SDA, data=json.dumps({"query": q, "format": "JSON"}).encode(),
+                                 headers={"Content-Type": "application/json", "User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        rows = json.load(r).get("Table") or []
+    return {a: datetime.datetime.strptime(d, "%m/%d/%Y %I:%M:%S %p").date().isoformat() for a, d in rows}
+
+
+def record_survey_areas(conn, recipe: str, versions: dict[str, str], counts: dict[str, int], run_id: int | None) -> None:
+    """After a SSURGO import: one dataset part per survey area, holding the save date we loaded."""
+    conn.execute("DELETE FROM app.dataset_parts WHERE recipe_name = %s AND part_key <> ALL(%s)", (recipe, list(versions)))
+    for area, version in versions.items():
+        conn.execute(
+            """INSERT INTO app.dataset_parts (recipe_name, part_key, part_kind, upstream_version, loaded_version,
+                                              loaded_date, loaded_run_id, row_count, status, status_detail, checked_at)
+               VALUES (%s, %s, 'survey_area', %s, %s, now(), %s, %s, %s, %s, now())
+               ON CONFLICT (recipe_name, part_key) DO UPDATE SET part_kind = EXCLUDED.part_kind,
+                   upstream_version = EXCLUDED.upstream_version, loaded_version = EXCLUDED.loaded_version,
+                   loaded_date = now(), loaded_run_id = EXCLUDED.loaded_run_id, row_count = EXCLUDED.row_count,
+                   status = EXCLUDED.status, status_detail = EXCLUDED.status_detail, checked_at = now()""",
+            (recipe, area, version, version, run_id, counts.get(area),
+             "current" if counts.get(area) else "missing", None if counts.get(area) else "no polygons loaded"))
+
+
+def check_sda_sacatalog(conn, recipe: dict) -> tuple[str, dict, str]:
+    """SSURGO: compare each survey area's save date in SDA with the one we loaded (one query for all areas)."""
+    areas = (recipe.get("upstream") or {}).get("ssurgo_areas")
+    if not areas:
+        return "unknown", {}, "no upstream.ssurgo_areas pattern"
+    try:
+        now = ssurgo_versions(areas)
+    except (urllib.error.URLError, TimeoutError, ValueError) as e:
+        return "error", {}, f"Soil Data Access query failed: {e}"
+    loaded = dict(conn.execute("SELECT part_key, loaded_version FROM app.dataset_parts WHERE recipe_name = %s",
+                               (recipe["name"],)).fetchall())
+    if not loaded:
+        return "unknown", {"areas": len(now)}, "never downloaded"
+    changed = sorted(a for a, v in now.items() if loaded.get(a) != v)
+    for a, v in now.items():
+        if a in loaded:
+            conn.execute("UPDATE app.dataset_parts SET upstream_version = %s, status = %s, checked_at = now() "
+                         "WHERE recipe_name = %s AND part_key = %s",
+                         (v, "current" if loaded[a] == v else "stale", recipe["name"], a))
+    observed = {"areas": len(now), "newest": max(now.values()) if now else None, "changed": changed}
+    if changed:
+        return "stale", observed, f"{len(changed)} survey area(s) re-published since our download: {', '.join(changed)}"
+    return "current", observed, f"all {len(now)} survey areas unchanged since our download"
+
+
 def arcgis_marker(url: str) -> dict:
     """Layer metadata of an ArcGIS Feature/Map Server layer: last data edit (ms since epoch) and name."""
     req = urllib.request.Request(f"{url.rstrip('/')}?f=json", headers={"User-Agent": USER_AGENT})
@@ -177,6 +235,8 @@ def check(conn, recipe_name: str | None, downloads: Path) -> list[tuple[str, str
             verdict, observed, detail = check_arcgis_item(conn, {"name": name, "upstream": upstream})
         elif method == "http_head":
             verdict, observed, detail = check_http_head(conn, {"name": name, "upstream": upstream}, downloads)
+        elif method == "sda_sacatalog":
+            verdict, observed, detail = check_sda_sacatalog(conn, {"name": name, "upstream": upstream})
         elif method == "none":
             verdict, observed, detail = "unknown", {}, "recipe declares no freshness method"
         else:

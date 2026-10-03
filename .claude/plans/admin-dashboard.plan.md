@@ -1,6 +1,6 @@
 # Admin Dashboard & Dataset Registry — Plan
 
-Status: **Phase A done (2026-09-30): read-only /admin, registry, CLI run history, `make verify` + e2e green. Phase B next.**
+Status: **Phase A done (2026-09-30). Phase B done (2026-10-02): dataset worker (scripts/dataset_worker.py, same queue as the Phase 5 analysis worker: app.jobs kind='dataset'), dashboard actions, scheduler, retries, cancel. Phase C (SSURGO soils, keys page) next.**
 Date: 2026-09-29
 Related plans:
 - `spatial-app-architecture.plan.md`: Phases 1–2 done. This plan **pulls forward** its Phase 3 `core-api` as the admin backend, and its Phase 5 Postgres job queue as the worker.

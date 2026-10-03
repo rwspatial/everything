@@ -114,3 +114,11 @@ tests/app.spec.ts         Playwright + axe browser tests
   A layer with a red **Error** badge shows the message in the layer list.
 - **Changes to `frontend/` don't show:** run `make frontend` (the container serves a build), or use `make frontend-dev`.
 - **New project doesn't appear:** is its slug in `projects/index.json`, and does `http://localhost:8080/projects/<slug>/project.json` load?
+
+## The Data API pages (tiPG at /tiles/)
+
+tiPG's HTML pages (landing, collections, items, map viewers) use the site's bar, banner and footer. The overrides live
+in `services/tipg/templates/` (`header.html`, `footer.html`, and copies of tiPG's `viewer.html` and `map.html` with the
+site bar instead of tiPG's own); every other page is tiPG's built-in template (`TIPG_TEMPLATE_DIRECTORY=/templates`).
+tiPG caches templates, so after editing one run `make refresh`. The site's main navigation links to `/tiles/` as
+"Data API".

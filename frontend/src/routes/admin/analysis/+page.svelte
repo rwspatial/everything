@@ -4,6 +4,8 @@
 	// viewer and added to the Analysis Sandbox map with one click.
 	import { onMount } from 'svelte';
 	import Viewer from '$lib/components/Viewer.svelte';
+	import SortTh from '$lib/admin/SortTh.svelte';
+	import { TableSort } from '$lib/admin/sort.svelte';
 	import { title as pageTitle } from '$lib/site';
 	import type { LayerSpec, ProjectManifest } from '$lib/types';
 
@@ -59,6 +61,12 @@
 	let error = $state('');
 	let job = $state<Job | null>(null);
 	let recent: Job[] = $state([]);
+	const recentSort = new TableSort<Job>({
+		job: (j) => j.id,
+		process: (j) => j.process_id,
+		inputs: (j) => JSON.stringify(j.inputs),
+		status: (j) => j.status
+	});
 	let promoted = $state('');
 	let busy = $state(false);
 
@@ -300,9 +308,12 @@
 	<section aria-labelledby="recent-h">
 		<h2 id="recent-h">Recent analysis jobs</h2>
 		<table>
-			<thead><tr><th scope="col">Job</th><th scope="col">Process</th><th scope="col">Inputs</th><th scope="col">Status</th></tr></thead>
+			<thead><tr>
+				<SortTh sort={recentSort} key="job">Job</SortTh><SortTh sort={recentSort} key="process">Process</SortTh>
+				<SortTh sort={recentSort} key="inputs">Inputs</SortTh><SortTh sort={recentSort} key="status">Status</SortTh>
+			</tr></thead>
 			<tbody>
-				{#each recent as r (r.id)}
+				{#each recentSort.apply(recent) as r (r.id)}
 					<tr>
 						<td><button type="button" class="link" onclick={() => poll(r.id)}>#{r.id}</button></td>
 						<td>{r.process_id}</td>
@@ -339,7 +350,8 @@
 	.preview { height: 72vh; min-height: 460px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: sticky; top: 1rem; }
 	.placeholder { display: grid; place-items: center; height: 100%; margin: 0; color: var(--muted); }
 	table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
-	th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+	table :global(th), td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+	table :global(th.num) { text-align: right; }
 	td code { font-size: 0.75rem; word-break: break-all; }
 	section h2 { font-size: 1.05rem; margin: 1.5rem 0 0.3rem; }
 	@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .preview { position: static; height: 60vh; } }

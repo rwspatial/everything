@@ -60,6 +60,23 @@ function aerial(withLabels: boolean): StyleSpecification {
 	};
 }
 
+// USDA NAIP (60 cm to 1 m, leaf-on, latest statewide collection) from The National Map's image service. It is not
+// cached as tiles, so each 256 px tile is an exportImage request for that tile's Web Mercator box (about 1–2 s each).
+const NAIP =
+	'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage' +
+	'?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpgpng&f=image';
+
+function naip(withLabels: boolean): StyleSpecification {
+	const base = aerial(withLabels);
+	return {
+		...base,
+		sources: {
+			...base.sources,
+			imagery: { type: 'raster', tiles: [NAIP], tileSize: 256, maxzoom: 18, attribution: 'NAIP imagery: USDA Farm Production and Conservation, via USGS The National Map' }
+		}
+	};
+}
+
 export interface Basemap {
 	label: string;
 	style: string | StyleSpecification;
@@ -70,6 +87,8 @@ export const basemaps: Record<string, Basemap> = {
 	liberty: { label: 'Streets (OpenFreeMap)', style: 'https://tiles.openfreemap.org/styles/liberty' },
 	'aerial-labels': { label: 'Aerial + labels (Esri)', style: aerial(true) },
 	aerial: { label: 'Aerial (Esri)', style: aerial(false) },
+	'naip-labels': { label: 'NAIP aerial + labels (USDA)', style: naip(true) },
+	naip: { label: 'NAIP aerial (USDA)', style: naip(false) },
 	'osm-raster': { label: 'OpenStreetMap (raster)', style: osmRaster },
 	none: { label: 'None (works offline)', style: blank }
 };

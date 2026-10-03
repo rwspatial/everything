@@ -134,3 +134,4 @@ Errors (`E_*`) block `apply` and saving; warnings (`W_*`) don't.
 Edit `contracts/project-manifest.v1.schema.json`, then run `make contracts`, which regenerates
 `frontend/src/lib/contracts.gen.ts`. Then rebuild core-api, which bakes in the schema and `validate.py`:
 `docker compose up -d --build core-api`. `make verify` fails if the generated types are stale.
+| `W_STYLE_NUMERIC` | The style reads a `numeric` column; tiPG writes numeric values into tiles as text, so number expressions (`step`, `interpolate`) silently fall back | Cast it in the view: `col::float8` (or `::integer`) |

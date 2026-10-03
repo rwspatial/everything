@@ -20,7 +20,7 @@ test.afterEach(() => {
 	expect(pageErrors, 'uncaught errors in the page').toEqual([]);
 });
 
-test('landing page: identity, live selected work from the manifests, services and contact', async ({ page }) => {
+test('landing page (identity, live selected work) and the About page (services, how it is built, contact)', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	await expect(page).toHaveTitle(/Downeast Geospatial/);
@@ -31,15 +31,24 @@ test('landing page: identity, live selected work from the manifests, services an
 		await expect(work.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
 	}
 	await expect(work.getByRole('link', { name: /World Overview/ })).toHaveCount(0);
-	await expect(page.getByRole('heading', { name: 'What I do' })).toBeVisible();
-	await expect(page.getByRole('heading', { name: 'Work with me' })).toBeVisible();
-	await expect(page.getByRole('link', { name: 'rwspatial@gmail.com' })).toHaveAttribute('href', 'mailto:rwspatial@gmail.com');
-	await expect(page.getByRole('link', { name: '(207) 266-1634' })).toHaveAttribute('href', 'tel:+12072661634');
+	await expect(page.getByRole('heading', { name: 'What I do' })).toHaveCount(0); // moved to /about
 	await shot(page, '0-landing');
 	await work.getByRole('link', { name: /^Maine Lands/ }).click();
 	await expect(page).toHaveURL(/\/p\/maine-lands/);
 	await page.getByRole('link', { name: '← All maps' }).click();
 	await expect(page).toHaveURL(/\/maps$/);
+
+	await page.goto('/');
+	await page.getByRole('link', { name: 'About, services and contact →' }).click();
+	await expect(page).toHaveURL(/\/about$/);
+	await expect(page.getByRole('heading', { name: /^About / , level: 1 })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'What I do' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'How this site is built' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Work with me' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'rwspatial@gmail.com' })).toHaveAttribute('href', 'mailto:rwspatial@gmail.com');
+	await expect(page.getByRole('link', { name: '(207) 266-1634' })).toHaveAttribute('href', 'tel:+12072661634');
+	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About' })).toHaveAttribute('aria-current', 'page');
+	await shot(page, '0b-about');
 });
 
 test('hub lists the placeholder projects with status and what is missing', async ({ page }) => {
@@ -53,7 +62,10 @@ test('hub lists the placeholder projects with status and what is missing', async
 	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure', 'Maine Overview']) {
 		await expect(cards.getByRole('link', { name, exact: true })).toBeVisible();
 	}
-	await expect(page.getByText('Draft', { exact: true })).toHaveCount(6);
+	// Count drafts from the registry: projects saved in the /admin/new wizard also appear on the hub.
+	const registry = await (await page.request.get('/api/projects')).json();
+	const drafts = registry.projects.filter((p: { status: string }) => p.status === 'draft').length;
+	await expect(page.getByText('Draft', { exact: true })).toHaveCount(drafts);
 	await expect(page.getByText('Stub', { exact: true })).toHaveCount(2);
 	const lands = cards.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Maine Lands', exact: true }) });
 	await lands.getByText("What's missing?").click();
@@ -82,6 +94,130 @@ test('maine-overview (made with mapgen): towns shaded by ACS median household in
 	await page.mouse.move(box.x + xy.x, box.y + xy.y);
 	await expect(page.locator('.hover-popup')).toContainText(/Augusta city, Kennebec County: median household income \$[\d,]+ \(±[\d,]+\)/);
 	await shot(page, '7-maine-overview');
+});
+
+test('maine-terrain: elevation, hillshade and slope COGs; Katahdin elevation on click; contours when zoomed in', async ({ page }) => {
+	const tiles: number[] = [];
+	page.on('response', (r) => {
+		if (/\/raster\/maine\/(dem|hillshade)_30m\/\d+\/\d+\/\d+\.png/.test(r.url())) tiles.push(r.status());
+	});
+	await page.goto('/p/maine-terrain');
+	await mapIdle(page);
+	expect(tiles.filter((s) => s === 200).length, 'elevation and hillshade tiles served').toBeGreaterThan(4);
+	await expect(page.getByText('Elevation (m)')).toBeVisible();
+	await shot(page, '10-maine-terrain');
+	// Katahdin (1,606 m summit; a 30 m pixel reads a little lower). Zoom in so the click lands on the summit pixel.
+	await page.evaluate(() => window.__spatial!.map!.jumpTo({ center: [-68.9213, 45.9044], zoom: 13 }));
+	await mapIdle(page);
+	const xy = await page.evaluate(() => window.__spatial!.map!.project([-68.9213, 45.9044]));
+	await page.locator('.maplibregl-canvas').click({ position: { x: xy.x, y: xy.y } });
+	const inspector = page.getByRole('complementary', { name: 'Feature details' });
+	const value = parseFloat((await inspector.getByRole('region', { name: 'Elevation' }).getByRole('row', { name: /value/ }).locator('td').textContent())!);
+	expect(value).toBeGreaterThan(1450);
+	expect(value).toBeLessThan(1620);
+	await expect.poll(() => rendered(page, 'contours')).toBeGreaterThan(10);
+	await shot(page, '11-maine-terrain-katahdin');
+});
+
+test('maine-overview: county outlines over the town choropleth', async ({ page }) => {
+	await page.goto('/p/maine-overview');
+	await mapIdle(page);
+	expect(await rendered(page, 'counties')).toBeGreaterThanOrEqual(16);
+	await expect(page.getByRole('checkbox', { name: 'Median household income by census tract' })).not.toBeChecked();
+	// ACS block groups (smallest ACS geography) and 2020 census blocks, over Portland.
+	await page.getByRole('checkbox', { name: 'Median household income by block group' }).check();
+	await page.getByRole('checkbox', { name: 'Population density by census block (2020)' }).check();
+	await page.evaluate(() => window.__spatial!.map!.jumpTo({ center: [-70.27, 43.67], zoom: 12 }));
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'bg-income')).toBeGreaterThan(20);
+	await expect.poll(() => rendered(page, 'blocks-density')).toBeGreaterThan(200);
+	await shot(page, '16-maine-overview-blocks');
+});
+
+test('maine-places: Overture buildings and places over downtown Portland', async ({ page }) => {
+	await page.goto('/p/maine-places?map=15.00/43.6570/-70.2560');
+	await mapIdle(page);
+	expect(await rendered(page, 'buildings')).toBeGreaterThan(100);
+	expect(await rendered(page, 'places')).toBeGreaterThan(20);
+	await shot(page, '12-maine-places');
+});
+
+test('main nav: Work, Maps, About & contact, Admin, then Data API at the far right', async ({ page }) => {
+	await page.goto('/');
+	const links = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents();
+	expect(links.map((t) => t.trim())).toEqual(['Work', 'Maps', 'About & contact', 'Admin', 'Data API']);
+	await page.goto('/tiles/');
+	const api = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents();
+	expect(api.map((t) => t.trim())).toEqual(['Work', 'Maps', 'About & contact', 'Admin', 'Data API']);
+});
+
+test('maine-energy and maine-facilities: EIA plants and grid, HIFLD facilities', async ({ page }) => {
+	await page.goto('/p/maine-energy');
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'power-plants')).toBeGreaterThan(100);
+	await expect.poll(() => rendered(page, 'transmission-lines')).toBeGreaterThan(50);
+	await shot(page, '17-maine-energy');
+	await page.goto('/p/maine-facilities');
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'hospitals')).toBeGreaterThan(30);
+	await expect.poll(() => rendered(page, 'fire-ems')).toBeGreaterThan(300);
+	await expect.poll(() => rendered(page, 'schools')).toBeGreaterThan(300);
+	await shot(page, '18-maine-facilities');
+});
+
+test('maine-transportation: MaineDOT roads, bridges by condition, rail and airports around Augusta', async ({ page }) => {
+	await page.goto('/p/maine-transportation');
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'public-roads')).toBeGreaterThan(500);
+	await expect.poll(() => rendered(page, 'bridges')).toBeGreaterThan(50);
+	await expect.poll(() => rendered(page, 'rail')).toBeGreaterThan(5);
+	await shot(page, '19-maine-transportation');
+});
+
+test('maine-habitat: Beginning with Habitat blocks, focus areas and significant wildlife habitat', async ({ page }) => {
+	await page.goto('/p/maine-habitat');
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'iwwh')).toBeGreaterThan(50);
+	await expect.poll(() => rendered(page, 'iwwh')).toBeGreaterThan(50);
+	await expect.poll(() => rendered(page, 'focus-areas')).toBeGreaterThan(3);
+	await shot(page, '20-maine-habitat');
+});
+
+test('maine-broadband: share of locations without 100/20 Mbps by block group', async ({ page }) => {
+	await page.goto('/p/maine-broadband');
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'bg-not-served')).toBeGreaterThan(300);
+	await shot(page, '21-maine-broadband');
+});
+
+test('maine-soils: statewide hydrologic soil group grid, SSURGO map units from zoom 11', async ({ page }) => {
+	const tiles: string[] = [];
+	page.on('response', (r) => {
+		if (r.status() === 200 && /\/raster\/maine\/soils_hsg_30m\/\d+\/\d+\/\d+\.png\?colormap=/.test(r.url())) tiles.push(r.url());
+	});
+	await page.goto('/p/maine-soils');
+	await mapIdle(page);
+	expect(tiles.length, 'categorical soil grid tiles served').toBeGreaterThan(4);
+	await shot(page, '13-maine-soils');
+	await page.evaluate(() => window.__spatial!.map!.jumpTo({ center: [-68.013, 46.68], zoom: 13 })); // Presque Isle
+	await mapIdle(page);
+	await expect.poll(() => rendered(page, 'hsg')).toBeGreaterThan(50);
+	await shot(page, '14-maine-soils-presque-isle');
+});
+
+test('maine-landcover: LANDFIRE vegetation classes; a click names the ecological system', async ({ page }) => {
+	await page.goto('/p/maine-landcover');
+	await mapIdle(page);
+	await expect(page.getByText('Mixed conifer-hardwood forest')).toBeVisible();
+	await shot(page, '15-maine-landcover');
+	await page.evaluate(() => window.__spatial!.map!.jumpTo({ center: [-69.5, 45.6], zoom: 13 }));
+	await mapIdle(page);
+	const xy = await page.evaluate(() => window.__spatial!.map!.project([-69.5, 45.6]));
+	await page.locator('.maplibregl-canvas').click({ position: { x: xy.x, y: xy.y } });
+	const inspector = page.getByRole('complementary', { name: 'Feature details' });
+	// The class label from the manifest's categories, not the raw EVT code.
+	await expect(inspector.getByRole('region', { name: 'Existing vegetation type' }).getByRole('row', { name: /value/ }).locator('td'))
+		.toHaveText(/^[A-Z][A-Za-z -]+(Forest|Swamp|Woodland|Bog|Fen|Marsh|Shrubland)/);
 });
 
 test('world-overview draws countries and places from tiPG vector tiles', async ({ page }) => {
@@ -225,6 +361,21 @@ test('analysis-sandbox (empty placeholder) opens cleanly', async ({ page }) => {
 	await shot(page, '5-analysis-sandbox');
 });
 
+test('Data API pages (tiPG at /tiles/) carry the site bar, banner and footer, and the site links to them', async ({ page }) => {
+	await page.goto('/');
+	await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' }).click();
+	await expect(page).toHaveURL(/\/tiles\/$/);
+	await expect(page).toHaveTitle(/Data API · Downeast Geospatial/);
+	await expect(page.getByRole('heading', { name: 'Downeast Geospatial Data API', level: 1 })).toBeVisible(); // tiPG's page title
+	await expect(page.getByRole('region', { name: 'Data API' })).toContainText('served live from PostGIS'); // the banner
+	await expect(page.getByRole('link', { name: /Downeast Geospatial/ }).first()).toHaveAttribute('href', '/');
+	await expect(page.getByRole('link', { name: /New England Wilderness Trust/ })).toBeVisible();
+	await shot(page, '8-data-api');
+	await page.goto('/tiles/collections/pub.maine_overview__towns/tiles/WebMercatorQuad/map.html');
+	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Maps' })).toBeVisible();
+	await shot(page, '9-data-api-map');
+});
+
 test('unknown project shows a helpful 404', async ({ page }) => {
 	await page.goto('/p/does-not-exist');
 	await expect(page.getByRole('heading', { name: 'Not found' })).toBeVisible();
@@ -232,7 +383,7 @@ test('unknown project shows a helpful 404', async ({ page }) => {
 });
 
 test('accessibility: no serious or critical axe violations', async ({ page }) => {
-	for (const path of ['/', '/maps', '/new', '/p/world-overview', '/p/maine-overview']) {
+	for (const path of ['/', '/about', '/maps', '/new', '/p/world-overview', '/p/maine-overview']) {
 		await page.goto(path);
 		if (path.startsWith('/p/')) await mapIdle(page);
 		const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

@@ -16,10 +16,10 @@
 		<a class="brand" href="/"><span aria-hidden="true">◈</span> {site.studio}</a>
 		<nav aria-label="Main">
 			<a href="/#work">Work</a>
-			<a href="/#services">Services</a>
 			<a href="/maps" aria-current={current('/maps')}>Maps</a>
-			<a href="/#about">About</a>
-			<a href="/#contact">Contact</a>
+			<a href="/about" aria-current={current('/about')}>About &amp; contact</a>
+			<a href="/admin" aria-current={page.url.pathname.startsWith('/admin') ? 'page' : undefined}>Admin</a>
+			<a href="/tiles/" rel="external">Data API</a>
 		</nav>
 	</header>
 {/if}
@@ -32,9 +32,8 @@
 	<footer class="site-foot">
 		<span>© {new Date().getFullYear()} {site.person || site.studio} · {site.location}</span>
 		<nav aria-label="Developer">
-			<a href="/tiles/collections" rel="external">Data API</a>
+			<a href="/tiles/" rel="external">Data API</a>
 			<a href="/new" aria-current={current('/new')}>Add a project</a>
-			<a href="/admin">Admin</a>
 		</nav>
 	</footer>
 {/if}

@@ -1,0 +1,233 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-places",
+  "title": "Maine Places & Buildings",
+  "status": "draft",
+  "description": "Points of interest and building footprints across Maine from Overture Maps (OpenStreetMap, Microsoft, Google, Meta and partner data). Zoom in for buildings.",
+  "tags": [
+    "maine",
+    "places",
+    "buildings",
+    "overture"
+  ],
+  "view": {
+    "center": [
+      -70.26,
+      43.66
+    ],
+    "zoom": 12,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "buildings",
+      "title": "Buildings",
+      "group": "Built environment",
+      "minzoom": 13,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_places__buildings",
+        "properties": [
+          "name",
+          "kind",
+          "height_m",
+          "num_floors"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "step",
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "height_m"
+                  ],
+                  0
+                ],
+                "#cfd8dc",
+                6,
+                "#90a4ae",
+                12,
+                "#546e7a",
+                25,
+                "#263238"
+              ],
+              "fill-opacity": 0.85
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#78909c",
+              "line-width": 0.3
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Building height",
+        "items": [
+          {
+            "label": "unknown or under 6 m",
+            "color": "#cfd8dc"
+          },
+          {
+            "label": "6–12 m",
+            "color": "#90a4ae"
+          },
+          {
+            "label": "12–25 m",
+            "color": "#546e7a"
+          },
+          {
+            "label": "25 m and over",
+            "color": "#263238"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} {kind}, {height_m} m"
+        },
+        "inspect": true
+      },
+      "attribution": "© OpenStreetMap contributors, Overture Maps Foundation"
+    },
+    {
+      "id": "places",
+      "title": "Places",
+      "group": "Points of interest",
+      "minzoom": 12,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_places__places",
+        "properties": [
+          "name",
+          "category",
+          "detail",
+          "address",
+          "locality",
+          "website",
+          "confidence"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "category"
+                ],
+                "services_and_business",
+                "#0072B2",
+                "shopping",
+                "#E69F00",
+                "health_care",
+                "#D55E00",
+                "food_and_drink",
+                "#CC79A7",
+                "community_and_government",
+                "#009E73",
+                "lifestyle_services",
+                "#56B4E9",
+                "travel_and_transportation",
+                "#882255",
+                "sports_and_recreation",
+                "#44AA99",
+                "lodging",
+                "#999933",
+                "cultural_and_historic",
+                "#AA4499",
+                "#9e9e9e"
+              ],
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                12,
+                3,
+                16,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Category",
+        "items": [
+          {
+            "label": "Services and business",
+            "color": "#0072B2"
+          },
+          {
+            "label": "Shopping",
+            "color": "#E69F00"
+          },
+          {
+            "label": "Health care",
+            "color": "#D55E00"
+          },
+          {
+            "label": "Food and drink",
+            "color": "#CC79A7"
+          },
+          {
+            "label": "Community and government",
+            "color": "#009E73"
+          },
+          {
+            "label": "Lifestyle services",
+            "color": "#56B4E9"
+          },
+          {
+            "label": "Travel and transportation",
+            "color": "#882255"
+          },
+          {
+            "label": "Sports and recreation",
+            "color": "#44AA99"
+          },
+          {
+            "label": "Lodging",
+            "color": "#999933"
+          },
+          {
+            "label": "Cultural and historic",
+            "color": "#AA4499"
+          },
+          {
+            "label": "Other",
+            "color": "#9e9e9e"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: {detail}, {address} {locality}"
+        },
+        "inspect": true
+      },
+      "attribution": "Overture Maps Foundation"
+    }
+  ]
+}

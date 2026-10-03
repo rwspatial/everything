@@ -1,0 +1,518 @@
+{
+  "manifestVersion": 1,
+  "slug": "maine-facilities",
+  "title": "Maine Critical Facilities",
+  "status": "draft",
+  "description": "Hospitals, care facilities, fire and EMS stations, law enforcement, emergency shelters, schools, colleges and cell towers across Maine, from the final HIFLD Open snapshot (DHS retired HIFLD Open in August 2025; the archive is not updated).",
+  "tags": [
+    "maine",
+    "infrastructure",
+    "emergency",
+    "health",
+    "education",
+    "hifld"
+  ],
+  "view": {
+    "center": [
+      -69.2,
+      45.0
+    ],
+    "zoom": 7,
+    "basemap": "positron"
+  },
+  "layers": [
+    {
+      "id": "cell-towers",
+      "title": "Cellular towers",
+      "group": "Communications",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__cell_towers",
+        "properties": [
+          "licensee",
+          "structure",
+          "height_m",
+          "callsign",
+          "city"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#7f7f7f",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Cell tower",
+        "items": [
+          {
+            "label": "Cell tower",
+            "color": "#7f7f7f"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{licensee}: {structure}, {height_m} m ({callsign})"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)",
+      "visible": false
+    },
+    {
+      "id": "colleges",
+      "title": "Colleges and universities",
+      "group": "Education",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__colleges",
+        "properties": [
+          "name",
+          "sector",
+          "enrollment",
+          "city",
+          "website"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#8c564b",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                4,
+                14,
+                8
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "College / university",
+        "items": [
+          {
+            "label": "College / university",
+            "color": "#8c564b"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {city}: {enrollment} students"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)"
+    },
+    {
+      "id": "schools",
+      "title": "Schools (K-12)",
+      "group": "Education",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__schools",
+        "properties": [
+          "name",
+          "kind",
+          "level",
+          "grades",
+          "enrollment",
+          "city"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "kind"
+                ],
+                "public",
+                "#9467bd",
+                "private",
+                "#c5b0d5",
+                "#999999"
+              ],
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2.5,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Schools",
+        "items": [
+          {
+            "label": "Public",
+            "color": "#9467bd"
+          },
+          {
+            "label": "Private",
+            "color": "#c5b0d5"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({kind}, grades {grades}), {city}: {enrollment} students"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)"
+    },
+    {
+      "id": "shelters",
+      "title": "Emergency shelters",
+      "group": "Emergency services",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__shelters",
+        "properties": [
+          "name",
+          "city",
+          "evacuation_capacity",
+          "post_impact_capacity",
+          "ada_compliant",
+          "generator_onsite",
+          "pets"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#2ca02c",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Shelter",
+        "items": [
+          {
+            "label": "Shelter",
+            "color": "#2ca02c"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {city}: evacuation capacity {evacuation_capacity}, generator {generator_onsite}"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)",
+      "visible": false
+    },
+    {
+      "id": "law-enforcement",
+      "title": "Law enforcement",
+      "group": "Emergency services",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__law_enforcement",
+        "properties": [
+          "name",
+          "type",
+          "sworn_officers",
+          "city",
+          "telephone"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#1f77b4",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Police / sheriff",
+        "items": [
+          {
+            "label": "Police / sheriff",
+            "color": "#1f77b4"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {city}: {sworn_officers} full-time sworn officers"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)"
+    },
+    {
+      "id": "fire-ems",
+      "title": "Fire and EMS stations",
+      "group": "Emergency services",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__fire_ems",
+        "properties": [
+          "name",
+          "address",
+          "city"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#ff7f0e",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Fire / EMS station",
+        "items": [
+          {
+            "label": "Fire / EMS station",
+            "color": "#ff7f0e"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}, {city}"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)"
+    },
+    {
+      "id": "nursing-homes",
+      "title": "Nursing homes and assisted living",
+      "group": "Health",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__nursing_homes",
+        "properties": [
+          "name",
+          "type",
+          "beds",
+          "city",
+          "telephone"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#e377c2",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                2,
+                14,
+                6
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Nursing home / assisted living",
+        "items": [
+          {
+            "label": "Nursing home / assisted living",
+            "color": "#e377c2"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({type}), {city}: {beds} beds"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)",
+      "visible": false
+    },
+    {
+      "id": "hospitals",
+      "title": "Hospitals",
+      "group": "Health",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_facilities__hospitals",
+        "properties": [
+          "name",
+          "type",
+          "beds",
+          "trauma",
+          "city",
+          "telephone",
+          "website"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": "#d62728",
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                4,
+                14,
+                8
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Hospital",
+        "items": [
+          {
+            "label": "Hospital",
+            "color": "#d62728"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({type}), {city}: {beds} beds"
+        },
+        "inspect": true
+      },
+      "attribution": "HIFLD Open (final snapshot, August 2025)"
+    }
+  ]
+}

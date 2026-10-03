@@ -23,6 +23,112 @@
   ],
   "layers": [
     {
+      "id": "flood-zones",
+      "title": "Flood hazard zones (FEMA NFHL)",
+      "group": "Hazards",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__flood_zones",
+        "properties": [
+          "zone",
+          "subtype",
+          "hazard",
+          "base_flood_elev_ft",
+          "v_datum",
+          "dfirm_id"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "hazard"
+                ],
+                "coastal high hazard",
+                "#7b3294",
+                "floodway",
+                "#08306b",
+                "1% annual chance",
+                "#2171b5",
+                "0.2% annual chance",
+                "#9ecae1",
+                "undetermined",
+                "#bdbdbd",
+                "#bdbdbd"
+              ],
+              "fill-opacity": 0.5
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 12,
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "hazard"
+                ],
+                "coastal high hazard",
+                "#7b3294",
+                "floodway",
+                "#08306b",
+                "1% annual chance",
+                "#2171b5",
+                "0.2% annual chance",
+                "#9ecae1",
+                "undetermined",
+                "#bdbdbd",
+                "#bdbdbd"
+              ],
+              "line-width": 0.5
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Flood hazard (FEMA zone)",
+        "items": [
+          {
+            "label": "Coastal high hazard (VE, V)",
+            "color": "#7b3294"
+          },
+          {
+            "label": "Regulatory floodway",
+            "color": "#08306b"
+          },
+          {
+            "label": "1% annual chance, the 100-year flood (A, AE, AO, AH)",
+            "color": "#2171b5"
+          },
+          {
+            "label": "0.2% annual chance, 500-year (shaded X)",
+            "color": "#9ecae1"
+          },
+          {
+            "label": "Undetermined (D)",
+            "color": "#bdbdbd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "Zone {zone} ({hazard}): base flood elevation {base_flood_elev_ft} ft {v_datum}"
+        },
+        "inspect": true
+      },
+      "attribution": "FEMA National Flood Hazard Layer",
+      "visible": false,
+      "minzoom": 9
+    },
+    {
       "id": "wetlands",
       "title": "Wetlands (NWI)",
       "group": "Wetlands",
@@ -279,6 +385,94 @@
         }
       },
       "attribution": "U.S. EPA ATTAINS; Maine DEP"
+    },
+    {
+      "id": "dams",
+      "title": "Dams (National Inventory of Dams)",
+      "group": "Infrastructure",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__dams",
+        "properties": [
+          "name",
+          "river",
+          "hazard",
+          "purpose",
+          "owner_type",
+          "height_ft",
+          "storage_acre_ft",
+          "year_completed",
+          "condition",
+          "nidid"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "circle",
+            "paint": {
+              "circle-color": [
+                "match",
+                [
+                  "get",
+                  "hazard"
+                ],
+                "High",
+                "#b2182b",
+                "Significant",
+                "#ef8a62",
+                "Low",
+                "#4393c3",
+                "Undetermined",
+                "#999999",
+                "#999999"
+              ],
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                6,
+                2.5,
+                13,
+                7
+              ],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Hazard potential (if the dam failed)",
+        "items": [
+          {
+            "label": "High",
+            "color": "#b2182b"
+          },
+          {
+            "label": "Significant",
+            "color": "#ef8a62"
+          },
+          {
+            "label": "Low",
+            "color": "#4393c3"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} on {river}: {hazard} hazard, {height_ft} ft, built {year_completed}, condition {condition}"
+        },
+        "inspect": true
+      },
+      "attribution": "USACE National Inventory of Dams (HIFLD Open archive)",
+      "visible": false
     }
   ]
 }

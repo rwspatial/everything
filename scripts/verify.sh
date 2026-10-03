@@ -177,9 +177,23 @@ data = get("/api/admin/datasets")
 names = {d["name"] for d in data["datasets"] if not d["orphaned"]}
 yaml_names = {p.stem for p in Path("data/recipes").glob("*.yaml")}
 check("registry mirrors every recipe YAML", names == yaml_names, f"{len(names)} recipes")
+# "stale" means upstream has a newer version: worth refreshing, not a fault of this system. A recipe that has never run
+# because a key it needs is not configured yet is waiting on the operator, so it is reported but does not fail.
+def waiting_for_key(d):
+    if d["status"] != "unknown" or not d.get("requires_keys"):
+        return False
+    configured = {k["key_name"] for k in get(f"/api/admin/datasets/{d['name']}")["keys"] if k["configured"]}
+    return not set(d["requires_keys"]) <= configured
+waiting = [d["name"] for d in data["datasets"] if d["enabled"] and waiting_for_key(d)]
 bad = [f"{d['name']}={d['status']}" for d in data["datasets"]
-       if d["enabled"] and (d["status"] != "ok" or d["health_ok"] != d["outputs_total"])]
+       if d["enabled"] and d["name"] not in waiting
+       and (d["status"] not in ("ok", "stale") or d["health_ok"] != d["outputs_total"])]
+if waiting:
+    print(f"  --    waiting for a key (set it in .env, then import): {', '.join(waiting)}")
+stale = [d["name"] for d in data["datasets"] if d["enabled"] and d["status"] == "stale"]
 check("every enabled dataset is ok with all outputs healthy", not bad, ", ".join(bad) or f"{sum(d['enabled'] for d in data['datasets'])} enabled")
+if stale:
+    print(f"  --    newer upstream data for: {', '.join(stale)} (Re-download and import on its dataset page)")
 disabled = [d["name"] for d in data["datasets"] if not d["enabled"]]
 check("disabled recipes are shown as disabled", all(d["status"] == "disabled" for d in data["datasets"] if not d["enabled"]), ", ".join(disabled) or "none")
 runs = get("/api/admin/datasets/ne_lakes")["runs"]
@@ -200,9 +214,14 @@ docker compose run --rm -T geotools python scripts/mapgen.py check-templates 2>/
 check "placeholder projects are reproducible from their templates" ${PIPESTATUS[0]}
 docker compose run --rm -T geotools python scripts/mapgen.py sync --check 2>/dev/null | tail -1 | sed 's/^/      /'
 check "projects/ and the registry agree" ${PIPESTATUS[0]}
-n_files=$(python3 -c 'import json; print(len(json.load(open("projects/index.json"))["projects"]))')
-api=$(curl -s --max-time 10 "$BASE/api/projects" | python3 -c 'import sys, json; p = json.load(sys.stdin)["projects"]; print(len(p), sum(not x["valid"] for x in p))' 2>/dev/null)
-[[ $api == "$n_files 0" ]]; check "GET /api/projects lists every project, all valid" $? "${api:-no answer} (count, invalid)"
+# Every project file is registered and valid (projects saved only in the /admin/new wizard may exist besides).
+api=$(curl -s --max-time 10 "$BASE/api/projects" | python3 -c 'import sys, json
+p = {x["slug"]: x for x in json.load(sys.stdin)["projects"]}
+files = json.load(open("projects/index.json"))["projects"]
+missing = [s for s in files if s not in p]; invalid = [s for s in files if s in p and not p[s]["valid"]]
+print(f"{len(files)} files, {len(p)} registered" + (f"; missing {missing}" if missing else "") + (f"; invalid {invalid}" if invalid else ""))
+sys.exit(1 if missing or invalid else 0)' 2>&1)
+check "GET /api/projects lists every project file, all valid" $? "$api"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --max-time 10 "$BASE/api/projects")
 [[ $code == 405 ]]; check "anonymous project writes are refused" $? "HTTP $code"
 census=$(docker compose exec -T postgis sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -AtF" " -c "SELECT count(*), count(DISTINCT geoid), count(median_hh_income), round(100.0 * count(median_hh_income) / count(*), 1) FROM pub.maine_overview__towns"' 2>/dev/null)
@@ -230,6 +249,37 @@ python3 -c 'import json; m = json.load(open("projects/maine-overview/project.jso
 codes=$(curl -s -X POST -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" --data-binary @"$OUT/leak.json" "$BASE/api/admin/projects/validate" | python3 -c 'import sys, json; print(",".join(e["code"] for e in json.load(sys.stdin)["errors"]))' 2>/dev/null)
 echo "DROP VIEW IF EXISTS pub.zz_verify__leak;" | psql_owner
 [[ $codes == E_VIEW_SOURCE ]]; check "a view reading the app registry is refused with E_VIEW_SOURCE" $? "${codes:-no answer}"
+
+echo "-- dataset worker (admin Phase B)"
+docker compose --profile workers --profile mcp --profile tools --profile test config 2>/dev/null | grep -q "docker.sock"
+[[ $? != 0 ]]; check "no service mounts the Docker socket" $?
+h=$(docker compose --profile workers ps --format '{{.Health}}' dataset-worker 2>/dev/null)
+if [[ $h == healthy ]]; then
+  check "dataset worker is healthy" 0
+  adm=(-s -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}")
+  act() { curl "${adm[@]}" -X POST "$BASE/api/admin/datasets/$1/actions" -H 'Content-Type: application/json' -d "{\"action\":\"$2\"}"; }
+  jid() { python3 -c 'import sys, json; print(json.load(sys.stdin)["id"])'; }
+  waitjob() { for _ in $(seq 1 90); do s=$(curl "${adm[@]}" "$BASE/api/admin/jobs/$1" | python3 -c 'import sys, json; print(json.load(sys.stdin)["status"])'); case $s in succeeded|failed|cancelled) break;; esac; sleep 2; done; echo "$s"; }
+  j=$(act me_cousub dry_run | jid); s=$(waitjob "$j")
+  plan=$(curl "${adm[@]}" "$BASE/api/admin/jobs/$j" | python3 -c 'import sys, json; p = json.load(sys.stdin)["result"]["plan"]; print(p["upstream_bytes"], p["cached_bytes"], p["current_rows"])')
+  read -r up cached rows <<<"$plan"
+  [[ $s == succeeded && -n $up && $up == "$cached" && $rows == 529 ]]; check "dry run (Maine towns): upstream size = cached download, 529 rows" $? "$s; upstream $up, cached $cached"
+  j=$(act me_cousub redownload | jid)
+  dup=$(act me_cousub import | python3 -c 'import sys, json; d = json.load(sys.stdin); print(d["id"], d.get("deduplicated"))')
+  [[ $dup == "$j True" ]]; check "a second click on a queued dataset job returns the same job" $? "$dup"
+  s=$(waitjob "$j")
+  n=$(docker compose exec -T postgis sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM pub.maine_overview__towns"')
+  [[ $s == succeeded && $n == 529 ]]; check "re-download via the dashboard API; the published view survives" $? "$s; pub.maine_overview__towns $n rows"
+  printf 'name: zz_verify_unreachable\ntitle: verify (unreachable source)\nsource:\n  url: http://127.0.0.1:9/nothing.zip\ntarget: src_census.zz_verify_unreachable\nenabled: true\n' > data/recipes/zz_verify_unreachable.yaml
+  docker compose run --rm -T geotools python scripts/geoimport.py sync > /dev/null 2>&1
+  j=$(act zz_verify_unreachable redownload | jid)
+  for _ in $(seq 1 60); do r=$(curl "${adm[@]}" "$BASE/api/admin/jobs/$j" | python3 -c 'import sys, json; d = json.load(sys.stdin); print(d["status"], d["attempts"], (d.get("error") or {}).get("message", "")[:60])'); [[ $r == failed* ]] && break; sleep 3; done
+  rm -f data/recipes/zz_verify_unreachable.yaml
+  docker compose exec -T postgis sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -qc "DELETE FROM app.recipes WHERE name = '"'"'zz_verify_unreachable'"'"'"'
+  [[ $r == "failed 4 "* ]]; check "an unreachable source is retried 4 times with backoff, then fails" $? "$r"
+else
+  echo "  --    dataset worker not running (make workers-up); dataset job checks skipped"
+fi
 
 echo "-- MCP servers (Phase 4)"
 if grep -qE '^MCP_DB_PASSWORD=.' .env; then

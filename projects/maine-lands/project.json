@@ -22,6 +22,126 @@
   ],
   "layers": [
     {
+      "id": "conserved-lands",
+      "title": "Conserved lands (all holders)",
+      "group": "Conservation",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__conserved_lands",
+        "properties": [
+          "name",
+          "designation",
+          "holder_type",
+          "holder",
+          "interest",
+          "public_access",
+          "access_notes",
+          "acres",
+          "acq_year"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "holder_type"
+                ],
+                "State",
+                "#1b7837",
+                "Federal",
+                "#5aae61",
+                "Municipal",
+                "#a6dba0",
+                "Private",
+                "#762a83",
+                "Other",
+                "#c2a5cf",
+                "#c2a5cf"
+              ],
+              "fill-opacity": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "interest"
+                  ],
+                  "easement"
+                ],
+                0.3,
+                0.6
+              ]
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 9,
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "holder_type"
+                ],
+                "State",
+                "#1b7837",
+                "Federal",
+                "#5aae61",
+                "Municipal",
+                "#a6dba0",
+                "Private",
+                "#762a83",
+                "Other",
+                "#c2a5cf",
+                "#c2a5cf"
+              ],
+              "line-width": 0.6
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Holder (paler: conservation easement)",
+        "items": [
+          {
+            "label": "State",
+            "color": "#1b7837"
+          },
+          {
+            "label": "Federal",
+            "color": "#5aae61"
+          },
+          {
+            "label": "Municipal",
+            "color": "#a6dba0"
+          },
+          {
+            "label": "Private (land trusts, others)",
+            "color": "#762a83"
+          },
+          {
+            "label": "Other",
+            "color": "#c2a5cf"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({holder}, {interest}): {acres} acres; public access: {public_access}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine GeoLibrary, Maine Conserved Lands",
+      "visible": false
+    },
+    {
       "id": "min-temp",
       "title": "Extreme minimum temperature (grid)",
       "group": "Climate",
@@ -274,6 +394,131 @@
         "type": "tipg-vector",
         "collection": "pub.maine_lands__trails"
       }
+    },
+    {
+      "id": "ntd-trails",
+      "title": "Trails (USGS National Digital Trails)",
+      "group": "Recreation",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__ntd_trails",
+        "properties": [
+          "name",
+          "trail_type",
+          "miles",
+          "hiking",
+          "biking",
+          "xc_ski",
+          "snowmobile",
+          "maintainer"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "trail_type"
+                ],
+                "Snow Trail",
+                "#3182bd",
+                "#a63603"
+              ],
+              "line-width": 1.4,
+              "line-dasharray": [
+                2,
+                1
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Trails (USGS)",
+        "items": [
+          {
+            "label": "Hiking / multi-use trail",
+            "color": "#a63603"
+          },
+          {
+            "label": "Snow trail",
+            "color": "#3182bd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} ({trail_type}, {miles} mi): hiking {hiking}, biking {biking}, snowmobile {snowmobile}"
+        },
+        "inspect": true
+      },
+      "attribution": "USGS The National Map, National Transportation Dataset",
+      "visible": false
+    },
+    {
+      "id": "town-boundaries",
+      "title": "Town and township boundaries",
+      "group": "Boundaries",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__town_boundaries",
+        "properties": [
+          "town",
+          "county"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#555555",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                0.4,
+                12,
+                1.2
+              ],
+              "line-dasharray": [
+                4,
+                2
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Boundaries",
+        "items": [
+          {
+            "label": "Town / township line",
+            "color": "#555555"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{town}, {county} County"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine GeoLibrary (MEGIS)",
+      "visible": false
     }
   ]
 }

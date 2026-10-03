@@ -225,7 +225,10 @@
 					if (!r.ok) return null; // outside the raster, or nodata
 					const v = (await r.json()).values?.[src.bidx ? src.bidx - 1 : 0];
 					if (typeof v !== 'number' || !Number.isFinite(v)) return null;
-					const value = `${Math.round(v * 10) / 10}${src.units ? ` ${src.units}` : ''}`;
+					const category = src.categories?.find((c) => c.value === v);
+					const value = category
+						? (category.label ?? String(v))
+						: `${Math.round(v * 10) / 10}${src.units ? ` ${src.units}` : ''}`;
 					return { layerId: l.spec.id, layerTitle: l.spec.title, properties: { value } };
 				} catch {
 					return null;

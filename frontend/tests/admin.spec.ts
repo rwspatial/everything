@@ -32,6 +32,29 @@ test.describe('signed in', () => {
 		await shot(page, 'admin-1-datasets');
 	});
 
+	test('admin tables sort by column (aria-sort), both directions, empty values last', async ({ page }) => {
+		await page.goto('/admin');
+		const table = page.getByRole('table', { name: /Datasets/ });
+		const header = table.getByRole('columnheader', { name: 'Features' });
+		const features = async () =>
+			(await table.locator('tbody tr td:nth-child(6)').allTextContents())
+				.map((t) => t.trim())
+				.filter((t) => t !== '–')
+				.map((t) => Number(t.replace(/[^\d.]/g, '')));
+		await header.getByRole('button').click();
+		await expect(header).toHaveAttribute('aria-sort', 'ascending');
+		const up = await features();
+		expect(up.length).toBeGreaterThan(10);
+		expect(up).toEqual([...up].sort((a, b) => a - b));
+		await header.getByRole('button').click();
+		await expect(header).toHaveAttribute('aria-sort', 'descending');
+		const down = await features();
+		expect(down).toEqual([...down].sort((a, b) => b - a));
+		// SSURGO polygons are the largest table, Maine-wide.
+		await expect(table.locator('tbody tr').first()).toContainText(/Overture|SSURGO|Soil|Buildings/);
+		await expect(table.getByRole('columnheader', { name: 'Dataset' })).toHaveAttribute('aria-sort', 'none');
+	});
+
 	test('dataset detail: footprint map, healthy outputs, run history', async ({ page }) => {
 		await page.goto('/admin/datasets/ne_lakes');
 		await expect(page.getByRole('heading', { name: 'Lakes (1:10m)' })).toBeVisible();
@@ -106,8 +129,15 @@ test.describe('signed in', () => {
 
 		// Saving the same slug again is refused; the wizard project can be deleted, a file-managed one cannot.
 		expect((await request.post('/api/admin/projects', { data: await (await request.get(`/api/projects/${slug}`)).json() })).status()).toBe(409);
-		expect((await request.delete(`/api/admin/projects/${slug}`)).status()).toBe(204);
 		expect((await request.delete('/api/admin/projects/maine-lands')).status()).toBe(409);
+		// Delete it the way a person would: Admin → Projects → Delete (with the confirmation dialog).
+		await page.goto('/admin/projects');
+		page.once('dialog', (d) => d.accept());
+		await page.getByRole('button', { name: 'Delete E2E Maine Public Lands' }).click();
+		await expect(page.getByRole('status')).toContainText('Deleted E2E Maine Public Lands');
+		await expect(page.getByRole('link', { name: 'E2E Maine Public Lands' })).toHaveCount(0);
+		// File-managed projects have no Delete button.
+		await expect(page.getByRole('row', { name: /Maine Lands/ }).getByRole('button')).toHaveCount(0);
 	});
 
 	test('project API: invalid manifests fail with specific codes', async ({ request }) => {
@@ -147,18 +177,37 @@ test.describe('signed in', () => {
 			await expect(status).toContainText('global_moran');
 			await expect(page.getByLabel('Result preview').getByText('High-High')).toBeVisible();
 			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
-			expect(await page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId)).toBeGreaterThan(400);
+			// The preview is a small map: count what it draws, which is most of the 496 towns once its tiles are in.
+			await expect.poll(() => page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId), { timeout: 45_000 }).toBeGreaterThan(250);
 			await shot(page, 'admin-6-analysis');
 
 			await page.getByRole('button', { name: 'Add to Analysis Sandbox' }).click();
 			await page.getByRole('link', { name: 'Open the Analysis Sandbox' }).click();
 			await expect(page).toHaveURL(/\/p\/analysis-sandbox/);
 			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
-			expect(await page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId)).toBeGreaterThan(400);
+			await expect.poll(() => page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId), { timeout: 20_000 }).toBeGreaterThan(400);
 		} finally {
 			// Put the sandbox back the way the file has it.
 			expect((await request.put('/api/admin/projects/analysis-sandbox', { data: original })).ok()).toBe(true);
 		}
+	});
+
+	test('dataset actions: dry run and update check on Maine towns, run by the dataset worker', async ({ page }) => {
+		test.setTimeout(120_000);
+		await page.goto('/admin/datasets/me_cousub');
+		const actions = page.getByRole('group', { name: 'Dataset actions' });
+		await actions.getByRole('button', { name: 'Dry run' }).click();
+		const plan = page.getByRole('table', { name: 'Dry run' });
+		await expect(plan).toContainText('import from the cached download', { timeout: 60_000 });
+		await expect(plan).toContainText('src_census.cousub · 529 rows now');
+		await shot(page, 'admin-7-dataset-actions');
+
+		await actions.getByRole('button', { name: 'Check for updates' }).click();
+		await expect(page.getByText('Check for updates: done')).toBeVisible({ timeout: 60_000 });
+		// The run shows up in the dataset's history, triggered from the dashboard.
+		const runs = page.getByRole('region', { name: 'Run history' });
+		await expect(runs.getByRole('row').nth(1)).toContainText('freshness');
+		await expect(runs.getByRole('row').nth(1)).toContainText('admin:');
 	});
 
 	test('jobs page shows recent runs', async ({ page }) => {
@@ -168,7 +217,7 @@ test.describe('signed in', () => {
 	});
 
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/analysis']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/analysis', '/admin/projects']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

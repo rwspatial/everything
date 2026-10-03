@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Badge from '$lib/admin/Badge.svelte';
-	import { fmtAgo, fmtBytes, fmtNum } from '$lib/admin/api';
+	import SortTh from '$lib/admin/SortTh.svelte';
+	import { TableSort } from '$lib/admin/sort.svelte';
+	import { fmtAgo, fmtBytes, fmtNum, post } from '$lib/admin/api';
 
 	let { data } = $props();
 
@@ -26,11 +28,41 @@
 			);
 		})
 	);
+	type Row = (typeof data.datasets)[number];
+	const sort = new TableSort<Row>({
+		dataset: (d) => d.title,
+		status: (d) => d.status,
+		freshness: (d) => d.freshness,
+		outputs: (d) => d.outputs_total,
+		coverage: (d) => d.extent_name ?? d.coverage?.extent,
+		features: (d) => d.rows,
+		size: (d) => d.bytes,
+		used: (d) => (d.projects ?? []).join(', '),
+		last: (d) => d.last_run?.finished_at ?? d.last_run?.started_at
+	});
 	const summary = $derived({
 		total: data.datasets.length,
 		ok: data.datasets.filter((d) => d.status === 'ok').length,
 		attention: data.datasets.filter((d) => ['failed', 'unhealthy', 'stale'].includes(d.status)).length
 	});
+
+	// Queue a freshness or health check for every enabled dataset (the dataset worker runs them).
+	let bulkBusy = $state(false);
+	let bulkMessage = $state('');
+	async function checkAll(action: 'freshness' | 'healthcheck') {
+		bulkBusy = true;
+		try {
+			const r = await post<{ queued: number; already_queued: number }>(fetch, '/datasets/actions', { action });
+			bulkMessage =
+				`${r.queued} ${action === 'freshness' ? 'update checks' : 'health checks'} queued` +
+				(r.already_queued ? ` (${r.already_queued} already waiting)` : '') +
+				'; see Jobs & runs.';
+		} catch (e) {
+			bulkMessage = (e as Error).message;
+		} finally {
+			bulkBusy = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Datasets · Admin</title></svelte:head>
@@ -41,6 +73,11 @@
 		Every dataset defined in <code>data/recipes/</code>: what we hold, how fresh it is, where it is published and how
 		the last run went. <strong>{summary.total}</strong> datasets · <strong>{summary.ok}</strong> ok ·
 		<strong>{summary.attention}</strong> need attention.
+	</p>
+	<p class="bulk">
+		<button type="button" onclick={() => checkAll('freshness')} disabled={bulkBusy}>Check all for updates</button>
+		<button type="button" onclick={() => checkAll('healthcheck')} disabled={bulkBusy}>Re-check all health</button>
+		{#if bulkMessage}<span role="status">{bulkMessage}</span>{/if}
 	</p>
 </header>
 
@@ -63,19 +100,19 @@
 		<caption class="visually-hidden">Datasets ({shown.length} shown)</caption>
 		<thead>
 			<tr>
-				<th scope="col">Dataset</th>
-				<th scope="col">Status</th>
-				<th scope="col">Freshness</th>
-				<th scope="col">Outputs</th>
-				<th scope="col">Coverage</th>
-				<th scope="col" class="num">Features</th>
-				<th scope="col" class="num">Size</th>
-				<th scope="col">Used by</th>
-				<th scope="col">Last run</th>
+				<SortTh {sort} key="dataset">Dataset</SortTh>
+				<SortTh {sort} key="status">Status</SortTh>
+				<SortTh {sort} key="freshness">Freshness</SortTh>
+				<SortTh {sort} key="outputs">Outputs</SortTh>
+				<SortTh {sort} key="coverage">Coverage</SortTh>
+				<SortTh {sort} key="features" class="num">Features</SortTh>
+				<SortTh {sort} key="size" class="num">Size</SortTh>
+				<SortTh {sort} key="used">Used by</SortTh>
+				<SortTh {sort} key="last">Last run</SortTh>
 			</tr>
 		</thead>
 		<tbody>
-			{#each shown as d (d.name)}
+			{#each sort.apply(shown) as d (d.name)}
 				<tr class:disabled={!d.enabled}>
 					<td>
 						<a class="name" href="/admin/datasets/{d.name}">{d.title}</a>
@@ -130,14 +167,17 @@
 <style>
 	.head h1 { margin: 0 0 0.3rem; font-size: 1.5rem; }
 	.head p { margin: 0; color: var(--muted); max-width: 80ch; }
+	.bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+	.bulk button { font: inherit; padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
 	.filters { display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: end; margin: 1.2rem 0 0.8rem; font-size: 0.82rem; color: var(--muted); }
 	.filters label { display: grid; gap: 0.2rem; }
 	.filters .check { display: flex; align-items: center; gap: 0.35rem; }
 	.filters input[type='search'] { font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; min-width: 14rem; }
 	.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
 	table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-	th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-	th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-muted); }
+	table :global(th), td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+	table :global(th.num) { text-align: right; }
+	table :global(th) { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-muted); }
 	.num { text-align: right; font-variant-numeric: tabular-nums; }
 	tr.disabled td { color: var(--muted); }
 	.name { font-weight: 600; }

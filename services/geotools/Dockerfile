@@ -35,6 +35,11 @@ RUN pip install "numpy<2" setuptools wheel \
 print('GDAL', gdal.__version__, '| pyogrio', pyogrio.__gdal_version_string__, \
 '| rasterio', rasterio.__gdal_version__, '| PROJ', pyproj.proj_version_str)"
 
+# DuckDB (separate layer, so adding it does not rebuild the source-built GDAL stack above): reads Overture Maps
+# GeoParquet straight from S3 for a bbox (recipes with source.overture). Its spatial/httpfs extensions are installed
+# on first use into data/cache/duckdb/.
+RUN pip install --no-cache-dir duckdb==1.5.6
+
 COPY entrypoint.sh /usr/local/bin/geotools-entrypoint
 RUN chmod 0755 /usr/local/bin/geotools-entrypoint
 
