@@ -7,7 +7,7 @@ SELECT id,
        replace(coalesce(class, subtype, 'unknown'), '_', ' ') AS kind,
        round(height::numeric, 1)::float8                      AS height_m,
        num_floors,
-       geom::geometry(MultiPolygon, 4326) AS geom
+       geom AS geom
 FROM src_overture.buildings;
 
 COMMENT ON VIEW pub.maine_places__buildings IS 'maine-places: building footprints (Overture Maps)';

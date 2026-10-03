@@ -1,0 +1,19 @@
+{
+  "id": "neighbourhood-demographics",
+  "title": "Neighbourhood demographics",
+  "description": "The tract or block group and its neighbours shaded by median household income and by poverty rate (ACS 2024 5-year), with roads.",
+  "geographies": ["tract", "blockgroup"],
+  "basemap": "positron",
+  "padding": 0.6,
+  "projectTitle": "{short_name}, {county_name} County: demographics",
+  "projectDescription": "{name} and its neighbours: median household income and poverty rate (ACS 2024 5-year estimates), with roads.",
+  "tags": ["maine", "demographics", "acs"],
+  "layers": [
+    { "ref": { "tract": "maine-overview/tracts-poverty", "blockgroup": "maine-overview/bg-poverty" }, "visible": false, "opacity": 0.85 },
+    { "ref": { "tract": "maine-overview/tracts-income", "blockgroup": "maine-overview/bg-income" }, "visible": true, "opacity": 0.85 },
+    { "ref": "maine-infrastructure/roads-local", "visible": true },
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
+    { "ref": "maine-infrastructure/roads-primary", "visible": true },
+    { "focus": true }
+  ]
+}

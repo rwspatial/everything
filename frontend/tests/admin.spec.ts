@@ -100,7 +100,7 @@ test.describe('signed in', () => {
 	test('project creator: pick a Maine view, style it, preview, validate, save, open, delete', async ({ page, request }) => {
 		const slug = 'e2e-maine-public-lands';
 		await request.delete(`/api/admin/projects/${slug}`); // leftover from an interrupted run
-		await page.goto('/admin/new');
+		await page.goto('/admin/new/view');
 		await page.getByLabel('Published view (tiPG collection)').selectOption('pub.maine_lands__public_lands');
 		await expect(page.getByText(/fields, geometry MultiPolygon/)).toBeVisible();
 		await page.getByLabel('Preset').selectOption('categorical');
@@ -138,6 +138,57 @@ test.describe('signed in', () => {
 		await expect(page.getByRole('link', { name: 'E2E Maine Public Lands' })).toHaveCount(0);
 		// File-managed projects have no Delete button.
 		await expect(page.getByRole('row', { name: /Maine Lands/ }).getByRole('button')).toHaveCount(0);
+	});
+
+	test('quick map: Town atlas of Bethel, focus outline, framed, saved, opened, deleted', async ({ page, request }) => {
+		const slug = 'e2e-bethel-atlas';
+		await request.delete(`/api/admin/projects/${slug}`);
+		await page.goto('/admin/new');
+		await page.getByRole('radio', { name: /Town atlas/ }).click();
+		await page.getByLabel('Search towns').fill('Bethel');
+		await page.getByRole('button', { name: /^Bethel town/ }).click();
+		await expect(page.getByLabel('Project title')).toHaveValue('Bethel: town atlas');
+		await page.getByLabel('Slug (URL and folder name)').fill(slug);
+
+		// The preview frames the town and draws the curated layers plus the focus mask and outline.
+		await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 45_000 });
+		await shot(page, 'admin-5b-quick-map');
+		expect(await page.evaluate(() => window.__spatial!.renderedCount('focus'))).toBeGreaterThan(0);
+		expect(await page.evaluate(() => window.__spatial!.renderedCount('roads-secondary'))).toBeGreaterThan(0);
+
+		await page.getByRole('button', { name: 'Save project' }).click();
+		await expect(page.getByRole('status').filter({ hasText: `Saved ${slug}` })).toBeVisible();
+		await page.getByRole('link', { name: 'Open the map' }).click();
+		await expect(page).toHaveURL(new RegExp(`/p/${slug}`));
+		await page.waitForFunction(() => window.__spatial?.idle === true, undefined, { timeout: 45_000 });
+		expect(await page.evaluate(() => window.__spatial!.renderedCount('focus'))).toBeGreaterThan(0);
+		await shot(page, 'admin-5c-bethel-atlas');
+		expect((await request.delete(`/api/admin/projects/${slug}`)).status()).toBe(204);
+	});
+
+	test('quick map API: every design builds a valid manifest for a Maine place', async ({ request }) => {
+		const places: Record<string, [string, string]> = {
+			town: ['town', '2301704825'], // Bethel
+			county: ['county', '23017'] // Oxford
+		};
+		const designs: { id: string; geographies: string[] }[] = await (await request.get('/api/admin/designs')).json();
+		expect(designs.length).toBeGreaterThanOrEqual(5);
+		for (const d of designs) {
+			let [unit, place] = places[d.geographies[0]] ?? [];
+			if (!unit) {
+				unit = d.geographies[0];
+				place = (await (await request.get(`/api/admin/units/${unit}/places?q=Bethel&limit=1`)).json())[0]?.key
+					?? (await (await request.get(`/api/admin/units/${unit}/places?county=23005&limit=1`)).json())[0].key;
+			}
+			const res = await request.post(`/api/admin/designs/${d.id}/manifest`, { data: { unit, place } });
+			expect(res.ok(), d.id).toBe(true);
+			const body = await res.json();
+			expect(body.report.errors, d.id).toEqual([]);
+			expect(body.missing_layers, d.id).toEqual([]);
+			expect(body.manifest.layers.at(-1).id, d.id).toBe('focus');
+		}
+		// A design only builds for its own geographies: the Town atlas refuses a county.
+		expect((await request.post('/api/admin/designs/town-atlas/manifest', { data: { unit: 'county', place: '23017' } })).status()).toBe(422);
 	});
 
 	test('project API: invalid manifests fail with specific codes', async ({ request }) => {
@@ -216,8 +267,21 @@ test.describe('signed in', () => {
 		await expect(page.getByRole('table').getByRole('row').nth(1)).toBeVisible();
 	});
 
+	test('database page: every published view can use a spatial index; tables sortable', async ({ page }) => {
+		await page.goto('/admin/database');
+		const card = page.getByRole('region', { name: 'Summary' }).getByText(/published views can use a spatial index/).locator('..');
+		const [indexed, total] = ((await card.locator('.big').textContent()) ?? '').split('/').map((s) => Number(s.trim()));
+		expect(total).toBeGreaterThan(100);
+		expect(indexed).toBe(total);
+		await expect(page.getByRole('status').filter({ hasText: 'Every published view can use a spatial index' })).toBeVisible();
+		const buildings = page.getByRole('row', { name: /src_overture\.buildings/ });
+		await expect(buildings).toContainText('MultiPolygon');
+		await expect(buildings).toContainText('GiST');
+		await shot(page, 'admin-database');
+	});
+
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/analysis', '/admin/projects']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

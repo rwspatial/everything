@@ -1,0 +1,27 @@
+{
+  "id": "town-atlas",
+  "title": "Town atlas",
+  "description": "A general-purpose map of one town: terrain and contours, water and wetlands, conserved land, roads, trails, buildings and tax parcels, with the town outlined and its surroundings softened.",
+  "geographies": ["town"],
+  "basemap": "positron",
+  "padding": 0.06,
+  "projectTitle": "{short_name}: town atlas",
+  "projectDescription": "Town atlas of {name}, {county_name} County, Maine: terrain, water, conserved land, roads, trails, buildings and tax parcels. Zoom in for contours (z12), buildings and parcels (z13).",
+  "tags": ["maine", "town atlas", "{short_name}"],
+  "layers": [
+    { "ref": "maine-terrain/hillshade", "visible": true, "opacity": 0.55 },
+    { "ref": "maine-lands/conserved-lands", "visible": true },
+    { "ref": "maine-water/wetlands", "visible": true },
+    { "ref": "maine-water/flood-zones", "visible": false },
+    { "ref": "maine-terrain/contours", "visible": true, "minzoom": 12 },
+    { "ref": "maine-places/buildings", "visible": true },
+    { "ref": "maine-lands/parcels", "visible": true },
+    { "ref": "maine-lands/ntd-trails", "visible": true },
+    { "ref": "maine-infrastructure/roads-local", "visible": true },
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
+    { "ref": "maine-infrastructure/roads-primary", "visible": true },
+    { "ref": "maine-facilities/schools", "visible": true },
+    { "ref": "maine-facilities/fire-ems", "visible": true },
+    { "focus": true }
+  ]
+}

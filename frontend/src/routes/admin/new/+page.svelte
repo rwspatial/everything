@@ -1,213 +1,139 @@
 <script lang="ts">
+	// Quick map (plan: project-builder §1.7): pick a design, pick a place, get a finished project.
+	// core-api builds the manifest from the design (curated layers from the registered projects, a focus
+	// mask and outline, framing, titles); this page previews it and saves it like the single-view wizard.
 	import Viewer from '$lib/components/Viewer.svelte';
-	import {
-		buildStyle,
-		geomKind,
-		PRESET_FIELD,
-		PRESET_LABELS,
-		presetsFor,
-		type FieldStats,
-		type Preset
-	} from '$lib/presets';
 	import { title as pageTitle } from '$lib/site';
-	import type { LayerSpec, ProjectManifest } from '$lib/types';
+	import type { ProjectManifest } from '$lib/types';
 
 	let { data } = $props();
 	const config = $derived(data.config);
 
-	interface Collection {
+	interface Design {
 		id: string;
-		title?: string;
-		description?: string;
-		extent?: { spatial?: { bbox?: number[][] } };
+		title: string;
+		description: string;
+		geographies: string[];
 	}
-	interface Field {
+	interface Unit {
+		id: string;
+		title: string;
+		plural: string;
+		unit_count: number;
+	}
+	interface Place {
+		key: string;
 		name: string;
-		type: string;
-		numeric: boolean;
+		short_name: string;
+		county_name: string | null;
 	}
 	interface Issue {
 		code: string;
 		path: string;
 		message: string;
-		level: string;
 	}
 	interface Report {
 		ok: boolean;
 		errors: Issue[];
 		warnings: Issue[];
-		checked: string[];
 	}
 
-	// ---- 1. source ----------------------------------------------------------------------------------
-	let collections: Collection[] = $state([]);
+	let designs: Design[] = $state([]);
+	let units: Record<string, Unit> = $state({});
 	let loadError = $state('');
-	let collectionId = $state('');
-	let fields: Field[] = $state([]);
-	let geometry: string | null = $state(null);
-
 	$effect(() => {
-		fetch(`${config.tilesBase}/collections?f=json`)
-			.then((r) => r.json())
-			.then((d: { collections: Collection[] }) => {
-				collections = d.collections.filter((c) => c.id.startsWith('pub.')).sort((a, b) => a.id.localeCompare(b.id));
+		Promise.all([fetch('/api/admin/designs').then((r) => r.json()), fetch('/api/admin/units').then((r) => r.json())])
+			.then(([d, u]: [Design[], Unit[]]) => {
+				designs = d;
+				units = Object.fromEntries(u.map((x) => [x.id, x]));
 			})
-			.catch((e) => (loadError = `Could not list tiPG collections: ${e.message}`));
+			.catch((e) => (loadError = `Could not load designs: ${e.message}`));
 	});
 
-	const collection = $derived(collections.find((c) => c.id === collectionId));
-
-	async function pickCollection(id: string) {
-		collectionId = id;
-		fields = [];
-		geometry = null;
-		field = '';
-		stats = null;
-		report = null;
-		saved = null;
-		if (!id) return;
-		const r = await fetch(`/api/admin/projects/fields?collection=${encodeURIComponent(id)}`);
-		if (!r.ok) {
-			loadError = r.status === 404 ? `${id} is not a view (functions need a hand-written manifest)` : `fields: HTTP ${r.status}`;
-			return;
+	// ---- 1. design ---------------------------------------------------------------------------------------
+	let designId = $state('');
+	const design = $derived(designs.find((d) => d.id === designId));
+	let unit = $state('');
+	function pickDesign(id: string) {
+		designId = id;
+		const d = designs.find((x) => x.id === id);
+		if (d && !d.geographies.includes(unit)) {
+			unit = d.geographies[0];
+			place = null;
 		}
-		loadError = '';
-		const d = await r.json();
-		fields = d.fields;
-		geometry = d.geometry;
-		const name = id.replace(/^pub\./, '').split('__').pop() ?? 'layer';
-		layerId = name.replace(/_/g, '-');
-		layerTitle = (collection?.title && collection.title !== id ? collection.title : name.replace(/_/g, ' ')).replace(/^\w/, (c) => c.toUpperCase());
-		popupField = fields.find((f) => ['name', 'namelsad', 'title'].includes(f.name))?.name ?? '';
-		if (!presetsFor(geomKind(geometry)).includes(preset)) preset = 'single';
 	}
 
-	// ---- 2. style --------------------------------------------------------------------------------------
-	let preset: Preset = $state('single');
-	let field = $state('');
-	let color = $state('#0072B2');
-	let stats: FieldStats | null = $state(null);
-	let statsError = $state('');
-	const g = $derived(geomKind(geometry));
-	const needs = $derived(PRESET_FIELD[preset]);
-	const fieldChoices = $derived(needs === 'numeric' || needs === 'optional-numeric' ? fields.filter((f) => f.numeric) : fields);
-
+	// ---- 2. place --------------------------------------------------------------------------------------------
+	let query = $state('');
+	let results: Place[] = $state([]);
+	let place: Place | null = $state(null);
+	let searchError = $state('');
 	$effect(() => {
-		// Fetch breaks / categories whenever the field or preset changes.
-		const f = field;
-		const c = collectionId;
-		stats = null;
-		statsError = '';
-		if (!c || !f || needs === 'none') return;
-		fetch(`/api/admin/projects/stats?collection=${encodeURIComponent(c)}&field=${encodeURIComponent(f)}&k=5`)
-			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-			.then((s: FieldStats) => (stats = s))
-			.catch((e) => (statsError = `Could not compute statistics: ${e.message}`));
-	});
-
-	// ---- 3. project ------------------------------------------------------------------------------------
-	let projectTitle = $state('');
-	let slugEdited = $state(false);
-	let slugInput = $state('');
-	let layerId = $state('layer');
-	let layerTitle = $state('');
-	let popupField = $state('');
-	const slugify = (s: string) =>
-		s
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '')
-			.slice(0, 48);
-	const slug = $derived(slugEdited ? slugInput : slugify(projectTitle));
-
-	function view(): ProjectManifest['view'] {
-		const b = collection?.extent?.spatial?.bbox?.[0];
-		if (b && b.length >= 4 && b.every((x) => Number.isFinite(x)) && b[2] - b[0] < 180) {
-			const r = (x: number) => Math.round(x * 1e4) / 1e4;
-			return {
-				center: [r((b[0] + b[2]) / 2), r((b[1] + b[3]) / 2)],
-				zoom: 6.3,
-				bounds: [r(b[0]), r(b[1]), r(b[2]), r(b[3])],
-				basemap: 'positron'
-			};
-		}
-		return { center: [-69.25, 45.3], zoom: 6.3, basemap: 'positron' }; // Maine
-	}
-
-	const manifest: ProjectManifest | null = $derived.by(() => {
-		if (!collectionId || !fields.length) return null;
-		const built = buildStyle(preset, g, field || null, stats, color, layerTitle || layerId);
-		const props = [...new Set([popupField, field].filter(Boolean))];
-		const layer: LayerSpec = {
-			id: slugify(layerId) || 'layer',
-			title: layerTitle || layerId,
-			source: { type: 'tipg-vector', collection: collectionId, ...(props.length ? { properties: props } : {}) },
-			style: built.style,
-			legend: built.legend,
-			interaction: {
-				...(popupField
-					? { popup: { template: field && field !== popupField ? `{${popupField}}: {${field}}` : `{${popupField}}` } }
-					: {}),
-				inspect: true
-			}
-		};
-		return {
-			manifestVersion: 1,
-			slug: slug || 'new-project',
-			title: projectTitle || 'New project',
-			status: 'draft',
-			description: collection?.description ?? '',
-			tags: ['maine'],
-			view: view(),
-			layers: [layer]
-		};
-	});
-	const manifestJson = $derived(manifest ? JSON.stringify(manifest, null, 2) : '');
-
-	// Rebuilding the map on every keystroke is wasteful: the preview follows the manifest with a short delay.
-	let preview: ProjectManifest | null = $state(null);
-	let previewKey = $state('');
-	$effect(() => {
-		const m = manifest;
-		const json = manifestJson;
-		const t = setTimeout(() => {
-			preview = m;
-			previewKey = json;
-		}, 400);
+		const q = query;
+		const u = unit;
+		if (!u) return;
+		const t = setTimeout(async () => {
+			const r = await fetch(`/api/admin/units/${u}/places?q=${encodeURIComponent(q)}&limit=12`);
+			const body = await r.json().catch(() => []);
+			searchError = r.ok ? '' : typeof body.detail === 'string' ? body.detail : `HTTP ${r.status}`;
+			results = r.ok ? body : [];
+		}, 200);
 		return () => clearTimeout(t);
 	});
 
-	// ---- 4. validate + save -------------------------------------------------------------------------------
+	// ---- 3. build, preview, save ---------------------------------------------------------------------------
+	let manifest: ProjectManifest | null = $state(null);
 	let report: Report | null = $state(null);
+	let building = $state(false);
+	let buildError = $state('');
+	let projectTitle = $state('');
+	let slug = $state('');
+	$effect(() => {
+		const d = designId;
+		const u = unit;
+		const p = place;
+		manifest = null;
+		report = null;
+		saved = null;
+		if (!d || !u || !p) return;
+		building = true;
+		buildError = '';
+		fetch(`/api/admin/designs/${d}/manifest`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ unit: u, place: p.key })
+		})
+			.then(async (r) => {
+				const body = await r.json();
+				if (!r.ok) throw new Error(typeof body.detail === 'string' ? body.detail : `HTTP ${r.status}`);
+				manifest = body.manifest;
+				report = body.report;
+				projectTitle = body.manifest.title;
+				slug = body.manifest.slug;
+			})
+			.catch((e) => (buildError = e.message))
+			.finally(() => (building = false));
+	});
+	const final: ProjectManifest | null = $derived.by(() => {
+		const m = manifest as ProjectManifest | null;
+		return m ? { ...m, title: projectTitle || m.title, slug } : null;
+	});
+
 	let busy = $state(false);
 	let saved: { slug: string; version: number } | null = $state(null);
 	let saveError = $state('');
-
-	async function send(path: string, method = 'POST') {
+	async function save() {
+		if (!final) return;
 		busy = true;
 		saveError = '';
 		try {
-			const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: manifestJson });
+			const r = await fetch('/api/admin/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(final, null, 2) });
 			const body = await r.json().catch(() => ({}));
 			if (r.status === 422) report = body.detail as Report;
 			else if (!r.ok) saveError = typeof body.detail === 'string' ? body.detail : `HTTP ${r.status}`;
-			return { ok: r.ok, body };
+			else saved = { slug: body.slug, version: body.version };
 		} finally {
 			busy = false;
-		}
-	}
-
-	async function validate() {
-		const res = await send('/api/admin/projects/validate');
-		if (res.ok) report = res.body as Report;
-	}
-
-	async function save() {
-		saved = null;
-		const res = await send('/api/admin/projects');
-		if (res.ok) {
-			report = res.body.report as Report;
-			saved = { slug: res.body.slug, version: res.body.version };
 		}
 	}
 </script>
@@ -216,136 +142,117 @@
 
 <h1>New project</h1>
 <p class="lead">
-	Pick a published view, choose a style, check the preview, save. The wizard writes the same manifest as
-	<code>./mapgen new</code>; after saving, <code>./mapgen export &lt;slug&gt;</code> puts it in git.
+	Choose a map design and a place: you get a finished, framed map built from the curated layers, ready to save. For a
+	map of one published view with your own style, use the <a href="/admin/new/view">single-view creator</a>.
 </p>
+{#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
 
-<div class="wizard">
-	<form class="steps" onsubmit={(e) => e.preventDefault()}>
+<div class="builder">
+	<div class="steps">
 		<fieldset>
-			<legend>1. Data</legend>
-			<label for="collection">Published view (tiPG collection)</label>
-			<select id="collection" value={collectionId} onchange={(e) => pickCollection(e.currentTarget.value)}>
-				<option value="">Choose a view…</option>
-				{#each collections as c (c.id)}<option value={c.id}>{c.id}</option>{/each}
-			</select>
-			{#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
-			{#if geometry}<p class="hint">{fields.length} fields, geometry {geometry}</p>{/if}
-		</fieldset>
-
-		<fieldset disabled={!fields.length}>
-			<legend>2. Style</legend>
-			<label for="preset">Preset</label>
-			<select id="preset" bind:value={preset}>
-				{#each presetsFor(g) as p (p)}<option value={p}>{PRESET_LABELS[p]}</option>{/each}
-			</select>
-			{#if needs !== 'none'}
-				<label for="field">Field{needs === 'optional-numeric' ? ' (optional weight)' : ''}</label>
-				<select id="field" bind:value={field}>
-					<option value="">{needs === 'optional-numeric' ? 'None' : 'Choose a field…'}</option>
-					{#each fieldChoices as f (f.name)}<option value={f.name}>{f.name} ({f.type})</option>{/each}
-				</select>
-				{#if statsError}<p class="error" role="alert">{statsError}</p>{/if}
-				{#if stats?.kind === 'numeric'}<p class="hint">range {stats.min} to {stats.max}; breaks {stats.breaks?.join(', ')}</p>{/if}
-			{/if}
-			{#if preset === 'single' || preset === 'graduated-circle'}
-				<label for="color">Colour</label>
-				<input id="color" type="color" bind:value={color} />
-			{/if}
-			<label for="popup">Popup label field</label>
-			<select id="popup" bind:value={popupField}>
-				<option value="">No popup</option>
-				{#each fields as f (f.name)}<option value={f.name}>{f.name}</option>{/each}
-			</select>
-		</fieldset>
-
-		<fieldset disabled={!fields.length}>
-			<legend>3. Project</legend>
-			<label for="ptitle">Project title</label>
-			<input id="ptitle" bind:value={projectTitle} placeholder="e.g. Maine Public Lands" />
-			<label for="slug">Slug (URL and folder name)</label>
-			<input
-				id="slug"
-				value={slug}
-				oninput={(e) => {
-					slugEdited = true;
-					slugInput = e.currentTarget.value;
-				}}
-				pattern="[a-z0-9]+(-[a-z0-9]+)*"
-			/>
-			<label for="ltitle">Layer title</label>
-			<input id="ltitle" bind:value={layerTitle} />
-		</fieldset>
-
-		<div class="actions">
-			<button type="button" onclick={validate} disabled={!manifest || busy}>Validate</button>
-			<button type="button" class="primary" onclick={save} disabled={!manifest || !projectTitle || busy}>Save project</button>
-		</div>
-
-		{#if saveError}<p class="error" role="alert">{saveError}</p>{/if}
-		{#if saved}
-			<div class="saved" role="status">
-				Saved <strong>{saved.slug}</strong> (version {saved.version}).
-				<a href="/p/{saved.slug}">Open the map</a>. To keep it in git: <code>./mapgen export {saved.slug}</code>
+			<legend>1. Design</legend>
+			<div class="designs" role="radiogroup" aria-label="Map design">
+				{#each designs as d (d.id)}
+					<button type="button" role="radio" aria-checked={d.id === designId} class="design" class:on={d.id === designId} onclick={() => pickDesign(d.id)}>
+						<strong>{d.title}</strong>
+						<span class="for">For a {d.geographies.map((g) => units[g]?.title.toLowerCase() ?? g).join(' or ')}</span>
+						<span class="desc">{d.description}</span>
+					</button>
+				{/each}
 			</div>
-		{/if}
-		{#if report}
-			<section class="report" aria-label="Validation report">
-				<p class={report.ok ? 'ok' : 'error'}>
-					{report.ok ? 'Valid' : 'Not valid'}: {report.errors.length} error(s), {report.warnings.length} warning(s)
-					<span class="hint">(checked {report.checked.join(', ')})</span>
-				</p>
-				<ul>
-					{#each [...report.errors, ...report.warnings] as i (i.code + i.path)}
-						<li class={i.level}><code>{i.code}</code> {i.path}: {i.message}</li>
-					{/each}
-				</ul>
-			</section>
-		{/if}
+		</fieldset>
 
-		{#if manifest}
-			<details>
-				<summary>Manifest JSON</summary>
-				<pre>{manifestJson}</pre>
-			</details>
-		{/if}
-	</form>
+		<fieldset disabled={!design}>
+			<legend>2. Place</legend>
+			{#if design && design.geographies.length > 1}
+				<div class="units" role="radiogroup" aria-label="Unit">
+					{#each design.geographies as g (g)}
+						<label><input type="radio" name="unit" value={g} bind:group={unit} onchange={() => (place = null)} /> {units[g]?.title ?? g}</label>
+					{/each}
+				</div>
+			{/if}
+			<label for="place-search">Search {units[unit]?.plural.toLowerCase() ?? 'places'}</label>
+			<input id="place-search" type="search" bind:value={query} placeholder={unit === 'town' ? 'e.g. Bethel' : unit === 'county' ? 'e.g. Oxford' : 'name or GEOID'} autocomplete="off" />
+			{#if searchError}<p class="hint">{searchError}</p>{/if}
+			<ul class="results" aria-label="Places">
+				{#each results as p (p.key)}
+					<li>
+						<button type="button" class:on={place?.key === p.key} aria-pressed={place?.key === p.key} onclick={() => (place = p)}>
+							{p.name}{#if p.county_name && unit !== 'county'}<span class="hint">, {p.county_name} County</span>{/if}
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</fieldset>
+
+		<fieldset disabled={!manifest}>
+			<legend>3. Save</legend>
+			<label for="ptitle">Project title</label>
+			<input id="ptitle" bind:value={projectTitle} maxlength="80" />
+			<label for="slug">Slug (URL and folder name)</label>
+			<input id="slug" bind:value={slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+			<button type="button" class="primary" onclick={save} disabled={!final || busy || !report?.ok}>Save project</button>
+			{#if building}<p class="hint">Building the map…</p>{/if}
+			{#if buildError}<p class="error" role="alert">{buildError}</p>{/if}
+			{#if saveError}<p class="error" role="alert">{saveError}</p>{/if}
+			{#if report && !report.ok}
+				<ul class="issues">{#each report.errors as i (i.code + i.path)}<li><code>{i.code}</code> {i.path}: {i.message}</li>{/each}</ul>
+			{/if}
+			{#if saved}
+				<div class="saved" role="status">
+					Saved <strong>{saved.slug}</strong>. <a href="/p/{saved.slug}">Open the map</a>. To keep it in git:
+					<code>./mapgen export {saved.slug}</code>
+				</div>
+			{/if}
+		</fieldset>
+	</div>
 
 	<div class="preview" aria-label="Preview">
-		{#if preview}
-			{#key previewKey}
-				<Viewer manifest={preview} {config} embedded />
+		{#if final}
+			{#key manifest}
+				<Viewer manifest={final} {config} embedded />
 			{/key}
 		{:else}
-			<p class="placeholder">Choose a view to see a live preview.</p>
+			<p class="placeholder">{design ? 'Choose a place to see the map.' : 'Choose a design to start.'}</p>
 		{/if}
 	</div>
 </div>
 
 <style>
 	h1 { margin: 0 0 0.3rem; font-size: 1.4rem; }
-	.lead { color: var(--muted); margin: 0 0 1rem; max-width: 70ch; }
-	.wizard { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 1.2rem; align-items: start; }
+	.lead { color: var(--muted); margin: 0 0 1rem; max-width: 75ch; }
+	.builder { display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 1.2rem; align-items: start; }
 	.steps { display: grid; gap: 0.9rem; }
-	fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem 0.9rem; display: grid; gap: 0.3rem; background: var(--surface); }
+	fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem 0.9rem; display: grid; gap: 0.35rem; background: var(--surface); }
+	fieldset:disabled { opacity: 0.6; }
 	legend { font-weight: 600; padding: 0 0.3rem; }
-	label { font-size: 0.82rem; color: var(--muted); margin-top: 0.35rem; }
-	select, input:not([type='color']) { font: inherit; padding: 0.35rem 0.45rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg, #fff); color: inherit; }
-	.actions { display: flex; gap: 0.6rem; }
-	button { font: inherit; padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
-	button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-	button:disabled { opacity: 0.5; cursor: not-allowed; }
+	label { font-size: 0.82rem; color: var(--muted); margin-top: 0.3rem; }
+	input:not([type='radio']) { font: inherit; padding: 0.35rem 0.45rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg, #fff); color: inherit; }
+	.designs { display: grid; gap: 0.45rem; }
+	.design { all: unset; cursor: pointer; display: grid; gap: 0.15rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg, #fff); }
+	.design:hover { border-color: var(--accent); }
+	.design:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+	.design.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+	.design .for { font-size: 0.75rem; color: var(--accent); }
+	.design .desc { font-size: 0.78rem; color: var(--muted); }
+	.units { display: flex; gap: 1rem; }
+	.units label { margin: 0; color: inherit; font-size: 0.88rem; }
+	.results { list-style: none; margin: 0.2rem 0 0; padding: 0; max-height: 15rem; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+	.results:empty { display: none; }
+	.results button { all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; padding: 0.35rem 0.55rem; font-size: 0.88rem; }
+	.results button:hover, .results button.on { background: var(--surface-muted); }
+	.results button.on { font-weight: 600; }
+	.results button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+	button.primary { font: inherit; margin-top: 0.6rem; padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; justify-self: start; }
+	button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 	.hint { font-size: 0.78rem; color: var(--muted); margin: 0.2rem 0 0; }
 	.error { color: #b42318; }
-	.ok { color: #1b7837; }
-	.report ul { margin: 0.3rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; }
-	.report li.warning { color: var(--muted); }
-	.saved { background: #e8f4ea; border: 1px solid #3c8a4a; border-radius: 8px; padding: 0.6rem 0.8rem; }
-	pre { max-height: 320px; overflow: auto; font-size: 0.75rem; background: #13202c; color: #e6edf3; padding: 0.6rem; border-radius: 8px; }
-	.preview { height: 78vh; min-height: 480px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: sticky; top: 1rem; }
+	.issues { margin: 0.3rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; color: #b42318; }
+	.saved { background: #e8f4ea; border: 1px solid #3c8a4a; border-radius: 8px; padding: 0.6rem 0.8rem; margin-top: 0.4rem; }
+	.preview { height: 80vh; min-height: 520px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: sticky; top: 1rem; }
 	.placeholder { display: grid; place-items: center; height: 100%; margin: 0; color: var(--muted); }
 	@media (max-width: 900px) {
-		.wizard { grid-template-columns: 1fr; }
+		.builder { grid-template-columns: 1fr; }
 		.preview { position: static; height: 60vh; }
 	}
 </style>

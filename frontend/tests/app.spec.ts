@@ -82,17 +82,33 @@ test('hub and viewer fall back to the static manifests when core-api is unreacha
 	expect(await rendered(page, 'towns')).toBeGreaterThan(400);
 });
 
+test('route badges on every map: interstate, US and state routes near Bangor', async ({ page }) => {
+	await page.goto('/p/maine-lands?map=12/44.80/-68.78');
+	await mapIdle(page);
+	const kinds = await page.evaluate(() => {
+		const m = window.__spatial!.map!;
+		const fs = m.queryRenderedFeatures({ layers: ['o:route-shields-interstate', 'o:route-shields-us', 'o:route-shields-state'] });
+		return [...new Set(fs.map((f) => `${f.properties.kind} ${f.properties.ref}`))];
+	});
+	expect(kinds).toEqual(expect.arrayContaining(['interstate 95', 'us 2', 'state 15']));
+	await shot(page, '12-route-badges');
+});
+
 test('maine-overview (made with mapgen): towns shaded by ACS median household income', async ({ page }) => {
 	await page.goto('/p/maine-overview');
 	await mapIdle(page);
 	expect(await rendered(page, 'towns')).toBeGreaterThan(400);
 	await expect(page.getByText('Median household income (quintiles)')).toBeVisible();
 	await expect(page.getByText('suppressed (very small places)')).toBeVisible();
-	// Hover Augusta (its TIGER interior point): the popup shows town, county and income with its margin of error.
+	// Click Augusta (its TIGER interior point): the inspector shows the town and its income. (Hover popups are off.)
 	const xy = await page.evaluate(() => window.__spatial!.map!.project([-69.7342, 44.3349]));
 	const box = (await page.locator('.maplibregl-canvas').boundingBox())!;
 	await page.mouse.move(box.x + xy.x, box.y + xy.y);
-	await expect(page.locator('.hover-popup')).toContainText(/Augusta city, Kennebec County: median household income \$[\d,]+ \(±[\d,]+\)/);
+	await expect(page.locator('.hover-popup')).toHaveCount(0);
+	await page.mouse.click(box.x + xy.x, box.y + xy.y);
+	const details = page.getByRole('complementary', { name: 'Feature details' });
+	await expect(details).toContainText('Augusta city');
+	await expect(details.getByRole('row', { name: /median_hh_income/ }).first()).toContainText(/\d/);
 	await shot(page, '7-maine-overview');
 });
 

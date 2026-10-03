@@ -53,13 +53,18 @@ services:
     environment:
       DATABASE_URL: postgresql://tipg_ro:${TIPG_DB_PASSWORD}@postgis:5432/${POSTGRES_DB}
       PORT: "8000"
-      WEB_CONCURRENCY: "2"
+      WEB_CONCURRENCY: "4"   # a design map asks for ~100 tiles at once; 2 workers queued them for 30 s+
       TIPG_NAME: "Downeast Geospatial Data API"
       TIPG_ROOT_PATH: /tiles
       # Site theme for tiPG's HTML pages (header, footer, viewer); everything else is tiPG's own templates.
       TIPG_TEMPLATE_DIRECTORY: /templates
       TIPG_DB_SCHEMAS: '["pub"]'
       TIPG_CATALOG_TTL: ${TIPG_CATALOG_TTL:-300}
+      # The catalog refresh would otherwise run ST_Extent over every pub view (seconds for the 745k parcels), on
+      # every worker, every TTL, competing with tile requests. Nothing reads collection extents except the
+      # single-view creator, which falls back to the Maine view.
+      TIPG_DB_SPATIAL_EXTENT: "false"
+      TIPG_DB_DATETIME_EXTENT: "false"
       # FALSE on purpose: with TRUE, tiPG 1.6.1 names tile layers by table name but its
       # style.json/tilejson say "pub.<table>", which breaks its own viewer. With FALSE both
       # say "default" (ADR 0002). One collection per tile, so the name is unambiguous.
@@ -126,6 +131,8 @@ services:
       MCP_ANALYSIS_TOKEN: ${MCP_ANALYSIS_TOKEN:-}   # analysis MCP server: processes + jobs (no promote)
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run make admin-credentials}
+    volumes:
+      - ./templates/designs:/designs:ro   # map designs for the project builder (quick map)
     networks: [api, data]
     depends_on:
       postgis:

@@ -10,7 +10,7 @@ SELECT id,
        address,
        locality,
        website,
-       ST_GeometryN(geom, 1)::geometry(Point, 4326)         AS geom
+       geom         AS geom
 FROM src_overture.places;
 
 COMMENT ON VIEW pub.maine_places__places IS 'maine-places: points of interest (Overture Maps)';

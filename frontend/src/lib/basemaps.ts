@@ -9,8 +9,13 @@ const blank: StyleSpecification = {
 	layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#eef1f4' } }]
 };
 
+/** Fonts for map text drawn over raster basemaps (route badges; see Viewer). The vector basemaps bring their own. */
+export const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
+export const BADGE_FONT = ['Noto Sans Bold'];
+
 const osmRaster: StyleSpecification = {
 	version: 8,
+	glyphs: GLYPHS,
 	sources: {
 		osm: {
 			type: 'raster',
@@ -33,6 +38,7 @@ const esriAttribution =
 function aerial(withLabels: boolean): StyleSpecification {
 	return {
 		version: 8,
+		glyphs: GLYPHS,
 		sources: {
 			imagery: {
 				type: 'raster',

@@ -10,7 +10,7 @@ SELECT id, brdgno AS bridge_no, initcap(brdg_name) AS name, facility, featint AS
                        nullif(left(culvrating_desc, 1), 'N')) ~ '^[56]$' THEN 'fair'
             WHEN least(nullif(left(dkrating_desc, 1), 'N'), nullif(left(suprating_desc, 1), 'N'), nullif(left(subrating_desc, 1), 'N'),
                        nullif(left(culvrating_desc, 1), 'N')) ~ '^[7-9]$' THEN 'good' ELSE 'not rated' END AS condition,
-       geom::geometry(Point, 4326) AS geom
+       geom AS geom
 FROM src_mdot.bridges WHERE archived_reason IS NULL;
 
 COMMENT ON VIEW pub.maine_transportation__bridges IS 'maine-transportation: bridges with condition (MaineDOT; lowest NBI component rating)';

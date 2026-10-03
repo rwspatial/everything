@@ -10,15 +10,19 @@ from __future__ import annotations
 
 import base64
 import binascii
+import copy
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -189,6 +193,123 @@ LEFT JOIN LATERAL (
 @app.get("/api/admin/health", dependencies=[Depends(require_admin)])
 def api_health() -> dict:
     return {"ok": True, "db": one("SELECT now() AS now, current_user AS role")}
+
+
+# ---- database health: indexes, geometry types, scan counts (/admin/database) -----------------------------------
+# The check that matters most for the maps: can each pub view's tile filter (geom && tile envelope) use a spatial
+# index? A view that wraps its geometry (ST_Force2D(geom), geom::geometry(Point, 4326), ST_PointOnSurface(geom))
+# hides the GiST index, and then every tile scans the whole source table. geoimport.normalize_geometry gives
+# source columns one concrete 2D type at import so views can pass geom through untouched.
+# (These queries run without parameters, so % is literal.)
+
+DB_VIEWS_SQL = r"""
+SELECT c.relname AS name, a.attname AS geom, postgis_typmod_type(a.atttypmod) AS geometry_type,
+       c.relname LIKE 'analysis\_sandbox\_\_job\_%' AS analysis_output,
+       (SELECT array_agg(DISTINCT n2.nspname || '.' || t.relname)
+          FROM pg_rewrite r JOIN pg_depend d ON d.objid = r.oid
+          JOIN pg_class t ON t.oid = d.refobjid JOIN pg_namespace n2 ON n2.oid = t.relnamespace
+         WHERE r.ev_class = c.oid AND t.oid <> c.oid AND t.relkind IN ('r', 'v', 'm', 'p')) AS sources
+FROM pg_class c
+JOIN LATERAL (SELECT attname, atttypmod FROM pg_attribute WHERE attrelid = c.oid AND atttypid = 'geometry'::regtype
+              AND attnum > 0 AND NOT attisdropped ORDER BY attnum LIMIT 1) a ON true
+WHERE c.relnamespace = 'pub'::regnamespace AND c.relkind IN ('v', 'm')
+ORDER BY 1"""
+
+DB_TABLES_SQL = r"""
+SELECT n.nspname AS schema, c.relname AS name, greatest(c.reltuples, 0)::bigint AS rows,
+       pg_total_relation_size(c.oid) AS bytes,
+       a.attname AS geom, postgis_typmod_type(a.atttypmod) AS geometry_type, postgis_typmod_dims(a.atttypmod) AS dims,
+       a.attname IS NOT NULL AND EXISTS (
+         SELECT 1 FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_am am ON am.oid = ic.relam
+          WHERE i.indrelid = c.oid AND am.amname IN ('gist', 'spgist', 'brin') AND a.attnum = ANY (i.indkey)) AS spatial_index,
+       (SELECT count(*) FROM pg_index i WHERE i.indrelid = c.oid) AS indexes,
+       s.seq_scan, s.seq_tup_read, s.idx_scan, s.n_live_tup, s.n_dead_tup,
+       greatest(s.last_analyze, s.last_autoanalyze) AS last_analyzed,
+       greatest(s.last_vacuum, s.last_autovacuum) AS last_vacuumed
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN LATERAL (SELECT attname, atttypmod, attnum FROM pg_attribute WHERE attrelid = c.oid
+                   AND atttypid = 'geometry'::regtype AND attnum > 0 AND NOT attisdropped ORDER BY attnum LIMIT 1) a ON true
+LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+WHERE n.nspname LIKE 'src\_%' AND c.relkind IN ('r', 'p') AND c.relname NOT LIKE '\_%'
+ORDER BY 1, 2"""
+
+DB_UNUSED_INDEXES_SQL = """
+SELECT n.nspname || '.' || ic.relname AS index, n.nspname || '.' || c.relname AS "table",
+       pg_relation_size(ic.oid) AS bytes, am.amname AS method
+FROM pg_stat_user_indexes s JOIN pg_index i ON i.indexrelid = s.indexrelid
+JOIN pg_class ic ON ic.oid = s.indexrelid JOIN pg_class c ON c.oid = s.relid
+JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_am am ON am.oid = ic.relam
+WHERE s.idx_scan = 0 AND NOT i.indisprimary AND NOT i.indisunique AND pg_relation_size(ic.oid) > 1048576
+ORDER BY 3 DESC LIMIT 25"""
+
+# Any envelope works for the plan; this one is downtown Portland, Maine.
+PLAN_PROBE = "ST_MakeEnvelope(-70.27, 43.65, -70.24, 43.67, 4326)"
+_db_cache: dict[str, Any] = {"at": 0.0, "data": None}
+
+
+def _view_plan_uses_index(conn, name: str, geom: str) -> tuple[bool | None, str | None]:
+    """Plan the tile filter with sequential scans disabled: if no index appears, none can be used."""
+    q = sql.SQL("EXPLAIN SELECT 1 FROM {} WHERE {} && " + PLAN_PROBE).format(sql.Identifier("pub", name), sql.Identifier(geom))
+    try:
+        with conn.transaction():
+            conn.execute("SET LOCAL enable_seqscan = off")
+            conn.execute("SET LOCAL statement_timeout = '5s'")
+            plan = "\n".join(r["QUERY PLAN"] for r in conn.execute(q).fetchall())
+    except Exception as e:  # noqa: BLE001  a broken view is reported, not fatal
+        return None, str(e).splitlines()[0]
+    return bool(re.search(r"Index Scan|Index Only Scan|Bitmap Index Scan", plan)), None
+
+
+def _table_issues(t: dict) -> list[dict]:
+    out = []
+    big = (t["rows"] or 0) >= 1000
+    if t["geom"] and not t["spatial_index"] and big:
+        out.append({"level": "fail", "code": "no_spatial_index", "message": "geometry column has no spatial (GiST) index"})
+    if t["geom"] and (t["geometry_type"] or "").lower() == "geometry":
+        out.append({"level": "warn", "code": "generic_geometry",
+                    "message": "untyped geometry column: views must cast it, which hides the index (re-import to normalize)"})
+    if t["geom"] and (t["dims"] or 2) > 2:
+        out.append({"level": "warn", "code": "zm_geometry",
+                    "message": f"{t['dims']}D geometry (Z/M values): views must ST_Force2D it, which hides the index"})
+    if t["last_analyzed"] is None and big:
+        out.append({"level": "warn", "code": "never_analyzed", "message": "never analyzed: the planner is guessing row counts"})
+    live, dead = t["n_live_tup"] or 0, t["n_dead_tup"] or 0
+    if live >= 10000 and dead > 0.2 * live:
+        out.append({"level": "warn", "code": "dead_rows", "message": f"{dead:,} dead rows ({dead / live:.0%}): needs VACUUM"})
+    return out
+
+
+@app.get("/api/admin/database", dependencies=[Depends(require_admin)])
+def database_health(refresh: bool = False) -> dict:
+    """Index and table health for /admin/database. Cached for a minute (it plans every pub view)."""
+    if not refresh and _db_cache["data"] and time.monotonic() - _db_cache["at"] < 60:
+        return _db_cache["data"]
+    # Catalog and statistics views are readable by admin_api; planning a pub view needs app_rw, which reads pub.
+    with projects_pool.connection() as conn:
+        views = conn.execute(DB_VIEWS_SQL).fetchall()
+        for v in views:
+            v["sources"] = sorted(v["sources"] or [])
+            v["spatial_index_usable"], v["error"] = _view_plan_uses_index(conn, v["name"], v["geom"])
+    with pool.connection() as conn:
+        tables = conn.execute(DB_TABLES_SQL).fetchall()
+        unused = conn.execute(DB_UNUSED_INDEXES_SQL).fetchall()
+        meta = conn.execute("SELECT pg_database_size(current_database()) AS db_bytes, "
+                            "(SELECT stats_reset FROM pg_stat_database WHERE datname = current_database()) AS stats_since, "
+                            "now() AS checked_at").fetchone()
+    for t in tables:
+        t["issues"] = _table_issues(t)
+    view_fail = [v for v in views if v["spatial_index_usable"] is not True]
+    data = {
+        **meta,
+        "summary": {
+            "views": len(views), "views_indexed": len(views) - len(view_fail),
+            "tables": len(tables), "tables_with_issues": sum(1 for t in tables if t["issues"]),
+            "unused_index_bytes": sum(u["bytes"] for u in unused),
+        },
+        "views": views, "tables": tables, "unused_indexes": unused,
+    }
+    _db_cache.update(at=time.monotonic(), data=data)
+    return data
 
 
 @app.get("/api/admin/datasets", dependencies=[Depends(require_admin)])
@@ -489,6 +610,163 @@ def field_stats(collection: str, field: str, k: int = 5) -> dict:
             "SELECT {c}::text AS value, count(*) AS count FROM {r} GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 13").format(c=col, r=rel)
         ).fetchall()
         return {"field": field, "kind": "categorical", "values": r[:12], "more": len(r) > 12}
+
+
+# ---- project builder: units, places, map designs (plan: project-builder §1.1, §1.7) -------------------------
+# Admin only. A design (templates/designs/<id>.json) + a place (one row of a pub.units__* view) -> a finished
+# manifest: curated layers copied from the registered projects, a focus mask/outline, framing and titles. Nothing
+# is written here; the page saves the manifest through POST /api/admin/projects like the wizard does.
+
+DESIGNS_DIR = Path(os.environ.get("DESIGNS_DIR", "/designs"))
+UNIT_COLUMNS = ("id, title, plural, description, collection, position, study_area, max_units_without_study_area, "
+                "minzoom, unit_count, attributes, attribution")
+DESIGN_OVERRIDES = ("visible", "opacity", "minzoom", "maxzoom", "title", "group")
+
+
+def _units(conn) -> dict[str, dict]:
+    return {u["id"]: u for u in conn.execute(f"SELECT {UNIT_COLUMNS} FROM app.units ORDER BY position DESC").fetchall()}
+
+
+def _unit(conn, unit: str) -> dict:
+    u = _units(conn).get(unit)
+    if not u:
+        raise HTTPException(404, f"no unit {unit!r}")
+    return u
+
+
+def _designs() -> dict[str, dict]:
+    out = {}
+    for f in sorted(DESIGNS_DIR.glob("*.json")):
+        d = json.loads(f.read_text())
+        out[d["id"]] = d
+    return out
+
+
+PLACE_COLUMNS = ("unit_key AS key, name, short_name, county_name, "
+                 "ARRAY[ST_XMin(geom), ST_YMin(geom), ST_XMax(geom), ST_YMax(geom)]::float8[] AS bbox")
+
+
+@app.get("/api/admin/units", dependencies=[Depends(require_admin)])
+def list_units() -> list[dict]:
+    with projects_pool.connection() as conn:
+        return list(_units(conn).values())
+
+
+@app.get("/api/admin/units/{unit}/places", dependencies=[Depends(require_admin)])
+def unit_places(unit: str, q: str = "", county: str | None = None, limit: int = 25) -> list[dict]:
+    """Search one unit by name (or exact key), for the place picker. Names starting with q come first."""
+    q = q.strip()
+    with projects_pool.connection() as conn:
+        u = _unit(conn, unit)
+        if u["unit_count"] > 5000 and len(q) < 2 and not county:
+            raise HTTPException(400, f"{u['plural']}: type at least two letters, or choose a county")
+        where, params = [sql.SQL("TRUE")], []
+        if q:
+            where.append(sql.SQL("(name ILIKE %s OR unit_key = %s)"))
+            params += [f"%{q}%", q]
+        if county:
+            where.append(sql.SQL("county_geoid = %s"))
+            params.append(county)
+        query = sql.SQL("SELECT {cols} FROM {rel} WHERE {where} ORDER BY (short_name ILIKE %s) DESC, short_name, name LIMIT %s").format(
+            cols=sql.SQL(PLACE_COLUMNS), rel=sql.Identifier("pub", u["collection"].split(".", 1)[1]),
+            where=sql.SQL(" AND ").join(where))
+        return conn.execute(query, [*params, f"{q}%", min(max(limit, 1), 100)]).fetchall()
+
+
+@app.get("/api/admin/designs", dependencies=[Depends(require_admin)])
+def list_designs() -> list[dict]:
+    return [{k: d.get(k) for k in ("id", "title", "description", "geographies")} for d in _designs().values()]
+
+
+def _focus_layer(unit: str, place: dict) -> dict:
+    """Soft veil over everything outside the place, and its outline (pub.units__focus)."""
+    part = lambda p: ["==", ["get", "part"], p]  # noqa: E731
+    return {
+        "id": "focus",
+        "title": f"{place['short_name']} boundary",
+        "group": "Focus",
+        "source": {"type": "tipg-vector", "collection": "pub.units__focus", "params": {"unit": unit, "place": place["key"]}},
+        "style": {"kind": "maplibre", "layers": [
+            {"type": "fill", "filter": part("mask"), "paint": {"fill-color": "#f7f7f5", "fill-opacity": 0.62}},
+            {"type": "line", "filter": part("outline"), "paint": {"line-color": "#ffffff", "line-width": 6, "line-opacity": 0.85}},
+            {"type": "line", "filter": part("outline"), "paint": {"line-color": "#1d3557", "line-width": 2.2}},
+        ]},
+        "legend": {"type": "single", "color": "#1d3557", "label": place["name"]},
+        "interaction": {"inspect": False},
+        "visible": True,
+    }
+
+
+def _framing(bbox: list[float], padding: float, basemap: str) -> dict:
+    w, s, e, n = bbox
+    dx, dy = (e - w) * padding, (n - s) * padding
+    b = [round(w - dx, 5), round(s - dy, 5), round(e + dx, 5), round(n + dy, 5)]
+    span = max(b[2] - b[0], (b[3] - b[1]) * 1.4, 1e-4)  # degrees of latitude are taller in Web Mercator at 45° N
+    zoom = round(min(max(math.log2(360 / span) - 0.3, 4), 16), 1)
+    return {"center": [round((b[0] + b[2]) / 2, 5), round((b[1] + b[3]) / 2, 5)], "zoom": zoom, "bounds": b,
+            "basemap": basemap}
+
+
+def _slugify(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")[:48].strip("-")
+
+
+@app.post("/api/admin/designs/{design_id}/manifest", dependencies=[Depends(require_admin)])
+async def design_manifest(design_id: str, request: Request) -> dict:
+    """Build (not save) the manifest for one design and place: {unit, place, title?, slug?} -> {manifest, report}."""
+    d = _designs().get(design_id)
+    if not d:
+        raise HTTPException(404, f"no design {design_id!r}")
+    body = await request.json()
+    unit, key = body.get("unit"), str(body.get("place") or "")
+    if unit not in d["geographies"]:
+        raise HTTPException(422, f"the {d['title']} design is for {', '.join(d['geographies'])}, not {unit!r}")
+    refs = [i["ref"][unit] if isinstance(i["ref"], dict) else i["ref"] for i in d["layers"] if "ref" in i]
+    with projects_pool.connection() as conn:
+        u = _unit(conn, unit)
+        place = conn.execute(sql.SQL("SELECT {cols} FROM {rel} WHERE unit_key = %s").format(
+            cols=sql.SQL(PLACE_COLUMNS), rel=sql.Identifier("pub", u["collection"].split(".", 1)[1])), (key,)).fetchone()
+        if not place:
+            raise HTTPException(404, f"no {u['title'].lower()} with key {key!r}")
+        sources = {r["slug"]: r["manifest"] for r in conn.execute(
+            "SELECT slug, manifest FROM app.projects WHERE slug = ANY(%s)", (sorted({r.split("/")[0] for r in refs}),)).fetchall()}
+        taken = {r["slug"] for r in conn.execute("SELECT slug FROM app.projects").fetchall()}
+
+    fields = {"name": place["name"], "short_name": place["short_name"], "county_name": place["county_name"] or ""}
+    fill = lambda s: s.format_map(fields)  # noqa: E731
+    layers, ids, missing = [], set(), []
+    for item in d["layers"]:
+        if item.get("focus"):
+            spec = _focus_layer(unit, place)
+        else:
+            ref = item["ref"][unit] if isinstance(item["ref"], dict) else item["ref"]
+            slug, lid = ref.split("/", 1)
+            src = next((l for l in (sources.get(slug) or {}).get("layers", []) if l["id"] == lid), None)
+            if src is None or src.get("status") == "todo":
+                missing.append(ref)
+                continue
+            spec = copy.deepcopy(src)
+            spec.update({k: item[k] for k in DESIGN_OVERRIDES if k in item})
+            if spec["id"] in ids:
+                spec["id"] = f"{slug.removeprefix('maine-')}-{spec['id']}"
+        ids.add(spec["id"])
+        layers.append(spec)
+
+    slug = _slugify(body.get("slug") or f"{place['short_name']} {d['id']}")
+    base, n = slug, 2
+    while slug in taken:
+        slug, n = f"{base}-{n}", n + 1
+    manifest = {
+        "manifestVersion": 1,
+        "slug": slug,
+        "status": "draft",
+        "title": (body.get("title") or fill(d["projectTitle"]))[:80],
+        "description": fill(d.get("projectDescription", "")),
+        "tags": list(dict.fromkeys(fill(t).lower() for t in d.get("tags", []))),
+        "view": _framing(place["bbox"], d.get("padding", 0.06), d.get("basemap", "positron")),
+        "layers": layers,
+    }
+    return {"manifest": manifest, "report": _validate(manifest), "missing_layers": missing}
 
 
 # ---- analysis processes and jobs (Phase 5) -----------------------------------------------------------------

@@ -5,6 +5,7 @@
 	import type { GeoJSONSource, MapGeoJSONFeature, PointLike, StyleSpecification, VectorTileSource } from 'maplibre-gl';
 	import '$lib/maplibre';
 	import { fragmentsFor, isProjectId, opacityPaint, sourceIdFor, toMapLibre } from '$lib/adapters';
+	import { addOverlays, provideBadge } from '$lib/overlays';
 	import type { AdapterContext } from '$lib/adapters';
 	import { basemaps, DEFAULT_BASEMAP, resolveBasemap } from '$lib/basemaps';
 	import type { AppConfig } from '$lib/config';
@@ -67,6 +68,8 @@
 		return { zoom: parts[0], center: [parts[2], parts[1]] };
 	}
 
+	/** Hover popups (the layer's popup template following the mouse). Off for now: they covered the map. */
+	const SHOW_HOVER_POPUPS = false;
 	let layers = $state<LayerState[]>(initialLayers());
 	let selected = $state<InspectedFeature[]>([]);
 	let cursor = $state<[number, number] | null>(null);
@@ -158,7 +161,13 @@
 			map.addControl(new ScaleControl({}), 'bottom-right');
 			if (!view && manifest.view.bounds) map.fitBounds(manifest.view.bounds, { padding: 24, animate: false });
 
-			const hover = new Popup({ closeButton: false, closeOnClick: false, maxWidth: '280px', className: 'hover-popup' });
+			// Hover popups are off for now (too intrusive); a click opens the inspector with the feature's attributes.
+			const hover = SHOW_HOVER_POPUPS
+				? new Popup({ closeButton: false, closeOnClick: false, maxWidth: '280px', className: 'hover-popup' })
+				: null;
+			// Global overlays (route badges) go on top of every style, including after a basemap switch.
+			map.on('style.load', () => addOverlays(map!, config.tilesBase));
+			map.on('styleimagemissing', (e) => provideBadge(map!, e.id));
 			map.on('load', () => {
 				addProjectLayers();
 				hook.ready = true;
@@ -181,12 +190,12 @@
 				const hit = featuresAt(e.point)[0];
 				map!.getCanvas().style.cursor = hit ? 'pointer' : '';
 				const template = hit?.ls.spec.interaction?.popup?.template;
-				if (hit && template) hover.setLngLat(e.lngLat).setText(fillTemplate(template, hit.feature.properties)).addTo(map!);
-				else hover.remove();
+				if (hover && hit && template) hover.setLngLat(e.lngLat).setText(fillTemplate(template, hit.feature.properties)).addTo(map!);
+				else hover?.remove();
 			});
 			map.on('mouseout', () => {
 				cursor = null;
-				hover.remove();
+				hover?.remove();
 			});
 			map.on('click', async (e) => {
 				const vectors = featuresAt(e.point)
@@ -391,6 +400,7 @@
 
 	<main class="map-wrap">
 		<div class="map" bind:this={container} role="region" aria-label="Map: {manifest.title}"></div>
+		{#if busy}<div class="loadbar" aria-hidden="true"></div>{/if}
 		{#if basemapFallback}
 			<p class="notice" role="status">Basemap unreachable (offline?). Showing a plain background; project data is unaffected.</p>
 		{/if}
@@ -403,7 +413,9 @@
 	<footer class="statusbar">
 		<span>{cursor ? `${formatValue(cursor[1])}°, ${formatValue(cursor[0])}°` : 'Move over the map'}</span>
 		<span>Zoom {zoom.toFixed(1)}</span>
-		<span role="status">{busy ? 'Loading…' : 'Ready'}</span>
+		<span role="status" class="load" class:busy>
+			{#if busy}<span class="spinner" aria-hidden="true"></span>Loading map data…{:else}Ready{/if}
+		</span>
 		{#if errorCount}<span class="err" role="alert">{errorCount} layer{errorCount > 1 ? 's' : ''} failed, see the layer list</span>{/if}
 	</footer>
 </div>
@@ -465,6 +477,17 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.statusbar .err { color: #8a1c14; font-weight: 600; }
+	.load { display: inline-flex; align-items: center; gap: 0.4rem; }
+	.load.busy { background: var(--accent); color: #fff; font-weight: 600; padding: 0.05rem 0.6rem 0.05rem 0.45rem; border-radius: 999px; }
+	.spinner { width: 0.8rem; height: 0.8rem; border: 2px solid rgb(255 255 255 / 0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+	/* A moving bar along the top of the map while tiles load. */
+	.loadbar { position: absolute; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; z-index: 2; pointer-events: none; background: color-mix(in srgb, var(--accent) 20%, transparent); }
+	.loadbar::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 35%; background: var(--accent); animation: slide 1.1s ease-in-out infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
+	@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+	@media (prefers-reduced-motion: reduce) {
+		.spinner, .loadbar::after { animation-duration: 3s; }
+	}
 	:global(.hover-popup .maplibregl-popup-content) { font-size: 0.8rem; padding: 0.35rem 0.6rem; }
 	@media (max-width: 720px) {
 		.viewer, .viewer.panel-closed { grid-template-columns: 1fr; grid-template-areas: 'top' 'map' 'status'; }

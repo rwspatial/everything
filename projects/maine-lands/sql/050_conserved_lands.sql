@@ -10,7 +10,7 @@ SELECT id, coalesce(nullif(trim(parcel_name), ''), nullif(trim(project), ''), 'C
             WHEN pub_access ILIKE 'restrict%' OR pub_access ILIKE 'contact%' OR pub_access ILIKE 'private%' THEN 'ask the owner'
             ELSE 'unknown' END AS public_access,
        pub_access AS access_notes, round(calc_ac::numeric)::float8 AS acres, acq_year, gap_status,
-       ST_Force2D(geom)::geometry(MultiPolygon, 4326) AS geom
+       geom AS geom
 FROM src_megis.conserved_lands;
 
 COMMENT ON VIEW pub.maine_lands__conserved_lands IS 'maine-lands: conserved lands (MEGIS)';

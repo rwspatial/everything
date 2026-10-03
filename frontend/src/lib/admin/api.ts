@@ -220,6 +220,54 @@ export async function api<T>(fetchFn: typeof fetch, path: string): Promise<T> {
 	return res.json() as Promise<T>;
 }
 
+// ---- database health (/api/admin/database) ---------------------------------------------------------
+
+export interface DbIssue {
+	level: 'fail' | 'warn';
+	code: string;
+	message: string;
+}
+
+export interface DbView {
+	name: string;
+	geom: string;
+	geometry_type: string | null;
+	analysis_output: boolean;
+	sources: string[];
+	spatial_index_usable: boolean | null;
+	error: string | null;
+}
+
+export interface DbTable {
+	schema: string;
+	name: string;
+	rows: number;
+	bytes: number;
+	geom: string | null;
+	geometry_type: string | null;
+	dims: number | null;
+	spatial_index: boolean;
+	indexes: number;
+	seq_scan: number | null;
+	seq_tup_read: number | null;
+	idx_scan: number | null;
+	n_live_tup: number | null;
+	n_dead_tup: number | null;
+	last_analyzed: string | null;
+	last_vacuumed: string | null;
+	issues: DbIssue[];
+}
+
+export interface DatabaseHealth {
+	db_bytes: number;
+	stats_since: string | null;
+	checked_at: string;
+	summary: { views: number; views_indexed: number; tables: number; tables_with_issues: number; unused_index_bytes: number };
+	views: DbView[];
+	tables: DbTable[];
+	unused_indexes: { index: string; table: string; bytes: number; method: string }[];
+}
+
 // ---- formatting -----------------------------------------------------------------------------
 
 const nf = new Intl.NumberFormat();

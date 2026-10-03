@@ -9,7 +9,7 @@ SELECT id, fld_zone AS zone, zone_subty AS subtype,
             WHEN zone_subty ILIKE '0.2 PCT%' THEN '0.2% annual chance'
             WHEN fld_zone = 'D' THEN 'undetermined' END AS hazard,
        nullif(static_bfe, -9999)::float8 AS base_flood_elev_ft, v_datum, dfirm_id,
-       ST_Force2D(geom)::geometry(MultiPolygon, 4326) AS geom
+       geom AS geom
 FROM src_fema.flood_zones
 WHERE fld_zone LIKE 'V%' OR fld_zone LIKE 'A%' OR fld_zone = 'D' OR zone_subty ILIKE '0.2 PCT%';
 

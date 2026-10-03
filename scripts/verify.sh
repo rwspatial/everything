@@ -249,6 +249,14 @@ python3 -c 'import json; m = json.load(open("projects/maine-overview/project.jso
 codes=$(curl -s -X POST -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" --data-binary @"$OUT/leak.json" "$BASE/api/admin/projects/validate" | python3 -c 'import sys, json; print(",".join(e["code"] for e in json.load(sys.stdin)["errors"]))' 2>/dev/null)
 echo "DROP VIEW IF EXISTS pub.zz_verify__leak;" | psql_owner
 [[ $codes == E_VIEW_SOURCE ]]; check "a view reading the app registry is refused with E_VIEW_SOURCE" $? "${codes:-no answer}"
+# Tile filters must reach a spatial index: a view that wraps its geometry (ST_Force2D, casts) scans the whole table.
+idx=$(curl -s --max-time 60 -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" "$BASE/api/admin/database?refresh=true" | python3 -c 'import sys, json
+d = json.load(sys.stdin); s = d["summary"]; bad = [v["name"] for v in d["views"] if v["spatial_index_usable"] is not True]
+print("%d of %d" % (s["views_indexed"], s["views"]) + ("; not: %s" % bad[:6] if bad else ""))
+sys.exit(1 if bad else 0)' 2>&1)
+check "every published view can use a spatial index for its tile filter (/admin/database)" $? "$idx"
+units=$(echo "SELECT count(*) FROM app.units u WHERE to_regclass(u.collection) IS NOT NULL AND u.unit_count > 0;" | psql_owner)
+[[ $units == 7 ]]; check "project builder: 7 units cataloged, each with its pub.units__* view" $? "${units:-?} of 7"
 
 echo "-- dataset worker (admin Phase B)"
 docker compose --profile workers --profile mcp --profile tools --profile test config 2>/dev/null | grep -q "docker.sock"

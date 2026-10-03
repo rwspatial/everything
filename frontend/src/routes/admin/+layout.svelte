@@ -17,6 +17,7 @@
 			<a href="/admin/projects" aria-current={current('/admin/projects')}>Projects</a>
 			<a href="/admin/new" aria-current={current('/admin/new')}>New project</a>
 			<a href="/admin/analysis" aria-current={current('/admin/analysis')}>Analysis</a>
+			<a href="/admin/database" aria-current={current('/admin/database')}>Database</a>
 		</nav>
 	</div>
 	{@render children()}

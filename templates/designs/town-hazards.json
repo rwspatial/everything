@@ -1,0 +1,27 @@
+{
+  "id": "town-hazards",
+  "title": "Town hazards & resilience",
+  "description": "Flood zones, wetlands and steep slopes, with the roads, bridges, culverts and dams they threaten and the shelters and emergency services that respond.",
+  "geographies": ["town"],
+  "basemap": "positron",
+  "padding": 0.06,
+  "projectTitle": "{short_name}: hazards & resilience",
+  "projectDescription": "Hazards and resilience in {name}, {county_name} County, Maine: FEMA flood zones, wetlands and steep slopes, with roads, bridges, large culverts, dams, shelters and emergency services.",
+  "tags": ["maine", "hazards", "flooding", "{short_name}"],
+  "layers": [
+    { "ref": "maine-terrain/hillshade", "visible": true, "opacity": 0.45 },
+    { "ref": "maine-terrain/slope", "visible": false },
+    { "ref": "maine-water/wetlands", "visible": true },
+    { "ref": "maine-water/flood-zones", "visible": true },
+    { "ref": "maine-infrastructure/roads-local", "visible": true },
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
+    { "ref": "maine-infrastructure/roads-primary", "visible": true },
+    { "ref": "maine-transportation/bridges", "visible": true },
+    { "ref": "maine-transportation/large-culverts", "visible": true },
+    { "ref": "maine-water/dams", "visible": true },
+    { "ref": "maine-facilities/shelters", "visible": true },
+    { "ref": "maine-facilities/fire-ems", "visible": true },
+    { "ref": "maine-facilities/hospitals", "visible": true },
+    { "focus": true }
+  ]
+}

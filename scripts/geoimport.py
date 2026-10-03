@@ -386,6 +386,45 @@ def geom_expr(gtype: str, inner: str) -> str:
     return f"ST_Multi({expr})" if gtype.upper().startswith("MULTI") else expr
 
 
+def normalize_geometry(conn, schema: str, table: str) -> str | None:
+    """Give a freshly loaded geom column one concrete 2D type, so pub views can pass it through untouched.
+
+    Sources such as GeoParquet arrive as generic `geometry`, single-point MultiPoints, or with Z/M values.
+    A view that repairs that (ST_Force2D(geom), ST_GeometryN(geom, 1), geom::geometry(Point, 4326)) hides the
+    GiST index from tiPG's tile filter, and every tile then scans the whole table. Mixed geometry families are
+    left alone. Returns the new type, or None when nothing changed.
+    """
+    q = f'"{schema}"."{table}"'
+    declared = conn.execute(
+        "SELECT type, coord_dimension, srid FROM geometry_columns WHERE f_table_schema = %s AND f_table_name = %s "
+        "AND f_geometry_column = 'geom'", (schema, table)).fetchone()
+    if declared is None:
+        return None
+    dtype, ddim, srid = declared
+    kinds, ndims, multipoint_max = conn.execute(
+        f"SELECT array_agg(DISTINCT replace(ST_GeometryType(geom), 'ST_', '')), max(ST_NDims(geom)), "
+        f"max(ST_NumGeometries(geom)) FILTER (WHERE ST_GeometryType(geom) = 'ST_MultiPoint') "
+        f"FROM {q} WHERE geom IS NOT NULL").fetchone()
+    kinds = sorted(kinds or [])
+    families = {k.removeprefix("Multi") for k in kinds}
+    if len(families) != 1:
+        return None  # empty, or mixed points/lines/polygons: keep as loaded
+    family = families.pop()
+    flat = "ST_Force2D(geom)" if (ndims or 2) > 2 or ddim > 2 else "geom"
+    if family == "Point" and (multipoint_max or 1) == 1:
+        target, expr = "Point", f"ST_GeometryN({flat}, 1)" if "MultiPoint" in kinds else flat
+    elif len(kinds) == 1:
+        target, expr = kinds[0], flat
+    else:
+        target, expr = f"Multi{family}", f"ST_Multi({flat})"
+    if dtype.upper() == target.upper() and ddim == 2:
+        return None
+    conn.execute(f"ALTER TABLE {q} ALTER COLUMN geom TYPE geometry({target}, {srid}) USING {expr}")
+    conn.commit()
+    print(f"geometry normalized: {dtype} ({ddim}D) -> {target} (2D)")
+    return target
+
+
 def post_import(conn, schema: str, table: str, fix: bool, clip: bool = False) -> dict:
     gc = conn.execute(
         "SELECT type, srid FROM geometry_columns WHERE f_table_schema = %s AND f_table_name = %s AND f_geometry_column = 'geom'",
@@ -525,6 +564,8 @@ def do_import(*, target: str, path: str | None = None, url: str | None = None, l
             conn.execute(f'ALTER TABLE {q} RENAME COLUMN "{fid}" TO "id"')
             conn.commit()
             print("source field 'id' stored as 'source_id'; 'id' is the generated key")
+        if mode == "overwrite":
+            normalize_geometry(conn, schema, load_table)
         if deps:
             swap_in_stage(conn, schema, table, load_table, deps)
         stats = post_import(conn, schema, table, fix, clip)

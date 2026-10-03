@@ -8,7 +8,7 @@ SELECT id, initcap(strtname) AS name, prirtename AS route,
                        WHEN 'Minor Arterial' THEN 'Minor arterial' WHEN 'Major Collector' THEN 'Major collector'
                        WHEN 'Minor Collector' THEN 'Minor collector' ELSE fedfunccls END AS functional_class,
        initcap(townname) AS town, jurisdictn AS jurisdiction, faadt AS aadt, num_lanes AS lanes, speed_lim AS speed_limit,
-       nhs_status AS nhs, ST_Force2D(geom)::geometry(MultiLineString, 4326) AS geom
+       nhs_status AS nhs, geom AS geom
 FROM src_mdot.public_roads;
 
 COMMENT ON VIEW pub.maine_transportation__public_roads IS 'maine-transportation: MaineDOT public roads';

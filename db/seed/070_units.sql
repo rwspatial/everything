@@ -1,7 +1,7 @@
 -- Units for the project builder (plan: project-builder §1.1; table app.units in migration 20261003000800).
 -- One view per unit, pub.units__<id>, all with the same standard columns so the builder, the study-area
 -- filter and (Stage 2) the analyses can treat every unit alike:
---   id integer, unit_key text, name text, county_geoid text, county_name text, town_geoid text, area_sqmi float8,
+--   id integer, unit_key text, name text, short_name text, county_geoid text, county_name text, town_geoid text, area_sqmi float8,
 --   <attributes, float8>, geom geometry(MultiPolygon, 4326)
 -- town_geoid is NULL for units that do not nest in towns (tract, block group, county, state).
 -- Numbers styled in the browser must be float8 or integer: tiPG writes numeric columns into tiles as text.
@@ -58,13 +58,15 @@ BEGIN
   END IF;
 END
 $$;
+CREATE INDEX IF NOT EXISTS state_geom_idx ON src_units.state USING gist (geom);
 ANALYZE src_units.block_town;
 ANALYZE src_units.parcel_town;
+ANALYZE src_units.state;
 
 -- ---- views -------------------------------------------------------------------------------------------------------
 DROP VIEW IF EXISTS pub.units__state;
 CREATE VIEW pub.units__state AS
-SELECT s.id, s.geoid AS unit_key, s.name, NULL::text AS county_geoid, NULL::text AS county_name, NULL::text AS town_geoid,
+SELECT s.id, s.geoid AS unit_key, s.name, s.name AS short_name, NULL::text AS county_geoid, NULL::text AS county_name, NULL::text AS town_geoid,
        s.aland / 2589988.11 AS area_sqmi,
        sum((CASE WHEN a.pop >= 0 THEN a.pop::float8 END)) AS pop,
        sum((CASE WHEN a.pop >= 0 THEN a.pop::float8 END)) / (s.aland / 2589988.11) AS pop_density,
@@ -74,7 +76,7 @@ GROUP BY s.id, s.geoid, s.name, s.aland, s.geom;
 
 DROP VIEW IF EXISTS pub.units__county;
 CREATE VIEW pub.units__county AS
-SELECT c.id, c.geoid AS unit_key, c.namelsad AS name, c.geoid AS county_geoid, c.name AS county_name, NULL::text AS town_geoid,
+SELECT c.id, c.geoid AS unit_key, c.namelsad AS name, c.name AS short_name, c.geoid AS county_geoid, c.name AS county_name, NULL::text AS town_geoid,
        c.aland / 2589988.11 AS area_sqmi,
        (CASE WHEN a.pop >= 0 THEN a.pop::float8 END) AS pop,
        (CASE WHEN a.pop >= 0 THEN a.pop::float8 END) / nullif(c.aland / 2589988.11, 0) AS pop_density,
@@ -87,7 +89,7 @@ FROM src_census.county c LEFT JOIN src_census.acs5_2024_county a USING (geoid);
 
 DROP VIEW IF EXISTS pub.units__town;
 CREATE VIEW pub.units__town AS
-SELECT t.id, t.geoid AS unit_key, t.namelsad AS name, left(t.geoid, 5) AS county_geoid, c.name AS county_name,
+SELECT t.id, t.geoid AS unit_key, t.namelsad AS name, t.name AS short_name, left(t.geoid, 5) AS county_geoid, c.name AS county_name,
        t.geoid AS town_geoid,
        t.aland / 2589988.11 AS area_sqmi,
        (CASE WHEN a.pop >= 0 THEN a.pop::float8 END) AS pop,
@@ -100,7 +102,8 @@ LEFT JOIN src_census.county c ON c.geoid = left(t.geoid, 5);
 
 DROP VIEW IF EXISTS pub.units__tract;
 CREATE VIEW pub.units__tract AS
-SELECT t.id, t.geoid AS unit_key, t.namelsad || ', ' || c.name || ' County' AS name, left(t.geoid, 5) AS county_geoid,
+SELECT t.id, t.geoid AS unit_key, t.namelsad || ', ' || c.name || ' County' AS name, 'Tract ' || t.name AS short_name,
+       left(t.geoid, 5) AS county_geoid,
        c.name AS county_name, NULL::text AS town_geoid,
        t.aland / 2589988.11 AS area_sqmi,
        (CASE WHEN a.pop >= 0 THEN a.pop::float8 END) AS pop,
@@ -119,6 +122,7 @@ CREATE VIEW pub.units__blockgroup AS
 SELECT g.id, g.geoid AS unit_key,
        g.namelsad || ', Tract ' || ltrim(left(g.tractce, 4), '0') || coalesce(nullif('.' || right(g.tractce, 2), '.00'), '')
          || ', ' || c.name || ' County' AS name,
+       g.namelsad AS short_name,
        left(g.geoid, 5) AS county_geoid, c.name AS county_name, NULL::text AS town_geoid,
        g.aland / 2589988.11 AS area_sqmi,
        (CASE WHEN a.pop >= 0 THEN a.pop::float8 END) AS pop,
@@ -136,6 +140,7 @@ LEFT JOIN src_census.county c ON c.geoid = left(g.geoid, 5);
 DROP VIEW IF EXISTS pub.units__block;
 CREATE VIEW pub.units__block AS
 SELECT b.id, b.geoid20 AS unit_key, 'Block ' || b.blockce20 || ', ' || coalesce(t.name, c.name || ' County') AS name,
+       'Block ' || b.blockce20 AS short_name,
        left(b.geoid20, 5) AS county_geoid, c.name AS county_name, bt.town_geoid,
        b.aland20 / 2589988.11 AS area_sqmi,
        d.pop::float8 AS pop,
@@ -155,6 +160,7 @@ DROP VIEW IF EXISTS pub.units__parcel;
 CREATE VIEW pub.units__parcel AS
 SELECT p.id, p.id::text AS unit_key,
        concat_ws(', ', p.address, 'map/lot ' || p.map_lot, t.name) AS name,
+       coalesce(p.address, 'map/lot ' || p.map_lot, 'Parcel ' || p.id) AS short_name,
        pt.county_geoid, c.name AS county_name, pt.town_geoid,
        p.acres / 640 AS area_sqmi,
        p.acres,
@@ -172,6 +178,41 @@ FROM (
 LEFT JOIN src_units.parcel_town pt ON pt.id = p.id
 LEFT JOIN src_census.cousub t ON t.geoid = pt.town_geoid
 LEFT JOIN src_census.county c ON c.geoid = pt.county_geoid;
+
+-- Focus treatment for map designs (plan §1.7): per tile, a mask (the tile minus the chosen place, drawn as a soft
+-- veil) and the place's outline. One function serves every place: params unit + place (its unit_key). Static
+-- branches per unit, no dynamic SQL, so a request can only ever read these boundary tables.
+CREATE OR REPLACE FUNCTION pub.units__focus(
+  IN  z int,
+  IN  x int,
+  IN  y int,
+  IN  unit text DEFAULT 'town',
+  IN  place text DEFAULT '',
+  OUT id int,
+  OUT part text,
+  OUT geom geometry
+) RETURNS SETOF record
+LANGUAGE sql STABLE PARALLEL SAFE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  WITH env AS (SELECT ST_Transform(ST_TileEnvelope(z, x, y), 4326) AS e),
+  p AS (
+    SELECT ST_Union(g) AS g FROM (
+      SELECT geom AS g FROM src_census.cousub     WHERE unit = 'town'       AND geoid = place
+      UNION ALL SELECT geom FROM src_census.county     WHERE unit = 'county'     AND geoid = place
+      UNION ALL SELECT geom FROM src_census.tract      WHERE unit = 'tract'      AND geoid = place
+      UNION ALL SELECT geom FROM src_census.blockgroup WHERE unit = 'blockgroup' AND geoid = place
+      UNION ALL SELECT geom FROM src_units.state       WHERE unit = 'state'      AND geoid = place
+    ) s
+  )
+  SELECT 1, 'mask', ST_Difference(env.e, ST_Intersection(p.g, env.e))
+  FROM env, p WHERE p.g IS NOT NULL
+  UNION ALL
+  SELECT 2, 'outline', ST_Intersection(ST_Boundary(p.g), ST_Expand(env.e, 0.001))
+  FROM env, p WHERE p.g IS NOT NULL AND p.g && ST_Expand(env.e, 0.001)
+$$;
+COMMENT ON FUNCTION pub.units__focus IS 'units: focus mask (tile minus place) and outline for map designs; params unit, place';
 
 COMMENT ON VIEW pub.units__state IS 'units: the state (Maine), with ACS 2024 population summed from counties';
 COMMENT ON VIEW pub.units__county IS 'units: counties with ACS 2024 5-year estimates';
