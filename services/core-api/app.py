@@ -684,7 +684,9 @@ def _chart_data(conn, chart: dict, bbox: list[float] | None) -> dict:
             "GROUP BY 1 ORDER BY 2 DESC NULLS LAST LIMIT 500").format(
             c=sql.Identifier(data["category"]), a=_chart_agg(agg, data.get("value")), r=rel, w=where), params).fetchall()
         top, rest = rows[:limit], rows[limit:]
-        if rest and agg in ("count", "sum"):
+        # Donuts show shares, so the rest is one "Other" slice; a ranked bar chart stays the top N (a long Other bar
+        # would squash every real bar).
+        if rest and kind == "donut" and agg in ("count", "sum"):
             top.append({"category": f"Other ({len(rest)})", "value": sum(r["value"] or 0 for r in rest),
                         "n": sum(r["n"] for r in rest), "other": True})
         return {"rows": top, "n": sum(r["n"] for r in rows), "groups": len(rows)}
@@ -1215,3 +1217,54 @@ async def dataset_action(name: str, request: Request, response: Response) -> dic
         response.status_code = 200
         job["deduplicated"] = True
     return job
+
+
+# ---- methods: how derived layers are calculated (docs/methods/<id>.json) ------------------------------------
+# Admin only. Each file describes one calculation (inputs, steps, parameters, caveats, optional LaTeX in `math`);
+# the detail view adds the SQL that builds it (read from the projects tree) and live counts from its pub views.
+
+METHODS_DIR = Path(os.environ.get("METHODS_DIR", "/methods"))
+REPO_DIR = Path(os.environ.get("REPO_DIR", "/repo"))
+METHOD_SQL = re.compile(r"^projects/[a-z0-9-]+/sql/[A-Za-z0-9_.-]+\.sql$")
+FIELD = re.compile(r"^[a-z_][a-z0-9_]*$")
+
+
+def _methods() -> dict[str, dict]:
+    out = {}
+    for f in sorted(METHODS_DIR.glob("*.json")):
+        m = json.loads(f.read_text())
+        out[m["id"]] = m
+    return out
+
+
+def _method_live(conn, output: dict) -> dict:
+    schema, name = _collection(output["collection"])
+    sums = [f for f in output.get("sums", []) if FIELD.match(f)]
+    cols = [sql.SQL("count(*) AS rows")] + [
+        sql.SQL("sum({f})::float8 AS {a}").format(f=sql.Identifier(f), a=sql.Identifier(f)) for f in sums]
+    try:
+        r = conn.execute(sql.SQL("SELECT {cols} FROM {rel}").format(
+            cols=sql.SQL(", ").join(cols), rel=sql.Identifier(schema, name))).fetchone()
+    except Exception as e:  # a view not yet applied, or a renamed column: show it, don't fail the page
+        conn.rollback()
+        return {"collection": output["collection"], "error": str(e).splitlines()[0]}
+    return {"collection": output["collection"], "rows": r.pop("rows"), "sums": r}
+
+
+@app.get("/api/admin/methods", dependencies=[Depends(require_admin)])
+def list_methods() -> list[dict]:
+    return [{k: m.get(k) for k in ("id", "title", "summary", "project", "layer")} for m in _methods().values()]
+
+
+@app.get("/api/admin/methods/{method_id}", dependencies=[Depends(require_admin)])
+def get_method(method_id: str) -> dict:
+    m = _methods().get(method_id)
+    if not m:
+        raise HTTPException(404, f"no method {method_id!r}")
+    m = copy.deepcopy(m)
+    path = m.get("sql")
+    if path and METHOD_SQL.match(path) and (REPO_DIR / path).is_file():
+        m["sql_text"] = (REPO_DIR / path).read_text()
+    with projects_pool.connection() as conn:
+        m["live"] = [_method_live(conn, o) for o in m.get("outputs", [])]
+    return m

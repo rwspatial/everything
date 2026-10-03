@@ -70,7 +70,7 @@ async function render(job) {
 		const err = await page.evaluate(() => window.__report?.error);
 		if (err) throw new Error(`report page: ${err}`);
 		await progress(job.id, 0.8, 'printing the PDF');
-		const title = await page.title();
+		const title = (await page.locator('h1').first().textContent())?.trim() ?? slug;
 		const pdf = await page.pdf({
 			format: 'Letter',
 			printBackground: true,
@@ -78,7 +78,7 @@ async function render(job) {
 			displayHeaderFooter: true,
 			headerTemplate: '<span></span>',
 			footerTemplate: `<div style="font: 8px sans-serif; width: 100%; padding: 0 0.55in; color: #5b6670; display: flex; justify-content: space-between">
-				<span>Downeast Geospatial · ${title.replace(/[<>&]/g, '')}</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`
+				<span>Downeast Geospatial · ${title.replace(/[<>&]/g, '')} · map report</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`
 		});
 		const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page(?![s\w])/g) ?? []).length || null;
 		const rel = `${slug}/${job.id}.pdf`;

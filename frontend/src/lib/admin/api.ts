@@ -314,3 +314,23 @@ export function fmtDuration(value: number | string | null | undefined): string {
 }
 
 export const fmtBBox = (b: BBox | null) => (b ? b.map((v) => Number(v).toFixed(2)).join(', ') : '–');
+
+// /api/admin/methods: how derived layers are calculated (docs/methods/<id>.json). `math` is LaTeX (KaTeX).
+export interface MethodSummary {
+	id: string;
+	title: string;
+	summary: string;
+	project: string | null;
+	layer: string | null;
+}
+
+export interface Method extends MethodSummary {
+	sql: string | null;
+	sql_text?: string;
+	outputs: { collection: string; sums?: string[] }[];
+	inputs: { name: string; role: string }[];
+	steps: { title: string; detail: string; math?: string }[];
+	parameters: { name: string; value: string; why: string; math?: string }[];
+	caveats: string[];
+	live: { collection: string; rows?: number; sums?: Record<string, number | null>; error?: string }[];
+}

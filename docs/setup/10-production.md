@@ -86,6 +86,43 @@ make backup-offsite    # make backup + upload the dump; the bucket expires backu
 - To try locally: `COMPOSE_FILE=compose.yaml:compose.dev.yaml:compose.s3.yaml:compose.s3local.yaml`, then
   `docker compose up -d s3local`, recreate `titiler proxy core-api`, `make cog-sync`.
 
+## The AWS server (on demand, private)
+
+Created 2026-10-03 in account 277659481909, **us-east-2**. It is **stopped by default and not public**: ports
+22/80/443 accept the owner's IP only, and a schedule stops it every night at 1 AM America/New_York.
+
+```bash
+make aws-up        # start (moves the owner-only firewall rule if your IP changed), wait, print the URL
+make aws-tunnel    # admin listener -> http://localhost:8081/admin
+make aws-ssh       # a shell (the stack lives in /srv/everything; .env there is the server's)
+make aws-down      # stop; `make aws-down backup=1` uploads a database backup to S3 first (~10 min)
+make aws-status
+```
+
+| Resource | Name / id | Notes |
+|---|---|---|
+| EC2 instance | `everything-server` (i-0b9f8014ab2d88409) | m7i-flex.large (2 vCPU, 8 GB), Ubuntu 24.04, 40 GB gp3 encrypted, no Elastic IP: the address changes at each start |
+| Security group | `everything-server` (sg-0000cb75cd8082959) | 22, 80, 443 from the owner's IP (/32, description `owner`) only |
+| Key pair | `everything-server` | private key: `~/.ssh/everything-server.pem` on the workstation only |
+| S3 buckets | `everything-cog-277659481909`, `everything-backups-277659481909` | public access blocked; COGs under `cog/`, dumps under `backups/` (expire after 30 days) |
+| IAM | role + instance profile `everything-server` (those two buckets only); role `everything-autostop` | the server needs no stored keys |
+| Schedule | EventBridge Scheduler `everything-autostop` | `cron(0 1 * * ? *)` America/New_York -> ec2:StopInstances |
+
+Everything carries the tag `project=everything`.
+
+**Costs** (us-east-2 prices, 2026-10-03): stopped ≈ $3.20/month for the disk plus a few cents of S3; running
+≈ $0.10/hour (instance $0.096 + public IPv4 $0.005). The account is on the AWS **Free plan**: $100 of credits
+until **2027-04-03**; upgrade to the Paid plan in the Billing console before then (or before the credits run
+out), or AWS closes the account. The Free plan only allows free-tier instance types (m7i-flex.large is the
+largest).
+
+**What runs there:** the core stack only (database, tiPG, titiler from S3, core-api, site, proxy) in production
+mode. Imports, the R/Python workers and the reporter stay on the workstation; data goes over as a database
+backup (`make backup-offsite` here, then `make restore` there) and `make cog-sync`.
+
+**Removing it all:** terminate the instance (deletes its disk), then delete the schedule, the two roles, the
+instance profile, the security group, the key pair and the two buckets (`project=everything` tag).
+
 ## Releases: the `prod` branch
 
 `prod` is a pointer to what is deployed, not a second codebase: it only ever fast-forwards from `master`.

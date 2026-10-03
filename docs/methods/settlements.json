@@ -1,0 +1,100 @@
+{
+  "id": "settlements",
+  "title": "Settlements (built-up areas)",
+  "summary": "Outlines of every village, town centre and city in Maine, drawn by clustering building footprints. Used at zooms 7-12, where the 925k footprints are too dense to draw.",
+  "project": "maine-places",
+  "layer": "settlements",
+  "sql": "projects/maine-places/sql/030_settlements.sql",
+  "outputs": [
+    {
+      "collection": "pub.maine_places__settlements",
+      "sums": [
+        "buildings",
+        "acres",
+        "footprint_acres"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "name": "src_overture.buildings",
+      "role": "Building footprints (Overture Maps). One point is taken on each footprint."
+    },
+    {
+      "name": "src_census.cousub",
+      "role": "Towns (county subdivisions): each settlement is named after the town holding most of it."
+    },
+    {
+      "name": "src_census.county",
+      "role": "County name, joined through the town GEOID."
+    }
+  ],
+  "steps": [
+    {
+      "title": "One point per building",
+      "detail": "A point on the surface of each footprint, projected to UTM 19N (EPSG:26919) so distances are in metres. The footprint area is kept for the footprint_acres total."
+    },
+    {
+      "title": "Cluster the points (DBSCAN)",
+      "detail": "Statewide ST_ClusterDBSCAN: a building joins a cluster when at least 4 buildings lie within 58 m. Buildings with no such neighbours stay unclustered and are not part of any settlement.",
+      "math": "p \\text{ is a core building} \\iff \\bigl|\\{\\, q : \\lVert p - q \\rVert \\le \\varepsilon \\,\\}\\bigr| \\ge k, \\quad \\varepsilon = 58\\ \\text{m},\\ k = 4"
+    },
+    {
+      "title": "Close each cluster into a shape",
+      "detail": "Buffer the cluster's points out 60 m, then back in 35 m. The outward buffer fills the gaps between houses; the inward one pulls the edge back so it hugs the outermost buildings (about 25 m beyond them).",
+      "math": "S_c = \\bigl(\\textstyle\\bigcup_{p \\in c} B(p,\\, 60\\ \\text{m})\\bigr) \\ominus B(0,\\, 35\\ \\text{m})"
+    },
+    {
+      "title": "Dissolve touching shapes",
+      "detail": "Shapes that touch or overlap are merged into one settlement (a second DBSCAN with distance 0). This joins a city split by parking lots and highways wider than the cluster distance."
+    },
+    {
+      "title": "Simplify and filter",
+      "detail": "Simplified to 5 m (topology preserved). Settlements with fewer than 10 buildings are dropped."
+    },
+    {
+      "title": "Name and classify",
+      "detail": "Town = the town containing a point on the settlement's surface. Size class from the building count: 1000+ city or large town, 250+ town centre, 50+ village, otherwise hamlet.",
+      "math": "\\text{class}(n) = \\begin{cases} \\text{City or large town} & n \\ge 1000 \\\\ \\text{Town centre} & 250 \\le n < 1000 \\\\ \\text{Village} & 50 \\le n < 250 \\\\ \\text{Hamlet} & 10 \\le n < 50 \\end{cases}"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Neighbour distance (DBSCAN eps)",
+      "value": "58 m",
+      "why": "Raised from 50 m. Density scales with distance squared, so 58 m admits areas about 25 % less dense.",
+      "math": "\\left(\\tfrac{50}{58}\\right)^2 \\approx 0.74"
+    },
+    {
+      "name": "Minimum neighbours (DBSCAN minpoints)",
+      "value": "4 buildings",
+      "why": "Keeps a farmhouse with a barn and two sheds from seeding a cluster."
+    },
+    {
+      "name": "Buffer out / in",
+      "value": "60 m / 35 m",
+      "why": "Out must exceed half the neighbour distance so neighbours' buffers join; the net 25 m keeps yards inside the outline."
+    },
+    {
+      "name": "Simplify tolerance",
+      "value": "5 m",
+      "why": "Below a pixel at zoom 12; cuts vertex count for tiles."
+    },
+    {
+      "name": "Minimum settlement size",
+      "value": "10 buildings",
+      "why": "Below this the shape is a cluster of outbuildings, not a place."
+    },
+    {
+      "name": "Size classes",
+      "value": "1000 / 250 / 50 buildings",
+      "why": "Separates cities, service towns, villages and hamlets."
+    }
+  ],
+  "caveats": [
+    "Scattered rural houses are not in any settlement by design, so the buildings in settlements are well below the footprint count.",
+    "A settlement spanning two towns is named after one of them only.",
+    "acres is the outline's area; footprint_acres is the area of the buildings themselves.",
+    "Rebuilt only when the number of building footprints changes (about two minutes). An Overture update that keeps the same count is not picked up; to force a rebuild run TRUNCATE src_units.settlements_meta, then ./mapgen apply maine-places."
+  ]
+}

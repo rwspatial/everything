@@ -67,6 +67,21 @@ backup-offsite: check-env ## make backup, then upload it to s3://$$BACKUP_S3_BUC
 	@if [ "$${BACKUP_PRUNE_LOCAL:-$$(grep -E '^BACKUP_PRUNE_LOCAL=' .env | cut -d= -f2)}" = 1 ]; then \
 	  find data/backups -maxdepth 1 -name '*.dump' -mtime +7 -print -delete; fi
 
+aws-up: ## Start the AWS server (stopped by default; your IP only) and print its URLs
+	@bash scripts/aws.sh up
+
+aws-down: ## Stop the AWS server (backup=1: upload a database backup first)
+	@BACKUP=$(if $(backup),1,0) bash scripts/aws.sh down
+
+aws-status: ## Is the AWS server running? Its address
+	@bash scripts/aws.sh status
+
+aws-ssh: ## A shell on the AWS server
+	@bash scripts/aws.sh ssh
+
+aws-tunnel: ## Admin listener of the AWS server on http://localhost:8081
+	@bash scripts/aws.sh tunnel
+
 dev-proxy: check-env ## Back to the dev proxy on :8080 after make prod-local
 	$(COMPOSE) up -d --force-recreate --no-deps proxy
 

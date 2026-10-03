@@ -323,8 +323,20 @@ test.describe('signed in', () => {
 		await shot(page, 'admin-database');
 	});
 
+	test('methods: settlements method shows steps, LaTeX, live counts and its SQL', async ({ page }) => {
+		await page.goto('/admin/methods');
+		await page.getByRole('link', { name: 'Settlements (built-up areas)' }).click();
+		await expect(page.getByRole('heading', { name: 'Settlements (built-up areas)' })).toBeVisible();
+		await expect(page.getByText('rows in pub.maine_places__settlements')).toBeVisible();
+		await expect(page.locator('.katex').first()).toBeVisible();
+		await expect(page.getByRole('row', { name: /Neighbour distance/ })).toContainText('58 m');
+		await page.getByText('SQL:').click();
+		await expect(page.locator('pre')).toContainText('ST_ClusterDBSCAN');
+		await shot(page, 'admin-methods-settlements');
+	});
+
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

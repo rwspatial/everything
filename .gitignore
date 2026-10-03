@@ -32,3 +32,4 @@ __pycache__/
 .Rhistory
 .RData
 .Rproj.user/
+everything-cli_accessKeys.csv

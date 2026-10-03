@@ -62,7 +62,9 @@
 		</ul>
 		<p class="small">
 			Vector layers come from PostGIS views through an OGC API (<a href="/tiles/" rel="external">browse the Data API</a>),
-			rasters are Cloud-Optimized GeoTIFFs rendered on the fly, and the whole stack runs in Docker.
+			rasters are Cloud-Optimized GeoTIFFs rendered on the fly, and a small API runs the imports, analysis jobs and PDF
+			reports behind them. Maps are defined as validated JSON manifests, browser tests check every page, and the whole stack
+			runs in Docker.
 			<a href="/maps">See the live maps →</a>
 		</p>
 	</section>

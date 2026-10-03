@@ -134,6 +134,8 @@ services:
     volumes:
       - ./templates/designs:/designs:ro   # map designs for the project builder (quick map)
       - ./data/reports:/reports:ro        # PDF reports written by the reporter, served by /api/projects/{slug}/reports
+      - ./docs/methods:/methods:ro        # how derived layers are calculated (/admin/methods)
+      - ./projects:/repo/projects:ro      # the SQL each method shows
     networks: [api, data]
     depends_on:
       postgis:

@@ -274,16 +274,20 @@ test('layer toggle, opacity and feature inspector', async ({ page }) => {
 	// Click Brazil and inspect its attributes.
 	const pt = await page.evaluate(() => window.__spatial!.map!.project([-52, -10]));
 	const box = (await page.locator('.maplibregl-canvas').boundingBox())!;
-	await page.mouse.click(box.x + pt.x, box.y + pt.y);
+	// The details panel is always there (with a hint), so a click never resizes the map.
 	const drawer = page.getByRole('complementary', { name: 'Feature details' });
+	await expect(drawer).toContainText('Click a feature on the map');
+	await page.mouse.click(box.x + pt.x, box.y + pt.y);
 	await expect(drawer).toBeVisible();
 	const country = drawer.getByRole('region', { name: 'Countries by population' });
 	await expect(country.getByRole('cell', { name: 'Brazil', exact: true })).toBeVisible();
 	// States and provinces sit on top of countries, so the Brazilian state under the click is listed too.
 	await expect(drawer.getByRole('heading', { name: 'States and provinces' }).first()).toBeVisible();
 	await shot(page, '3-inspector');
+	expect((await page.locator('.maplibregl-canvas').boundingBox())!.width).toBe(box.width);
 	await page.keyboard.press('Escape');
-	await expect(drawer).toBeHidden();
+	await expect(drawer).toContainText('Click a feature on the map');
+	await expect(country).toBeHidden();
 });
 
 test('switching basemap keeps project layers drawn (and offline basemap works)', async ({ page }) => {

@@ -12,10 +12,16 @@
   ],
   "view": {
     "center": [
-      -70.26,
-      43.66
+      -68.975,
+      45.19
     ],
-    "zoom": 11.5,
+    "zoom": 6.3,
+    "bounds": [
+      -71.15,
+      42.85,
+      -66.8,
+      47.53
+    ],
     "basemap": "positron"
   },
   "notes": [
@@ -208,6 +214,53 @@
         }
       },
       "attribution": "U.S. Wind Turbine Database (USGS, LBNL, ACP)"
+    },
+    {
+      "id": "maine-boundary",
+      "title": "Maine boundary",
+      "group": "Boundaries",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.units__state",
+        "properties": [
+          "name"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#1d3557",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                5,
+                1.2,
+                12,
+                2.2
+              ],
+              "line-opacity": 0.85
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#1d3557",
+        "label": "Maine"
+      },
+      "interaction": {
+        "inspect": false
+      },
+      "attribution": "U.S. Census Bureau: TIGER/Line 2024",
+      "visible": true
     }
   ]
 }

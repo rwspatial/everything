@@ -20,11 +20,11 @@ export const site = {
 	services: [
 		{
 			title: 'Data pipelines',
-			body: 'Repeatable imports from sources like the Maine GeoLibrary, USGS, Census and NOAA into PostGIS, with provenance, health checks and freshness tracking.'
+			body: 'Repeatable imports from sources like the Maine GeoLibrary, USGS, Census, USDA, FEMA, NOAA and Overture Maps into PostGIS, with provenance, health checks and freshness tracking.'
 		},
 		{
 			title: 'Web maps and tile services',
-			body: 'Vector tiles straight from PostGIS, Cloud-Optimized GeoTIFFs through TiTiler, and MapLibre viewers built for the people who use them.'
+			body: 'Vector tiles straight from PostGIS, Cloud-Optimized GeoTIFFs through TiTiler, MapLibre viewers built for the people who use them, and printable PDF reports.'
 		},
 		{
 			title: 'Spatial databases',
@@ -32,11 +32,11 @@ export const site = {
 		},
 		{
 			title: 'Spatial analysis',
-			body: 'Terrain, land cover, habitat and census analysis in R and Python, delivered as layers you can map and query.'
+			body: 'Hot spots and clusters, derived features like settlement outlines, and terrain, soils, habitat and census analysis in R and Python, with documented methods, delivered as layers you can map and query.'
 		}
 	],
 
-	stack: ['PostGIS', 'tipg (OGC API)', 'TiTiler', 'GDAL / ogr2ogr', 'SvelteKit', 'MapLibre', 'R + Python', 'Docker', 'Caddy'],
+	stack: ['PostGIS', 'tipg (OGC API)', 'TiTiler', 'GDAL / ogr2ogr', 'SvelteKit', 'MapLibre', 'R + Python', 'FastAPI', 'Playwright', 'Docker', 'Caddy'],
 
 	/** Landing banner photo (frontend/static/) and its credit. Empty image = the plain dark banner. */
 	hero: {

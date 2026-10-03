@@ -469,8 +469,8 @@
 		{/if}
 	</main>
 
-	{#if selected.length}
-		<Inspector features={selected} onclose={() => (selected = [])} />
+	{#if !embedded || selected.length}
+		<Inspector features={selected} onclose={() => (selected = [])} overlay={embedded} />
 	{/if}
 
 	<footer class="statusbar">
@@ -484,15 +484,18 @@
 </div>
 
 <style>
+	/* Fixed columns and rows: nothing that appears or changes (feature details, loading state) resizes the map. */
 	.viewer {
+		position: relative;
 		height: 100dvh;
 		display: grid;
 		grid-template-rows: auto 1fr auto;
-		grid-template-columns: 330px 1fr auto;
+		grid-template-columns: 330px 1fr 300px;
 		grid-template-areas: 'top top top' 'panel map inspector' 'status status status';
 	}
-	.viewer.panel-closed { grid-template-columns: 0 1fr auto; }
-	.viewer.embedded { height: 100%; }
+	.viewer.panel-closed { grid-template-columns: 0 1fr 300px; }
+	.viewer.embedded { height: 100%; grid-template-columns: 330px 1fr 0; }
+	.viewer.embedded.panel-closed { grid-template-columns: 0 1fr 0; }
 	.topbar {
 		grid-area: top;
 		display: flex;
@@ -531,8 +534,12 @@
 	.statusbar {
 		grid-area: status;
 		display: flex;
+		align-items: center;
+		height: 1.9rem;
+		overflow: hidden;
+		white-space: nowrap;
 		gap: 1.25rem;
-		padding: 0.3rem 0.9rem;
+		padding: 0 0.9rem;
 		font-size: 0.78rem;
 		color: var(--muted);
 		background: var(--surface);
@@ -541,8 +548,9 @@
 	}
 	.statusbar .err { color: #8a1c14; font-weight: 600; }
 	.report-link { font-size: 0.85rem; padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit; background: var(--surface); }
-	.load { display: inline-flex; align-items: center; gap: 0.4rem; }
-	.load.busy { background: var(--accent); color: #fff; font-weight: 600; padding: 0.05rem 0.6rem 0.05rem 0.45rem; border-radius: 999px; }
+	/* Same box in both states, so "Loading…" -> "Ready" never shifts anything. */
+	.load { display: inline-flex; align-items: center; gap: 0.4rem; height: 1.3rem; min-width: 10.5rem; padding: 0 0.6rem 0 0.45rem; border-radius: 999px; }
+	.load.busy { background: var(--accent); color: #fff; font-weight: 600; }
 	.spinner { width: 0.8rem; height: 0.8rem; border: 2px solid rgb(255 255 255 / 0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 	/* A moving bar along the top of the map while tiles load. */
 	.loadbar { position: absolute; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; z-index: 2; pointer-events: none; background: color-mix(in srgb, var(--accent) 20%, transparent); }
@@ -554,7 +562,7 @@
 	}
 	:global(.hover-popup .maplibregl-popup-content) { font-size: 0.8rem; padding: 0.35rem 0.6rem; }
 	@media (max-width: 720px) {
-		.viewer, .viewer.panel-closed { grid-template-columns: 1fr; grid-template-areas: 'top' 'map' 'status'; }
+		.viewer, .viewer.panel-closed, .viewer.embedded, .viewer.embedded.panel-closed { grid-template-columns: 1fr; grid-template-areas: 'top' 'map' 'status'; }
 		.panel { position: absolute; z-index: 4; top: 3.2rem; bottom: 1.8rem; left: 0; width: min(330px, 88vw); box-shadow: 4px 0 16px rgb(0 0 0 / 0.15); }
 		.basemap-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 	}

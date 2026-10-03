@@ -66,7 +66,7 @@
 
 	// ---- histogram -------------------------------------------------------------------------------------------
 	const H = 150;
-	const M = { l: 44, r: 8, t: 10, b: 24 };
+	const M = { l: 44, r: 22, t: 10, b: 24 }; // right margin: room for the last axis label
 	const bins = $derived(data.bins ?? []);
 	const hx = $derived(d3.scaleLinear().domain([bins[0]?.x0 ?? 0, bins.at(-1)?.x1 ?? 1]).range([M.l, width - M.r]));
 	const hy = $derived(d3.scaleLinear().domain([0, d3.max(bins, (b) => b.count) || 1]).nice(4).range([H - M.b, M.t]));
