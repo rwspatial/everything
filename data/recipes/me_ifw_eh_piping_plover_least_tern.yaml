@@ -1,0 +1,26 @@
+name: me_ifw_eh_piping_plover_least_tern
+title: Piping plover and least tern essential habitat (MDIFW)
+description: Piping plover and least tern Essential Habitat designated under Maine's Endangered Species Act.
+agency: Maine Department of Inland Fisheries and Wildlife
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/ifw/Wildlife_Habitat_Data/MapServer/2
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/ifw/Wildlife_Habitat_Data/MapServer/2
+target: src_habitat.eh_piping_plover_least_tern
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: State of Maine (MDIFW); see data use terms
+attribution: Maine Department of Inland Fisheries and Wildlife
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -1,0 +1,16 @@
+name: me_blockgroups
+title: Census block groups (Maine)
+description: Census block groups for Maine (2020 geography), TIGER/Line 2024. The smallest areas the American Community Survey publishes.
+agency: U.S. Census Bureau (TIGER/Line)
+group: maine
+vintage: { label: "TIGER/Line 2024", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  url: https://www2.census.gov/geo/tiger/TIGER2024/BG/tl_2024_23_bg.zip
+target: src_census.blockgroup
+srs: EPSG:4326
+fix_invalid: true
+license: Public domain (U.S. Census Bureau)
+attribution: U.S. Census Bureau, TIGER/Line Shapefiles 2024
+enabled: true

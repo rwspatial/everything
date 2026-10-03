@@ -1,0 +1,31 @@
+name: me_eia_petroleum_pipelines
+title: Petroleum product pipelines (EIA Energy Atlas, Maine area)
+description: Petroleum product pipelines from the U.S. Energy Atlas (EIA), for the Maine bounding box (publish views clip
+  to Maine).
+agency: U.S. Energy Information Administration
+source:
+  arcgis:
+    url: https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Petroleum_Products_Pipelines_1/FeatureServer/0
+    page_size: 1000
+    params:
+      geometry: -71.1,42.95,-66.9,47.47
+      geometryType: esriGeometryEnvelope
+      inSR: 4326
+      spatialRel: esriSpatialRelIntersects
+      geometryPrecision: 6
+    order_by: FID
+upstream:
+  arcgis: https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Petroleum_Products_Pipelines_1/FeatureServer/0
+target: src_energy.petroleum_pipelines
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (EIA)
+attribution: U.S. Energy Information Administration, U.S. Energy Atlas
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

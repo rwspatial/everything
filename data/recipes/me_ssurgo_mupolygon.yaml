@@ -1,0 +1,22 @@
+name: me_ssurgo_mupolygon
+title: Soil map units (SSURGO, Maine)
+description: >-
+  SSURGO soil map-unit polygons for Maine's 20 soil survey areas, from Web Soil Survey. Each polygon carries its
+  mukey; the attributes are in me_ssurgo_mapunit. Survey areas re-published by NRCS are fetched again on refresh.
+agency: USDA Natural Resources Conservation Service
+group: maine
+vintage: { label: "SSURGO (each survey area's latest save)" }
+coverage: { extent: Maine }
+parts: { by: survey_area }
+requires_keys: []
+upstream: { ssurgo_areas: "ME%" }
+source:
+  ssurgo: { areas: "ME%", layer: soilmu_a }
+target: src_ssurgo.mupolygon
+srs: EPSG:4326
+fix_invalid: true
+freshness: { method: sda_sacatalog, every: 7d }
+license: Public domain (USDA-NRCS)
+attribution: "Soil Survey Staff, NRCS, USDA. Soil Survey Geographic (SSURGO) Database for Maine."
+concurrency: db
+enabled: true

@@ -1,0 +1,28 @@
+name: me_ssurgo_mapunit
+title: Soil map-unit attributes (SSURGO, Maine)
+description: >-
+  One row per SSURGO map unit in Maine: name, farmland class and NRCS aggregated ratings (muaggatt) such as
+  hydrologic soil group, drainage class, depth to bedrock and water table, and capability class. Joins
+  me_ssurgo_mupolygon on mukey.
+agency: USDA Natural Resources Conservation Service
+kind: table
+group: maine
+vintage: { label: "SSURGO (Soil Data Access, current)" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  sda:
+    key: mukey
+    text_columns: [musym, niccdcd]
+    query: >-
+      SELECT mu.mukey, l.areasymbol, mu.musym, mu.muname, mu.mukind, mu.farmlndcl,
+             ma.hydgrpdcd, ma.drclassdcd, ma.slopegraddcp, ma.slopegradwta, ma.brockdepmin, ma.wtdepannmin,
+             ma.flodfreqdcd, ma.pondfreqprs, ma.niccdcd, ma.aws0150wta, ma.hydclprs, ma.engstafdcd
+      FROM legend l JOIN mapunit mu ON mu.lkey = l.lkey JOIN muaggatt ma ON ma.mukey = mu.mukey
+      WHERE l.areasymbol LIKE 'ME%'
+target: src_ssurgo.mapunit
+freshness: { method: none }
+license: Public domain (USDA-NRCS)
+attribution: "Soil Survey Staff, NRCS, USDA. Soil Survey Geographic (SSURGO) Database for Maine."
+concurrency: network
+enabled: true

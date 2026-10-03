@@ -1,0 +1,16 @@
+name: me_tracts
+title: Census tracts (Maine)
+description: Census tracts for Maine (2020 tract geography), TIGER/Line 2024.
+agency: U.S. Census Bureau (TIGER/Line)
+group: maine
+vintage: { label: "TIGER/Line 2024", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  url: https://www2.census.gov/geo/tiger/TIGER2024/TRACT/tl_2024_23_tract.zip
+target: src_census.tract
+srs: EPSG:4326
+fix_invalid: true
+license: Public domain (U.S. Census Bureau)
+attribution: U.S. Census Bureau, TIGER/Line Shapefiles 2024
+enabled: true

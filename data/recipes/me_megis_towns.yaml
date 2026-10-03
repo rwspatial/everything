@@ -1,0 +1,27 @@
+name: me_megis_towns
+title: Town and township boundaries (MEGIS)
+description: Maine's official town, township and unorganized-territory boundary polygons, including islands, from the Maine
+  GeoLibrary.
+agency: Maine Office of GIS (MEGIS) / Maine GeoLibrary
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Town_and_Townships_Boundary_Polygons/FeatureServer/0
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Town_and_Townships_Boundary_Polygons/FeatureServer/0
+target: src_megis.towns
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Maine GeoLibrary (Maine Office of GIS)
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

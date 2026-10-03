@@ -1,0 +1,27 @@
+name: me_overture_buildings
+title: Buildings (Overture Maps, Maine)
+description: Building footprints for Maine from Overture Maps (OpenStreetMap, Microsoft and Google footprints combined), with class, height and floors where known.
+agency: Overture Maps Foundation
+group: maine
+vintage: { label: "Overture Maps (latest release at import)" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  overture:
+    release: latest
+    theme: buildings
+    type: building
+    columns:
+      name: names.primary
+      class: class
+      subtype: subtype
+      height: height
+      num_floors: num_floors
+    clip_sql: "SELECT ST_AsText(ST_SimplifyPreserveTopology(ST_Union(geom), 0.001)) FROM src_census.county"
+target: src_overture.buildings
+srs: EPSG:4326
+depends_on: [me_counties]
+freshness: { method: none }
+license: ODbL 1.0 (OpenStreetMap-derived features) and CDLA Permissive 2.0 (other sources); see each feature's source in Overture
+attribution: "© OpenStreetMap contributors, Overture Maps Foundation"
+enabled: true

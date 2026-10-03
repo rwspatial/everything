@@ -1,0 +1,30 @@
+name: me_overture_places
+title: Places (Overture Maps, Maine)
+description: Points of interest for Maine from Overture Maps (businesses, services, landmarks), open places with confidence of at least 0.6.
+agency: Overture Maps Foundation
+group: maine
+vintage: { label: "Overture Maps (latest release at import)" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  overture:
+    release: latest
+    theme: places
+    type: place
+    columns:
+      name: names.primary
+      category: basic_category
+      top_category: "taxonomy.hierarchy[1]"
+      confidence: confidence
+      address: "addresses[1].freeform"
+      locality: "addresses[1].locality"
+      website: "websites[1]"
+    where: "confidence >= 0.6 AND coalesce(operating_status, 'open') = 'open'"
+    clip_sql: "SELECT ST_AsText(ST_SimplifyPreserveTopology(ST_Union(geom), 0.001)) FROM src_census.county"
+target: src_overture.places
+srs: EPSG:4326
+depends_on: [me_counties]
+freshness: { method: none }
+license: CDLA Permissive 2.0 (Overture places)
+attribution: "Overture Maps Foundation"
+enabled: true

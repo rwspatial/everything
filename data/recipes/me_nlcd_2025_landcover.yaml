@@ -1,0 +1,33 @@
+name: me_nlcd_2025_landcover
+title: Land cover 2025 (Annual NLCD, Maine)
+description: Annual National Land Cover Database, Collection 1.2, 2025 land cover at 30 m (16 classes), clipped to Maine.
+  Only Maine's blocks are read from the national COG (HTTP range requests), not the 1.5 GB zip.
+agency: U.S. Geological Survey / MRLC
+vintage:
+  label: Annual NLCD C1.2, 2025
+  year: 2025
+source:
+  url: https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/Annual_NLCD_LndCov_2025_CU_C1V2.zip
+  inner: Annual_NLCD_LndCov_2025_CU_C1V2.tif
+  stream: true
+target: cog:maine/nlcd_2025_landcover
+nodata: 250
+kind: raster
+srs: EPSG:26919
+resolution: 30
+resampling: nearest
+cutline_sql: SELECT ST_Union(geom) AS geom FROM src_census.county
+depends_on:
+- me_counties
+retention:
+  keep_versions: 1
+concurrency: raster_heavy
+freshness:
+  method: none
+license: Public domain (USGS)
+attribution: U.S. Geological Survey, Annual National Land Cover Database (NLCD) Collection 1.2
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

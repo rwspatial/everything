@@ -1,0 +1,16 @@
+name: me_blocks
+title: Census blocks (Maine, 2020)
+description: 2020 Census tabulation blocks for Maine, TIGER/Line 2024 (TABBLOCK20). Blocks are published only by the decennial census, not the ACS.
+agency: U.S. Census Bureau (TIGER/Line)
+group: maine
+vintage: { label: "2020 Census blocks (TIGER/Line 2024)", year: 2020 }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  url: https://www2.census.gov/geo/tiger/TIGER2024/TABBLOCK20/tl_2024_23_tabblock20.zip
+target: src_census.block
+srs: EPSG:4326
+fix_invalid: true
+license: Public domain (U.S. Census Bureau)
+attribution: U.S. Census Bureau, TIGER/Line Shapefiles 2024 (2020 tabulation blocks)
+enabled: true

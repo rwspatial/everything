@@ -1,0 +1,30 @@
+name: me_fema_nfhl_flood_zones
+title: Flood hazard zones (FEMA NFHL, Maine)
+description: 'Effective flood hazard zones from FEMA''s National Flood Hazard Layer for Maine''s digital FIRMs (DFIRM_ID 23...):
+  zone, subtype, SFHA flag and static base flood elevation.'
+agency: Federal Emergency Management Agency
+source:
+  arcgis:
+    url: https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28
+    where: DFIRM_ID LIKE '23%'
+    page_size: 500
+    out_fields: DFIRM_ID,FLD_AR_ID,STUDY_TYP,FLD_ZONE,ZONE_SUBTY,SFHA_TF,STATIC_BFE,V_DATUM,DEPTH,SOURCE_CIT
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28
+target: src_fema.flood_zones
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+concurrency: network
+license: Public domain (FEMA)
+attribution: FEMA National Flood Hazard Layer
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

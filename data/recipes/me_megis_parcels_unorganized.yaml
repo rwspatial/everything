@@ -1,0 +1,26 @@
+name: me_megis_parcels_unorganized
+title: Parcels, unorganized territory (Maine Revenue Services)
+description: Tax parcels in the unorganized territory, maintained by Maine Revenue Services.
+agency: Maine Revenue Services / Maine GeoLibrary
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Unorganized_Parcel_Layers_view/FeatureServer/0
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Unorganized_Parcel_Layers_view/FeatureServer/0
+target: src_megis.parcels_unorganized
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Maine Revenue Services, Unorganized Territory parcels (Maine GeoLibrary)
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

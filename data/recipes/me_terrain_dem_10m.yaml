@@ -1,0 +1,38 @@
+name: me_terrain_dem_10m
+title: Elevation, 10 m (USGS 3DEP 1/3 arc-second, Maine)
+description: USGS 3DEP 1/3 arc-second DEM (about 10 m, mostly lidar-derived in Maine), mosaicked from 1x1 degree tiles, clipped
+  to Maine, in UTM 19N.
+agency: U.S. Geological Survey (3D Elevation Program)
+kind: raster
+vintage:
+  label: 3DEP 1/3 arc-second, current
+source:
+  tiles:
+    template: https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/current/{tile}/USGS_13_{tile}.tif
+    north:
+    - 43
+    - 48
+    west:
+    - 67
+    - 72
+target: cog:maine/dem_10m
+srs: EPSG:26919
+resolution: 10
+resampling: bilinear
+cutline_sql: SELECT ST_Union(geom) AS geom FROM src_census.cousub
+cog_options:
+- PREDICTOR=YES
+depends_on:
+- me_cousub
+freshness:
+  method: none
+retention:
+  keep_versions: 1
+concurrency: raster_heavy
+license: Public domain (USGS)
+attribution: U.S. Geological Survey, 3D Elevation Program
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

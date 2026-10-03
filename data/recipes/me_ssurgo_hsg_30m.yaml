@@ -1,0 +1,30 @@
+name: me_ssurgo_hsg_30m
+title: Hydrologic soil group, 30 m grid (SSURGO, Maine)
+description: >-
+  The SSURGO hydrologic soil group (dominant condition) of every Maine map unit, burned into a 30 m grid so the
+  whole state can be shown at once. Codes: 1 A, 2 B, 3 C, 4 D, 5 A/D, 6 B/D, 7 C/D, 8 not rated (water, pits,
+  urban land); 0 is outside the survey.
+agency: USDA Natural Resources Conservation Service
+kind: raster
+group: maine
+vintage: { label: "SSURGO (each survey area's latest save)" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  rasterize:
+    attribute: code
+    sql: >-
+      SELECT CASE m.hydgrpdcd WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 WHEN 'D' THEN 4
+                              WHEN 'A/D' THEN 5 WHEN 'B/D' THEN 6 WHEN 'C/D' THEN 7 ELSE 8 END AS code, p.geom
+      FROM src_ssurgo.mupolygon p JOIN src_ssurgo.mapunit m USING (mukey)
+target: cog:maine/soils_hsg_30m
+srs: EPSG:26919
+resolution: 30
+nodata: 0
+depends_on: [me_ssurgo_mupolygon, me_ssurgo_mapunit]
+freshness: { method: none }
+retention: { keep_versions: 1 }
+license: Public domain (USDA-NRCS)
+attribution: "Soil Survey Staff, NRCS, USDA. Soil Survey Geographic (SSURGO) Database for Maine."
+concurrency: raster_heavy
+enabled: true

@@ -1,0 +1,21 @@
+name: me_terrain_slope
+title: Slope (Maine, 30 m, degrees)
+description: Slope in degrees of the 30 m Maine DEM (gdaldem).
+agency: Derived from USGS 3DEP
+kind: raster
+group: maine
+vintage: { label: "3DEP 1 arc-second, current" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  derive:
+    from: maine/dem_30m
+    gdaldem: [slope, -compute_edges]
+target: cog:maine/slope_30m
+cog_options: [PREDICTOR=YES]
+depends_on: [me_terrain_dem_30m]
+freshness: { method: none }
+retention: { keep_versions: 1 }
+license: Public domain (derived from USGS 3DEP)
+attribution: U.S. Geological Survey, 3D Elevation Program (slope)
+enabled: true

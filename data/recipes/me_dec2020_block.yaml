@@ -1,0 +1,27 @@
+name: me_dec2020_block
+title: Population and housing by block (2020 Census)
+description: >-
+  2020 Decennial Census (Demographic and Housing Characteristics) counts for every Maine block: total population,
+  housing units, occupied and vacant units. Blocks are not part of the ACS; these are the most recent block counts.
+agency: U.S. Census Bureau (2020 Census)
+kind: table
+group: maine
+vintage: { label: "2020 Census DHC", year: 2020 }
+coverage: { extent: Maine }
+requires_keys: [CENSUS_API_KEY]
+source:
+  census_api:
+    dataset: 2020/dec/dhc
+    get:
+      P1_001N: pop
+      H1_001N: housing_units
+      H3_002N: occupied_units
+      H3_003N: vacant_units
+    for: "block:*"
+    in: ["state:23", "county:*", "tract:*"]
+    geoid: [state, county, tract, block]
+target: src_census.dec2020_block
+freshness: { method: none }
+license: Public domain (U.S. Census Bureau)
+attribution: "U.S. Census Bureau, 2020 Census Demographic and Housing Characteristics (P1, H1, H3)"
+enabled: true

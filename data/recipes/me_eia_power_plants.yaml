@@ -1,0 +1,29 @@
+name: me_eia_power_plants
+title: Power plants (EIA-860) (EIA Energy Atlas, Maine area)
+description: Power plants (EIA-860) from the U.S. Energy Atlas (EIA), for the Maine bounding box (publish views clip to Maine).
+agency: U.S. Energy Information Administration
+source:
+  arcgis:
+    url: https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Power_Plants_in_the_US/FeatureServer/0
+    page_size: 1000
+    params:
+      geometry: -71.1,42.95,-66.9,47.47
+      geometryType: esriGeometryEnvelope
+      inSR: 4326
+      spatialRel: esriSpatialRelIntersects
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Power_Plants_in_the_US/FeatureServer/0
+target: src_energy.power_plants
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (EIA)
+attribution: U.S. Energy Information Administration, U.S. Energy Atlas
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

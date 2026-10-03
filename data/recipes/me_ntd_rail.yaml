@@ -1,0 +1,25 @@
+name: me_ntd_rail
+title: Railroads (USGS National Transportation Dataset, Maine)
+description: Rail lines with owner, FRA class and usage (from FRA North American Rail Network).
+agency: U.S. Geological Survey (The National Map)
+vintage:
+  label: NTD for Maine, published 2026-02-12
+source:
+  url: https://prd-tnm.s3.amazonaws.com/StagedProducts/Tran/GPKG/TRAN_Maine_State_GPKG.zip
+  inner: TRAN_Maine_State_GPKG.gpkg
+  layer: Trans_RailFeature
+target: src_ntd.rail
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: http_head
+  every: 30d
+upstream:
+  url: https://prd-tnm.s3.amazonaws.com/StagedProducts/Tran/GPKG/TRAN_Maine_State_GPKG.zip
+license: Public domain (USGS)
+attribution: 'U.S. Geological Survey, The National Map: National Transportation Dataset'
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

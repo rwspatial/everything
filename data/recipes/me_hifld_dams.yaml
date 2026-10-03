@@ -1,0 +1,26 @@
+name: me_hifld_dams
+title: Dams (National Inventory of Dams) (HIFLD, Maine)
+description: Dams (National Inventory of Dams) in Maine from HIFLD Open, which DHS retired on 2025-08-26; read from the final
+  snapshot archived on Source Cooperative (seerai/hifld). It will not be updated.
+agency: DHS Homeland Infrastructure Foundation-Level Data (archive)
+vintage:
+  label: HIFLD Open final snapshot (August 2025)
+  year: 2025
+source:
+  geoparquet:
+    url: s3://us-west-2.opendata.source.coop/seerai/hifld/national-inventory-of-dams-nid/national-inventory-of-dams/national-inventory-of-dams.parquet/*.parquet
+    s3_url_style: path
+    clip_sql: SELECT ST_AsText(ST_SimplifyPreserveTopology(ST_Union(geom), 0.001)) FROM src_census.county
+target: src_hifld.dams
+srs: EPSG:4326
+depends_on:
+- me_counties
+freshness:
+  method: none
+license: Public domain (U.S. Government; see each layer's source)
+attribution: HIFLD Open (DHS), archived by SeerAI on Source Cooperative
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

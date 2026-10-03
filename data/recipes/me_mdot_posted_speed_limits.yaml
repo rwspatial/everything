@@ -1,0 +1,26 @@
+name: me_mdot_posted_speed_limits
+title: Posted speed limits (MaineDOT)
+description: Posted speed limits on public roads.
+agency: Maine Department of Transportation
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dot/MaineDOT_OpenData/MapServer/34
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dot/MaineDOT_OpenData/MapServer/34
+target: src_mdot.posted_speed_limits
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Maine Department of Transportation (MaineDOT) open data
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

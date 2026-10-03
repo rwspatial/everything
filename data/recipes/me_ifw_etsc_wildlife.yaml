@@ -1,0 +1,26 @@
+name: me_ifw_etsc_wildlife
+title: Endangered, threatened and special concern wildlife habitat (MDIFW)
+description: Generalized habitat of endangered, threatened and special concern wildlife species.
+agency: Maine Department of Inland Fisheries and Wildlife
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/ifw/Wildlife_Habitat_Data/MapServer/11
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/ifw/Wildlife_Habitat_Data/MapServer/11
+target: src_habitat.etsc_wildlife
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: State of Maine (MDIFW); see data use terms
+attribution: Maine Department of Inland Fisheries and Wildlife
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

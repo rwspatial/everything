@@ -1,0 +1,25 @@
+name: me_landfire_fbfm40
+title: Fire behavior fuel models (LANDFIRE 2024, Maine)
+description: LANDFIRE 40 Scott and Burgan fire behavior fuel models at 30 m for Maine. Pixel values are fuel model codes.
+agency: LANDFIRE (USGS, U.S. Forest Service, Department of the Interior)
+kind: raster
+group: maine
+vintage: { label: "LANDFIRE 2024 (LF2024_FBFM40)", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: [LANDFIRE_EMAIL]
+source:
+  landfire: { layer: LF2024_FBFM40, resolution: 30, projection: 26919 }
+spat: [-71.1, 42.95, -66.9, 47.47]
+target: cog:maine/landfire_fbfm40
+srs: EPSG:26919
+resolution: 30
+resampling: nearest
+nodata: -9999
+cutline_sql: "SELECT ST_Union(geom) AS geom FROM src_census.county"
+depends_on: [me_counties]
+freshness: { method: none }
+retention: { keep_versions: 1 }
+license: Public domain (LANDFIRE, U.S. Government)
+attribution: LANDFIRE, U.S. Department of the Interior and U.S. Department of Agriculture
+concurrency: raster_heavy
+enabled: true

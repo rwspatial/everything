@@ -1,0 +1,27 @@
+name: me_bwh_focus_areas
+title: Focus areas of statewide ecological significance (Beginning with Habitat)
+description: 'Beginning with Habitat Focus Areas: concentrations of rare species, high-value habitat and exemplary natural
+  communities (2026).'
+agency: Beginning with Habitat (MDIFW, MNAP, partners)
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/BwH_Focus_Areas_Overlapping_Organized_Towns/FeatureServer/0
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/BwH_Focus_Areas_Overlapping_Organized_Towns/FeatureServer/0
+target: src_habitat.focus_areas
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Beginning with Habitat, Maine Department of Inland Fisheries and Wildlife
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

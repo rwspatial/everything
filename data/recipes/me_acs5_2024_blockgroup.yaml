@@ -1,0 +1,33 @@
+name: me_acs5_2024_blockgroup
+title: Population, income, home value, age and poverty by block group (ACS 2020-2024)
+description: >-
+  American Community Survey 5-year estimates for Maine block groups, the smallest ACS geography, from the Census
+  Data API. Poverty comes from C17002 (ratio of income to poverty level), as B17001 is not published for block
+  groups. Block-group estimates have wide margins of error. Suppressed estimates load as NULL.
+agency: U.S. Census Bureau (American Community Survey)
+kind: table
+group: maine
+vintage: { label: "ACS 2020-2024 5-year", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: [CENSUS_API_KEY]
+source:
+  census_api:
+    dataset: 2024/acs/acs5
+    get:
+      NAME: name
+      B01003_001E: pop
+      B19013_001E: median_hh_income
+      B19013_001M: median_hh_income_moe
+      B25077_001E: median_home_value
+      B01002_001E: median_age
+      C17002_001E: poverty_universe
+      C17002_002E: poverty_under_50pct
+      C17002_003E: poverty_50_to_99pct
+    for: "block group:*"
+    in: ["state:23", "county:*", "tract:*"]
+    geoid: [state, county, tract, block group]
+target: src_census.acs5_2024_blockgroup
+freshness: { method: none }
+license: Public domain (U.S. Census Bureau)
+attribution: "U.S. Census Bureau, American Community Survey 2020-2024 5-year estimates (B01003, B19013, B25077, B01002, C17002)"
+enabled: true

@@ -1,0 +1,26 @@
+name: me_mdot_bridges
+title: Bridges (MaineDOT)
+description: Bridges in MaineDOT's inventory with condition ratings.
+agency: Maine Department of Transportation
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dot/MaineDOT_OpenData/MapServer/0
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dot/MaineDOT_OpenData/MapServer/0
+target: src_mdot.bridges
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Maine Department of Transportation (MaineDOT) open data
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

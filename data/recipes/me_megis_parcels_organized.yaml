@@ -1,0 +1,28 @@
+name: me_megis_parcels_organized
+title: Parcels, organized towns (MEGIS)
+description: Tax parcels for Maine's organized towns as submitted to the GeoLibrary (about 708,000 polygons; attributes vary
+  by town).
+agency: Maine Office of GIS (MEGIS) / Maine GeoLibrary
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/10
+    page_size: 2000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/10
+target: src_megis.parcels_organized
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Maine GeoLibrary (Maine Office of GIS)
+concurrency: db
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

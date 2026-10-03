@@ -1,0 +1,26 @@
+name: me_bwh_habitat_connectors
+title: Habitat connectors (Beginning with Habitat)
+description: Likely wildlife crossing connections between undeveloped habitat blocks, from Beginning with Habitat (2026).
+agency: Beginning with Habitat (MDIFW, MNAP, partners)
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/BwH_Habitat_Block_Connectors/FeatureServer/0
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/BwH_Habitat_Block_Connectors/FeatureServer/0
+target: src_habitat.habitat_connectors
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public domain (State of Maine)
+attribution: Beginning with Habitat, Maine Department of Inland Fisheries and Wildlife
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -1,0 +1,32 @@
+name: me_cdl_2025
+title: Cropland Data Layer 2025 (USDA NASS, Maine)
+description: Crop-specific land cover at 30 m from the USDA NASS Cropland Data Layer, 2025, from CropScape.
+agency: USDA National Agricultural Statistics Service
+vintage:
+  label: CDL 2025
+  year: 2025
+source:
+  cdl:
+    year: 2025
+    fips: '23'
+target: cog:maine/cdl_2025
+nodata: 0
+kind: raster
+srs: EPSG:26919
+resolution: 30
+resampling: nearest
+cutline_sql: SELECT ST_Union(geom) AS geom FROM src_census.county
+depends_on:
+- me_counties
+retention:
+  keep_versions: 1
+concurrency: raster_heavy
+freshness:
+  method: none
+license: Public domain (USDA NASS)
+attribution: USDA National Agricultural Statistics Service, Cropland Data Layer 2025
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

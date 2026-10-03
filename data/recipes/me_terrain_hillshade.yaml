@@ -1,0 +1,20 @@
+name: me_terrain_hillshade
+title: Hillshade (Maine, 30 m)
+description: Multidirectional hillshade of the 30 m Maine DEM (gdaldem), for relief under other layers.
+agency: Derived from USGS 3DEP
+kind: raster
+group: maine
+vintage: { label: "3DEP 1 arc-second, current" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  derive:
+    from: maine/dem_30m
+    gdaldem: [hillshade, -multidirectional, -z, "1.5", -compute_edges]
+target: cog:maine/hillshade_30m
+depends_on: [me_terrain_dem_30m]
+freshness: { method: none }
+retention: { keep_versions: 1 }
+license: Public domain (derived from USGS 3DEP)
+attribution: U.S. Geological Survey, 3D Elevation Program (hillshade)
+enabled: true

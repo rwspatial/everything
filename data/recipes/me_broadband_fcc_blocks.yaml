@@ -1,0 +1,29 @@
+name: me_broadband_fcc_blocks
+title: Broadband availability by census block (FCC BDC, Maine)
+description: Broadband serviceable locations (BSLs) that are served (100/20 Mbps), underserved (25/3 to 100/20) and unserved
+  (under 25/3), by technology, per census block, from the FCC Broadband Data Collection (December 2025 release) as aggregated
+  by Esri PolicyMap. This is the federal availability data the Maine Connectivity Authority's maps start from.
+agency: Federal Communications Commission (aggregated by Esri PolicyMap)
+source:
+  arcgis:
+    url: https://services8.arcgis.com/peDZJliSvYims39Q/arcgis/rest/services/FCC_Broadband_Data_Collection_December_2024_View/FeatureServer/4
+    page_size: 2000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+    where: StateAbbr = 'ME'
+upstream:
+  arcgis: https://services8.arcgis.com/peDZJliSvYims39Q/arcgis/rest/services/FCC_Broadband_Data_Collection_December_2024_View/FeatureServer/4
+target: src_broadband.fcc_blocks
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: FCC public data; Esri PolicyMap layer terms
+attribution: FCC Broadband Data Collection (December 2025), via Esri PolicyMap
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -1,0 +1,25 @@
+name: me_ntd_roads
+title: Roads (USGS National Transportation Dataset, Maine)
+description: Road segments with route numbers and functional class (TNM NTD, from Census TIGER and state sources).
+agency: U.S. Geological Survey (The National Map)
+vintage:
+  label: NTD for Maine, published 2026-02-12
+source:
+  url: https://prd-tnm.s3.amazonaws.com/StagedProducts/Tran/GPKG/TRAN_Maine_State_GPKG.zip
+  inner: TRAN_Maine_State_GPKG.gpkg
+  layer: Trans_RoadSegment
+target: src_ntd.roads
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: http_head
+  every: 30d
+upstream:
+  url: https://prd-tnm.s3.amazonaws.com/StagedProducts/Tran/GPKG/TRAN_Maine_State_GPKG.zip
+license: Public domain (USGS)
+attribution: 'U.S. Geological Survey, The National Map: National Transportation Dataset'
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

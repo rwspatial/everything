@@ -1,0 +1,25 @@
+name: me_bwh_undeveloped_blocks_30m
+title: Undeveloped habitat blocks, 30 m grid (Beginning with Habitat)
+description: >-
+  Beginning with Habitat undeveloped habitat blocks burned into a 30 m grid (1 = inside a block), so the statewide view
+  draws quickly; the polygons (15 million vertices) are shown from town scale.
+agency: Beginning with Habitat (MDIFW, MNAP and partners)
+kind: raster
+group: maine
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  rasterize:
+    attribute: code
+    sql: "SELECT 1 AS code, geom FROM src_habitat.undeveloped_blocks"
+target: cog:maine/bwh_undeveloped_blocks_30m
+srs: EPSG:26919
+resolution: 30
+nodata: 0
+depends_on: [me_bwh_undeveloped_blocks]
+freshness: { method: none }
+retention: { keep_versions: 1 }
+license: Public domain (State of Maine)
+attribution: "Beginning with Habitat, Maine Department of Inland Fisheries and Wildlife"
+concurrency: raster_heavy
+enabled: true

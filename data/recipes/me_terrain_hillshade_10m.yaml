@@ -1,0 +1,29 @@
+name: me_terrain_hillshade_10m
+title: Hillshade, 10 m (from USGS 3DEP, Maine)
+description: Multidirectional hillshade of the 10 m 3DEP DEM.
+agency: U.S. Geological Survey (derived)
+kind: raster
+source:
+  derive:
+    from: maine/dem_10m
+    gdaldem:
+    - hillshade
+    - -multidirectional
+    - -z
+    - '1.5'
+    - -compute_edges
+target: cog:maine/hillshade_10m
+depends_on:
+- me_terrain_dem_10m
+freshness:
+  method: none
+retention:
+  keep_versions: 1
+concurrency: raster_heavy
+license: Public domain (USGS)
+attribution: Derived from U.S. Geological Survey 3D Elevation Program data
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -1,0 +1,27 @@
+name: me_3dep_lidar_projects
+title: Lidar projects and quality (USGS 3DEP WESM, Maine)
+description: 'USGS Work Unit Extent Spatial Metadata (WESM): every 3DEP lidar collection footprint touching Maine with its
+  collection dates, quality level (QL1/QL2) and links to the point cloud and 1 m DEM downloads.'
+agency: U.S. Geological Survey (3D Elevation Program)
+source:
+  url: https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/metadata/WESM.gpkg
+spat:
+- -71.1
+- 42.95
+- -66.9
+- 47.47
+target: src_terrain.lidar_projects
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: http_head
+  every: 30d
+upstream:
+  url: https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/metadata/WESM.gpkg
+license: Public domain (USGS)
+attribution: U.S. Geological Survey, 3DEP Work Unit Extent Spatial Metadata (WESM)
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

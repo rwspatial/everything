@@ -1,0 +1,26 @@
+name: me_ifw_seabird_nesting_islands
+title: Seabird nesting islands (MDIFW)
+description: Seabird nesting islands (NRPA significant wildlife habitat).
+agency: Maine Department of Inland Fisheries and Wildlife
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/ifw/Wildlife_Habitat_Data/MapServer/5
+    page_size: 1000
+    order_by: OBJECTID
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/ifw/Wildlife_Habitat_Data/MapServer/5
+target: src_habitat.seabird_nesting_islands
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: State of Maine (MDIFW); see data use terms
+attribution: Maine Department of Inland Fisheries and Wildlife
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true
