@@ -462,6 +462,72 @@
       "visible": false
     },
     {
+      "id": "parcels",
+      "title": "Tax parcels",
+      "group": "Boundaries",
+      "minzoom": 13,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__parcels",
+        "properties": [
+          "area",
+          "town",
+          "map_lot",
+          "acres",
+          "label"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#b07d2b",
+              "fill-opacity": 0.06
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#b07d2b",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                13,
+                0.5,
+                17,
+                1.5
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Parcels (zoom in to see)",
+        "items": [
+          {
+            "label": "Tax parcel",
+            "color": "#b07d2b"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{label}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine GeoLibrary (MEGIS) parcels; Maine Revenue Services (Unorganized Territory)",
+      "visible": false
+    },
+    {
       "id": "town-boundaries",
       "title": "Town and township boundaries",
       "group": "Boundaries",

@@ -75,8 +75,8 @@ class ImportError_(Exception):
 # --------------------------------------------------------------------------- sources
 
 def download(url: str, filename: str | None = None) -> Path:
-    DOWNLOADS.mkdir(parents=True, exist_ok=True)
     dest = DOWNLOADS / (filename or url.rstrip("/").rsplit("/", 1)[-1])
+    dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() and dest.stat().st_size > 0 and not REDOWNLOAD:
         print(f"using cached download {dest.relative_to(REPO)}")
         return dest
@@ -92,6 +92,8 @@ def download(url: str, filename: str | None = None) -> Path:
             while chunk := resp.read(1 << 20):
                 out.write(chunk)
                 DOWNLOADED_BYTES += len(chunk)
+        if markers["bytes"] is not None and tmp.stat().st_size != markers["bytes"]:
+            raise ImportError_(f"truncated download {redact(url)}: {tmp.stat().st_size} of {markers['bytes']} bytes")
     except BaseException:  # failed or cancelled: never leave a partial file behind (the cached copy is untouched)
         tmp.unlink(missing_ok=True)
         raise
@@ -1091,6 +1093,8 @@ def tile_mosaic(r: dict) -> Path:
     """source.tiles: a tile grid (e.g. USGS 3DEP 1x1 degree COGs) -> a VRT of the tiles that exist, read over HTTP.
 
     tiles: {template: ".../{tile}/USGS_1_{tile}.tif", north: [43, 48], west: [67, 72]}  (tile = n<lat>w<lon>)
+    download: true caches the tiles under data/cache/downloads/<recipe>/ first. Use it for large grids (3DEP
+    1/3 arc-second), where one short HTTP read in an hours-long streamed gdalwarp fails the whole run.
     """
     from concurrent.futures import ThreadPoolExecutor
     t = r["source"]["tiles"]
@@ -1113,7 +1117,11 @@ def tile_mosaic(r: dict) -> Path:
     vrt = DOWNLOADS / f"{r['name']}.vrt"
     vrt.parent.mkdir(parents=True, exist_ok=True)
     listing = vrt.with_suffix(".txt")
-    listing.write_text("\n".join(f"/vsicurl/{u}" for u in found) + "\n")
+    if t.get("download"):
+        sources = [str(download(u, f"{r['name']}/{u.rsplit('/', 1)[-1]}")) for u in found]
+    else:
+        sources = [f"/vsicurl/{u}" for u in found]
+    listing.write_text("\n".join(sources) + "\n")
     if runs.run_cmd(["gdalbuildvrt", "--config", "GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR", "-q", "-overwrite",
                      "-input_file_list", str(listing), str(vrt)]) != 0:
         raise ImportError_("gdalbuildvrt failed")

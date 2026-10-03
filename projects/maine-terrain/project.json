@@ -207,6 +207,85 @@
         "inspect": true
       },
       "attribution": "USGS 3D Elevation Program"
+    },
+    {
+      "id": "lidar-projects",
+      "title": "Lidar collections (3DEP)",
+      "group": "Terrain",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_terrain__lidar_projects",
+        "properties": [
+          "workunit",
+          "ql",
+          "year",
+          "collected"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "ql"
+                ],
+                "QL 1",
+                "#1b7837",
+                "QL 2",
+                "#5aae61",
+                "QL 3",
+                "#d9f0d3",
+                "Other",
+                "#bdbdbd",
+                "#bdbdbd"
+              ],
+              "fill-opacity": 0.25
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#00441b",
+              "line-width": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Lidar quality level",
+        "items": [
+          {
+            "label": "QL 1 (8+ points/m²)",
+            "color": "#1b7837"
+          },
+          {
+            "label": "QL 2 (2+ points/m²)",
+            "color": "#5aae61"
+          },
+          {
+            "label": "QL 3 (0.5+ points/m²)",
+            "color": "#d9f0d3"
+          },
+          {
+            "label": "Other / older",
+            "color": "#bdbdbd"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{workunit} ({ql}): collected {collected}"
+        },
+        "inspect": true
+      },
+      "attribution": "USGS 3D Elevation Program (work unit index)",
+      "visible": false
     }
   ]
 }
