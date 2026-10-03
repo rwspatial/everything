@@ -6,3 +6,5 @@ ALTER ROLE loader     PASSWORD :'loader_pw';
 ALTER ROLE worker_rw  PASSWORD :'worker_pw';
 ALTER ROLE analyst_ro PASSWORD :'analyst_pw';
 ALTER ROLE admin_api  PASSWORD :'admin_api_pw';
+-- Empty until `make mcp-credentials`: an empty password means no password, so mcp_ro cannot log in.
+ALTER ROLE mcp_ro     PASSWORD :'mcp_pw';

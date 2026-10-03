@@ -2,24 +2,35 @@
   "id": "town-natural-resources",
   "title": "Town natural resources",
   "description": "Beginning with Habitat focus areas and undeveloped blocks, deer wintering areas, waterfowl and wading bird habitat, vernal pools, conserved land and farmland soils.",
-  "geographies": ["town"],
+  "geographies": [
+    "town"
+  ],
   "basemap": "positron",
   "padding": 0.06,
   "projectTitle": "{short_name}: natural resources",
   "projectDescription": "Natural resources of {name}, {county_name} County, Maine: Beginning with Habitat focus areas, undeveloped habitat blocks and connectors, deer wintering areas, waterfowl and wading bird habitat, significant vernal pools, conserved land and farmland soils.",
-  "tags": ["maine", "habitat", "natural resources", "{short_name}"],
+  "tags": [
+    "maine",
+    "habitat",
+    "natural resources",
+    "{short_name}"
+  ],
   "layers": [
-    { "ref": "maine-terrain/hillshade", "visible": true, "opacity": 0.45 },
-    { "ref": "maine-soils/farmland", "visible": false },
-    { "ref": "maine-habitat/undeveloped-blocks", "visible": true },
-    { "ref": "maine-habitat/focus-areas", "visible": true },
-    { "ref": "maine-lands/conserved-lands", "visible": true },
-    { "ref": "maine-habitat/deer-wintering", "visible": true },
-    { "ref": "maine-habitat/iwwh", "visible": true },
-    { "ref": "maine-habitat/vernal-pools", "visible": true },
-    { "ref": "maine-habitat/habitat-connectors", "visible": true },
-    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
-    { "ref": "maine-infrastructure/roads-primary", "visible": true },
-    { "focus": true }
+    { "ref": "maine-terrain/hillshade", "visible": true, "opacity": 0.45},
+    { "ref": "maine-soils/farmland", "visible": false},
+    { "ref": "maine-habitat/undeveloped-blocks", "visible": true},
+    { "ref": "maine-habitat/focus-areas", "visible": true},
+    { "ref": "maine-lands/conserved-lands", "visible": true},
+    { "ref": "maine-habitat/deer-wintering", "visible": true},
+    { "ref": "maine-habitat/iwwh", "visible": true},
+    { "ref": "maine-habitat/vernal-pools", "visible": true},
+    { "ref": "maine-habitat/habitat-connectors", "visible": true},
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true},
+    { "ref": "maine-infrastructure/roads-primary", "visible": true},
+    { "focus": true}
+  ],
+  "charts": [
+    {"id": "wetlands", "title": "Wetlands by type", "type": "donut", "format": "acres", "data": {"collection": "pub.maine_water__wetlands", "category": "wetland_type", "value": "acres", "agg": "sum", "within": "place"}},
+    {"id": "conserved", "title": "Conserved land by designation", "type": "bar", "layer": "conserved-lands", "format": "acres", "data": {"collection": "pub.maine_lands__conserved_lands", "category": "designation", "value": "acres", "agg": "sum", "within": "place", "limit": 8}}
   ]
 }

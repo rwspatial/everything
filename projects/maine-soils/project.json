@@ -441,5 +441,33 @@
       "attribution": "Soil Survey Staff, NRCS, USDA: SSURGO",
       "visible": false
     }
+  ],
+  "charts": [
+    {
+      "id": "hsg",
+      "title": "Hydrologic soil group",
+      "type": "donut",
+      "layer": "hsg",
+      "format": "count",
+      "scope": "view",
+      "description": "Soil map unit polygons in view by hydrologic soil group (dominant condition).",
+      "data": {
+        "collection": "pub.maine_soils__mapunits",
+        "category": "hsg"
+      }
+    },
+    {
+      "id": "farmland",
+      "title": "Farmland classification",
+      "type": "bar",
+      "layer": "farmland",
+      "format": "count",
+      "scope": "view",
+      "data": {
+        "collection": "pub.maine_soils__mapunits",
+        "category": "farmland",
+        "limit": 8
+      }
+    }
   ]
 }

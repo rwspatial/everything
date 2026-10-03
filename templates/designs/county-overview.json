@@ -2,18 +2,29 @@
   "id": "county-overview",
   "title": "County overview",
   "description": "The county's towns shaded by median household income, with conserved land, main roads, town lines and the county outlined.",
-  "geographies": ["county"],
+  "geographies": [
+    "county"
+  ],
   "basemap": "positron",
   "padding": 0.04,
   "projectTitle": "{short_name} County overview",
   "projectDescription": "Overview of {name}, Maine: towns by median household income (ACS 2024 5-year), conserved land, main roads and town lines.",
-  "tags": ["maine", "county", "{short_name}"],
+  "tags": [
+    "maine",
+    "county",
+    "{short_name}"
+  ],
   "layers": [
-    { "ref": "maine-overview/towns", "visible": true, "opacity": 0.85 },
-    { "ref": "maine-lands/conserved-lands", "visible": false },
-    { "ref": "maine-lands/town-boundaries", "visible": true },
-    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
-    { "ref": "maine-infrastructure/roads-primary", "visible": true },
-    { "focus": true }
+    { "ref": "maine-overview/towns", "visible": true, "opacity": 0.85},
+    { "ref": "maine-lands/conserved-lands", "visible": false},
+    { "ref": "maine-lands/town-boundaries", "visible": true},
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true},
+    { "ref": "maine-infrastructure/roads-primary", "visible": true},
+    { "focus": true}
+  ],
+  "charts": [
+    {"id": "glance", "title": "{short_name} County at a glance", "type": "stats", "data": {"collection": "pub.maine_overview__towns", "within": "place", "stats": [{"label": "People", "value": "pop", "agg": "sum", "format": "count"}, {"label": "Towns and townships", "agg": "count", "format": "count"}, {"label": "Median town household income", "value": "median_hh_income", "agg": "median", "format": "currency"}]}},
+    {"id": "income", "title": "Towns by median household income", "type": "bar", "layer": "towns", "format": "currency", "data": {"collection": "pub.maine_overview__towns", "category": "name", "value": "median_hh_income", "agg": "max", "within": "place", "limit": 15}},
+    {"id": "population", "title": "Largest towns by population", "type": "bar", "layer": "towns", "format": "count", "data": {"collection": "pub.maine_overview__towns", "category": "name", "value": "pop", "agg": "sum", "within": "place", "limit": 10}}
   ]
 }

@@ -410,25 +410,25 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": [
                 "match",
                 [
                   "get",
                   "hazard"
                 ],
                 "High",
-                "#b2182b",
+                "poi:dam:b2182b",
                 "Significant",
-                "#ef8a62",
+                "poi:dam:ef8a62",
                 "Low",
-                "#4393c3",
+                "poi:dam:4393c3",
                 "Undetermined",
-                "#999999",
-                "#999999"
+                "poi:dam:999999",
+                "poi:dam:999999"
               ],
-              "circle-radius": [
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -437,12 +437,14 @@
                   "zoom"
                 ],
                 6,
-                2.5,
-                13,
-                7
+                0.45,
+                10,
+                0.65,
+                14,
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -473,6 +475,35 @@
       },
       "attribution": "USACE National Inventory of Dams (HIFLD Open archive)",
       "visible": false
+    }
+  ],
+  "charts": [
+    {
+      "id": "wetlands-by-type",
+      "title": "Wetlands by type",
+      "type": "donut",
+      "layer": "wetlands",
+      "format": "acres",
+      "scope": "view",
+      "data": {
+        "collection": "pub.maine_water__wetlands",
+        "category": "wetland_type",
+        "value": "acres",
+        "agg": "sum"
+      }
+    },
+    {
+      "id": "flood-zones",
+      "title": "Flood hazard areas",
+      "type": "bar",
+      "layer": "flood-zones",
+      "format": "count",
+      "scope": "view",
+      "description": "Number of mapped flood hazard areas by FEMA hazard class.",
+      "data": {
+        "collection": "pub.maine_water__flood_zones",
+        "category": "hazard"
+      }
     }
   ]
 }

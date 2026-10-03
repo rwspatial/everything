@@ -295,5 +295,35 @@
       },
       "attribution": "U.S. Energy Information Administration, U.S. Energy Atlas"
     }
+  ],
+  "charts": [
+    {
+      "id": "capacity-by-source",
+      "title": "Generating capacity by source",
+      "type": "donut",
+      "layer": "power-plants",
+      "format": "mw",
+      "data": {
+        "collection": "pub.maine_energy__power_plants",
+        "category": "source",
+        "value": "total_mw",
+        "agg": "sum",
+        "limit": 7
+      }
+    },
+    {
+      "id": "largest-plants",
+      "title": "Largest power plants",
+      "type": "bar",
+      "layer": "power-plants",
+      "format": "mw",
+      "data": {
+        "collection": "pub.maine_energy__power_plants",
+        "category": "name",
+        "value": "total_mw",
+        "agg": "sum",
+        "limit": 12
+      }
+    }
   ]
 }

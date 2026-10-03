@@ -40,10 +40,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#7f7f7f",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:communications-tower:7f7f7f",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -51,13 +51,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -100,10 +102,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#8c564b",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:college:8c564b",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -111,13 +113,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                4,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                8
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -160,21 +164,21 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": [
                 "match",
                 [
                   "get",
                   "kind"
                 ],
                 "public",
-                "#9467bd",
+                "poi:school:9467bd",
                 "private",
-                "#c5b0d5",
-                "#999999"
+                "poi:school:c5b0d5",
+                "poi:school:999999"
               ],
-              "circle-radius": [
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -182,13 +186,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2.5,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -236,10 +242,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#2ca02c",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:shelter:2ca02c",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -247,13 +253,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -296,10 +304,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#1f77b4",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:police:1f77b4",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -307,13 +315,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -353,10 +363,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#ff7f0e",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:fire-station:ff7f0e",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -364,13 +374,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -412,10 +424,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#e377c2",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:residential-community:e377c2",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -423,13 +435,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -474,10 +488,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#d62728",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:hospital:d62728",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -485,13 +499,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                4,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                8
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -513,6 +529,31 @@
         "inspect": true
       },
       "attribution": "HIFLD Open (final snapshot, August 2025)"
+    }
+  ],
+  "charts": [
+    {
+      "id": "schools-by-level",
+      "title": "Schools by level",
+      "type": "bar",
+      "layer": "schools",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_facilities__schools",
+        "category": "level"
+      }
+    },
+    {
+      "id": "enrollment",
+      "title": "School enrollment",
+      "type": "histogram",
+      "layer": "schools",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_facilities__schools",
+        "value": "enrollment",
+        "bins": 12
+      }
     }
   ]
 }

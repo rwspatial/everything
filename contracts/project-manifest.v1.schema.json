@@ -19,9 +19,69 @@
       "description": "Free-text to-do notes for placeholder projects, shown on the hub and in the viewer.",
       "type": "array",
       "items": { "type": "string" }
+    },
+    "charts": {
+      "description": "D3 charts computed on the fly from the project's published data (GET /api/projects/{slug}/charts/{id}), shown in the viewer's Charts panel and in PDF reports.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/ChartSpec" }
     }
   },
   "definitions": {
+    "ChartSpec": {
+      "title": "ChartSpec",
+      "description": "One chart: an aggregate of a pub view computed by core-api (never free SQL). bar/donut: `category` with `agg` of `value` (count needs no value); histogram: bins of `value`; scatter: `x` against `y`; stats: a row of headline numbers.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "type", "data"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 48 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string" },
+        "type": { "enum": ["bar", "donut", "histogram", "scatter", "stats"] },
+        "layer": { "description": "Id of the map layer showing this data: hovering a mark highlights its features there.", "type": "string" },
+        "scope": { "description": "Initial scope: the whole layer (all) or the features in the map view (view). The viewer can switch.", "enum": ["all", "view"] },
+        "format": { "$ref": "#/definitions/ChartFormat" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["collection"],
+          "properties": {
+            "collection": { "$ref": "#/definitions/Collection" },
+            "category": { "type": "string" },
+            "value": { "type": "string" },
+            "agg": { "$ref": "#/definitions/ChartAgg" },
+            "x": { "type": "string" },
+            "y": { "type": "string" },
+            "label": { "type": "string" },
+            "bins": { "type": "integer", "minimum": 3, "maximum": 40 },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 50 },
+            "within": {
+              "description": "Only features intersecting one place (a row of a pub.units__* view), e.g. the town of a map design.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["unit", "place"],
+              "properties": { "unit": { "type": "string" }, "place": { "type": "string" } }
+            },
+            "stats": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "agg"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "value": { "type": "string" },
+                  "agg": { "$ref": "#/definitions/ChartAgg" },
+                  "format": { "$ref": "#/definitions/ChartFormat" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ChartAgg": { "title": "ChartAgg", "enum": ["count", "sum", "avg", "median", "min", "max"] },
+    "ChartFormat": { "title": "ChartFormat", "enum": ["number", "count", "currency", "percent", "acres", "sqmi", "years", "mw"] },
     "ProjectStatus": { "title": "ProjectStatus", "type": "string", "enum": ["stub", "draft", "ready"] },
     "LayerStatus": { "title": "LayerStatus", "type": "string", "enum": ["ready", "todo"] },
     "LngLat": {

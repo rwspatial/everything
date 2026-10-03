@@ -18,17 +18,16 @@ FROM (
          (shape__area / 4046.8564224)::float8 AS acres, ' acres' AS acres_kind, geom
   FROM src_megis.parcels_organized
   UNION ALL
-  -- Unorganized Territory: `town` is an MRS code (e.g. FRP03), so name the township from the town layer;
+  -- Unorganized Territory: `town` is an MRS code (e.g. FRP03), so name the township from the Census town;
   -- acres are the recorded totacres where present (about 1 in 10), otherwise mapped area.
-  SELECT 10000000 + u.id, 'unorganized', coalesce(t.town, u.town),
+  SELECT 10000000 + u.id, 'unorganized', coalesce(t.name, u.town),
          nullif(regexp_replace(trim(coalesce(u.plan_lot, u.lot)), '\s+', ' ', 'g'), ''), NULL,
          coalesce(nullif(u.totacres, 0), ST_Area(u.geom::geography) / 4046.8564224)::float8,
          CASE WHEN nullif(u.totacres, 0) IS NULL THEN ' acres' ELSE ' recorded acres' END, u.geom
   FROM src_megis.parcels_unorganized u
-  LEFT JOIN LATERAL (
-    SELECT t.town FROM src_megis.towns t
-    WHERE t.land = 'y' AND ST_Intersects(t.geom, ST_PointOnSurface(u.geom)) LIMIT 1
-  ) t ON true
+  -- Township from the precomputed parcel -> town lookup (db/seed/070_units.sql), not a spatial search per row.
+  LEFT JOIN src_units.parcel_town pt ON pt.id = 10000000 + u.id
+  LEFT JOIN src_census.cousub t ON t.geoid = pt.town_geoid
 ) p;
 
 COMMENT ON VIEW pub.maine_lands__parcels IS 'maine-lands: tax parcels, organized towns and Unorganized Territory (MEGIS)';

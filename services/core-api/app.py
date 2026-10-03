@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -612,6 +612,195 @@ def field_stats(collection: str, field: str, k: int = 5) -> dict:
         return {"field": field, "kind": "categorical", "values": r[:12], "more": len(r) > 12}
 
 
+# ---- charts: D3 data computed on the fly (plan: project-builder §1.5) ----------------------------------------
+# Public like the maps themselves, but only for charts declared in a saved manifest: the chart's fields are checked
+# against the view and enter SQL as identifiers; the aggregate comes from a fixed list. `bbox` limits the chart to
+# the map view; `data.within` to one place (e.g. a design's town). Results are cached for two minutes.
+
+CHART_AGG = {"count": "count(*)", "sum": "sum({v})", "avg": "avg({v})", "min": "min({v})", "max": "max({v})",
+             "median": "percentile_cont(0.5) WITHIN GROUP (ORDER BY {v})"}
+CHART_TTL = 120.0
+_chart_cache: dict[tuple, tuple[float, dict]] = {}
+
+
+def _chart_agg(agg: str, field: str | None) -> sql.Composable:
+    if agg == "count" or not field:
+        return sql.SQL("count(*)")
+    return sql.SQL("(" + CHART_AGG[agg] + ")::float8").format(v=sql.Identifier(field))
+
+
+def _chart_where(conn, data: dict, bbox: list[float] | None) -> tuple[sql.Composable, list]:
+    parts, params = [sql.SQL("TRUE")], []
+    if bbox:
+        parts.append(sql.SQL("t.geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)"))
+        params += bbox
+    w = data.get("within")
+    if w:
+        u = _unit(conn, w["unit"])
+        # A feature belongs to the place when a point on its surface lies inside: neighbours that only touch the
+        # boundary are not counted. The place geometry is a scalar subquery (evaluated once), so `t.geom && ...`
+        # becomes an index search on the feature table instead of a probe of the place per feature.
+        place = sql.SQL("(SELECT p.geom FROM {u} p WHERE p.unit_key = %s LIMIT 1)").format(
+            u=sql.Identifier("pub", u["collection"].split(".", 1)[1]))
+        parts.append(sql.SQL("t.geom && {g} AND ST_Intersects({g}, ST_PointOnSurface(t.geom))").format(g=place))
+        params += [str(w["place"]), str(w["place"])]
+    return sql.SQL(" AND ").join(parts), params
+
+
+def _chart_data(conn, chart: dict, bbox: list[float] | None) -> dict:
+    data = chart["data"]
+    cols = V.chart_columns(conn, data["collection"])
+    if cols is None or "geom" not in cols:
+        raise HTTPException(409, f"{data['collection']} is missing or has no geom column")
+    for k in ("category", "value", "x", "y", "label"):
+        if data.get(k) and data[k] not in cols:
+            raise HTTPException(409, f"{data['collection']} has no column {data[k]!r}")
+    rel = sql.Identifier("pub", data["collection"].split(".", 1)[1])
+    where, params = _chart_where(conn, data, bbox)
+    kind = chart["type"]
+    if kind in ("bar", "donut"):
+        agg = data.get("agg", "count")
+        limit = data.get("limit", 12 if kind == "bar" else 8)
+        rows = conn.execute(sql.SQL(
+            "SELECT {c}::text AS category, {a} AS value, count(*) AS n FROM {r} t WHERE {w} AND {c} IS NOT NULL "
+            "GROUP BY 1 ORDER BY 2 DESC NULLS LAST LIMIT 500").format(
+            c=sql.Identifier(data["category"]), a=_chart_agg(agg, data.get("value")), r=rel, w=where), params).fetchall()
+        top, rest = rows[:limit], rows[limit:]
+        if rest and agg in ("count", "sum"):
+            top.append({"category": f"Other ({len(rest)})", "value": sum(r["value"] or 0 for r in rest),
+                        "n": sum(r["n"] for r in rest), "other": True})
+        return {"rows": top, "n": sum(r["n"] for r in rows), "groups": len(rows)}
+    if kind == "histogram":
+        v = sql.Identifier(data["value"])
+        s = conn.execute(sql.SQL(
+            "SELECT count({v}) AS n, min({v})::float8 AS min, max({v})::float8 AS max, "
+            "percentile_cont(0.5) WITHIN GROUP (ORDER BY {v})::float8 AS median, "
+            "percentile_cont(0.95) WITHIN GROUP (ORDER BY {v})::float8 AS p95 FROM {r} t WHERE {w}").format(
+            v=v, r=rel, w=where), params).fetchone()
+        if not s["n"] or s["min"] is None:
+            return {"bins": [], **s}
+        k, lo, hi = data.get("bins", 12), s["min"], s["max"]
+        # A long tail (max more than 3x the 95th percentile) would squeeze everything into the first bin: bin up to
+        # the 95th percentile and let the last bin hold "and over".
+        s["open_end"] = bool(s["p95"] is not None and s["p95"] > lo and hi > 3 * s["p95"])
+        if s["open_end"]:
+            hi = s["p95"]
+        width = (hi - lo) / k or 1.0
+        counts = {r["b"]: r["n"] for r in conn.execute(sql.SQL(
+            "SELECT least(width_bucket({v}::float8, %s, %s, %s), %s) AS b, count(*) AS n FROM {r} t "
+            "WHERE {w} AND {v} IS NOT NULL GROUP BY 1").format(v=v, r=rel, w=where),
+            [lo, lo + width * k, k, k, *params]).fetchall()}
+        return {"bins": [{"x0": lo + width * (b - 1), "x1": lo + width * b, "count": counts.get(b, 0)} for b in range(1, k + 1)], **s}
+    if kind == "scatter":
+        x, y = sql.Identifier(data["x"]), sql.Identifier(data["y"])
+        label = sql.Identifier(data["label"]) if data.get("label") else sql.SQL("NULL")
+        pts = conn.execute(sql.SQL(
+            "SELECT t.id, {x}::float8 AS x, {y}::float8 AS y, {l}::text AS label FROM {r} t "
+            "WHERE {w} AND {x} IS NOT NULL AND {y} IS NOT NULL ORDER BY t.id LIMIT 3000").format(
+            x=x, y=y, l=label, r=rel, w=where), params).fetchall()
+        r = conn.execute(sql.SQL("SELECT corr({x}::float8, {y}::float8) AS r, count(*) AS n FROM {r} t "
+                                 "WHERE {w} AND {x} IS NOT NULL AND {y} IS NOT NULL").format(
+            x=x, y=y, r=rel, w=where), params).fetchone()
+        return {"points": pts, **r}
+    # stats: one row of headline numbers
+    stats = data.get("stats") or []
+    for st in stats:
+        if st.get("value") and st["value"] not in cols:
+            raise HTTPException(409, f"{data['collection']} has no column {st['value']!r}")
+    row = conn.execute(sql.SQL("SELECT {cols} FROM {r} t WHERE {w}").format(
+        cols=sql.SQL(", ").join(sql.SQL("{a} AS {n}").format(a=_chart_agg(st.get("agg", "count"), st.get("value")),
+                                                            n=sql.Identifier(f"s{i}")) for i, st in enumerate(stats)),
+        r=rel, w=where), params).fetchone()
+    return {"stats": [{"label": st["label"], "value": row[f"s{i}"], "format": st.get("format", chart.get("format"))}
+                      for i, st in enumerate(stats)]}
+
+
+@app.get("/api/projects/{slug}/charts/{chart_id}")
+def project_chart(slug: str, chart_id: str, bbox: str | None = None) -> dict:
+    """Data for one of a project's charts; `bbox=w,s,e,n` limits it to the map view."""
+    box = None
+    if bbox:
+        try:
+            box = [round(float(v), 4) for v in bbox.split(",")]
+        except ValueError:
+            box = []
+        if len(box) != 4 or not (-180 <= box[0] < box[2] <= 180 and -90 <= box[1] < box[3] <= 90):
+            raise HTTPException(400, "bbox must be w,s,e,n in degrees")
+    with projects_pool.connection() as conn:
+        p = conn.execute("SELECT manifest, version FROM app.projects WHERE slug = %s", (slug,)).fetchone()
+        if not p:
+            raise HTTPException(404, f"no project {slug}")
+        chart = next((c for c in p["manifest"].get("charts") or [] if c.get("id") == chart_id), None)
+        if not chart:
+            raise HTTPException(404, f"project {slug} has no chart {chart_id!r}")
+        key = (slug, p["version"], chart_id, tuple(box or ()))
+        hit = _chart_cache.get(key)
+        if hit and time.monotonic() - hit[0] < CHART_TTL:
+            return hit[1]
+        out = {"chart": chart_id, "type": chart["type"], "scope": "view" if box else "all", **_chart_data(conn, chart, box)}
+    if len(_chart_cache) > 500:
+        _chart_cache.clear()
+    _chart_cache[key] = (time.monotonic(), out)
+    return out
+
+
+# ---- PDF reports (plan: project-builder §1.6) -----------------------------------------------------------------
+# Admins queue a `report` job; the reporter service prints /p/<slug>/report to data/reports/<slug>/<job>.pdf and
+# records it in app.reports. Listing and downloading are public, like the maps they describe.
+
+REPORTS_DIR = Path(os.environ.get("REPORTS_DIR", "/reports"))
+REPORT_COLUMNS = "id, slug, job_id, path, bytes, pages, manifest_version, created_at, created_by"
+
+
+def _report_out(r: dict) -> dict:
+    return {**r, "url": f"/api/projects/{r['slug']}/reports/{r['id']}.pdf"}
+
+
+@app.post("/api/admin/projects/{slug}/reports", dependencies=[Depends(require_admin)], status_code=201)
+def queue_report(slug: str, request: Request, response: Response) -> dict:
+    """Queue a PDF report of one project (deduplicated while one is queued or running)."""
+    with projects_pool.connection() as conn:
+        if not conn.execute("SELECT 1 FROM app.projects WHERE slug = %s", (slug,)).fetchone():
+            raise HTTPException(404, f"no project {slug}")
+        key = f"report:{slug}"
+        row = conn.execute(
+            f"""INSERT INTO app.jobs (kind, action, params, concurrency_class, max_attempts, dedupe_key, created_by)
+                VALUES ('report', 'render', %s, 'report', 2, %s, %s)
+                ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
+                RETURNING {JOB_COLUMNS}""", (json.dumps({"slug": slug}), key, _caller(request))).fetchone()
+        if row is None:
+            row = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
+                               (key,)).fetchone()
+            response.status_code = 200
+            row["deduplicated"] = True
+    return row
+
+
+@app.get("/api/projects/{slug}/reports")
+def list_reports(slug: str) -> list[dict]:
+    with projects_pool.connection() as conn:
+        return [_report_out(r) for r in conn.execute(
+            f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s ORDER BY created_at DESC LIMIT 20", (slug,)).fetchall()]
+
+
+@app.get("/api/projects/{slug}/reports/{name}")
+def get_report(slug: str, name: str) -> FileResponse:
+    """`<id>.pdf`, or `latest.pdf` for the newest report of the project."""
+    m = re.fullmatch(r"(\d+|latest)\.pdf", name)
+    if not m:
+        raise HTTPException(404, "not a report")
+    with projects_pool.connection() as conn:
+        r = conn.execute(f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s"
+                         + ("" if m[1] == "latest" else " AND id = %s") + " ORDER BY created_at DESC LIMIT 1",
+                         (slug,) if m[1] == "latest" else (slug, int(m[1]))).fetchone()
+    path = (REPORTS_DIR / r["path"]).resolve() if r else None
+    if not r or not path.is_relative_to(REPORTS_DIR.resolve()) or not path.is_file():
+        raise HTTPException(404, f"no report {name} for {slug}")
+    stamp = r["created_at"].strftime("%Y-%m-%d")
+    return FileResponse(path, media_type="application/pdf", filename=f"{slug}-report-{stamp}.pdf",
+                        content_disposition_type="inline")
+
+
 # ---- project builder: units, places, map designs (plan: project-builder §1.1, §1.7) -------------------------
 # Admin only. A design (templates/designs/<id>.json) + a place (one row of a pub.units__* view) -> a finished
 # manifest: curated layers copied from the registered projects, a focus mask/outline, framing and titles. Nothing
@@ -642,7 +831,7 @@ def _designs() -> dict[str, dict]:
     return out
 
 
-PLACE_COLUMNS = ("unit_key AS key, name, short_name, county_name, "
+PLACE_COLUMNS = ("unit_key AS key, name, short_name, county_name, county_geoid, "
                  "ARRAY[ST_XMin(geom), ST_YMin(geom), ST_XMax(geom), ST_YMax(geom)]::float8[] AS bbox")
 
 
@@ -766,6 +955,21 @@ async def design_manifest(design_id: str, request: Request) -> dict:
         "view": _framing(place["bbox"], d.get("padding", 0.06), d.get("basemap", "positron")),
         "layers": layers,
     }
+    # Design charts: `"within": "place"` -> this place; `"within": "county"` -> the place's county (for units such as
+    # tracts, where the interesting comparison is the county around them).
+    charts = []
+    for c in copy.deepcopy(d.get("charts") or []):
+        w = c["data"].pop("within", None)
+        if w == "place":
+            c["data"]["within"] = {"unit": unit, "place": place["key"]}
+        elif w == "county" and place.get("county_geoid"):
+            c["data"]["within"] = {"unit": "county", "place": place["county_geoid"]}
+        if c.get("layer") and c["layer"] not in ids:
+            c.pop("layer")
+        c["title"] = fill(c["title"])[:80]
+        charts.append(c)
+    if charts:
+        manifest["charts"] = charts
     return {"manifest": manifest, "report": _validate(manifest), "missing_layers": missing}
 
 

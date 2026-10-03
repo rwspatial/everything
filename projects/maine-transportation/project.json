@@ -392,10 +392,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#000000",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:rail:000000",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -403,13 +403,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                5
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -457,25 +459,25 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": [
                 "match",
                 [
                   "get",
                   "condition"
                 ],
                 "good",
-                "#1a9850",
+                "poi:bridge:1a9850",
                 "fair",
-                "#fee08b",
+                "poi:bridge:fee08b",
                 "poor",
-                "#d73027",
+                "poi:bridge:d73027",
                 "not rated",
-                "#bdbdbd",
-                "#bdbdbd"
+                "poi:bridge:bdbdbd",
+                "poi:bridge:bdbdbd"
               ],
-              "circle-radius": [
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -483,13 +485,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2.5,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                7
+                0.9
               ],
-              "circle-stroke-color": "#333333",
-              "circle-stroke-width": 0.5
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -545,25 +549,25 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": [
                 "match",
                 [
                   "get",
                   "condition"
                 ],
                 "good",
-                "#1a9850",
+                "poi:water:1a9850",
                 "fair",
-                "#fee08b",
+                "poi:water:fee08b",
                 "poor",
-                "#fc8d59",
+                "poi:water:fc8d59",
                 "critical",
-                "#d73027",
-                "#bdbdbd"
+                "poi:water:d73027",
+                "poi:water:bdbdbd"
               ],
-              "circle-radius": [
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -571,13 +575,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                2,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                6
+                0.9
               ],
-              "circle-stroke-color": "#333333",
-              "circle-stroke-width": 0.5
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -690,10 +696,10 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#1f78b4",
-              "circle-radius": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:car:1f78b4",
+              "icon-size": [
                 "interpolate",
                 [
                   "linear"
@@ -701,13 +707,15 @@
                 [
                   "zoom"
                 ],
-                7,
-                3,
+                6,
+                0.45,
+                10,
+                0.65,
                 14,
-                7
+                0.9
               ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.8
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -748,25 +756,39 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": [
+            "type": "symbol",
+            "layout": {
+              "icon-image": [
                 "match",
                 [
                   "get",
                   "kind"
                 ],
                 "airport",
-                "#08519c",
+                "poi:airport:08519c",
                 "seaplane base",
-                "#4eb3d3",
+                "poi:harbor:4eb3d3",
                 "heliport",
-                "#8c6bb1",
-                "#08519c"
+                "poi:heliport:8c6bb1",
+                "poi:airport:08519c"
               ],
-              "circle-radius": 5,
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 1
+              "icon-size": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                6,
+                0.45,
+                10,
+                0.65,
+                14,
+                0.9
+              ],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -796,6 +818,34 @@
         "inspect": true
       },
       "attribution": "USGS The National Map, National Transportation Dataset"
+    }
+  ],
+  "charts": [
+    {
+      "id": "by-class",
+      "title": "Road segments by functional class",
+      "type": "bar",
+      "layer": "public-roads",
+      "format": "count",
+      "scope": "view",
+      "data": {
+        "collection": "pub.maine_transportation__public_roads",
+        "category": "functional_class"
+      }
+    },
+    {
+      "id": "traffic",
+      "title": "Traffic volume (AADT)",
+      "type": "histogram",
+      "layer": "public-roads",
+      "format": "count",
+      "scope": "view",
+      "description": "Annual average daily traffic on road segments with a count.",
+      "data": {
+        "collection": "pub.maine_transportation__public_roads",
+        "value": "aadt",
+        "bins": 16
+      }
     }
   ]
 }

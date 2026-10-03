@@ -137,7 +137,7 @@ test.describe('signed in', () => {
 		await expect(page.getByRole('status')).toContainText('Deleted E2E Maine Public Lands');
 		await expect(page.getByRole('link', { name: 'E2E Maine Public Lands' })).toHaveCount(0);
 		// File-managed projects have no Delete button.
-		await expect(page.getByRole('row', { name: /Maine Lands/ }).getByRole('button')).toHaveCount(0);
+		await expect(page.getByRole('row', { name: /Maine Lands/ }).getByRole('button', { name: /^Delete/ })).toHaveCount(0);
 	});
 
 	test('quick map: Town atlas of Bethel, focus outline, framed, saved, opened, deleted', async ({ page, request }) => {
@@ -189,6 +189,49 @@ test.describe('signed in', () => {
 		}
 		// A design only builds for its own geographies: the Town atlas refuses a county.
 		expect((await request.post('/api/admin/designs/town-atlas/manifest', { data: { unit: 'county', place: '23017' } })).status()).toBe(422);
+	});
+
+	test('charts: D3 charts on the fly in the viewer; In view refetches for the map frame', async ({ page }) => {
+		await page.goto('/p/maine-overview');
+		await page.waitForFunction(() => window.__spatial?.ready === true, undefined, { timeout: 45_000 });
+		await page.getByRole('button', { name: 'Charts' }).click();
+		const panel = page.getByRole('complementary', { name: 'Charts' });
+		await expect(panel.getByText('Maine at a glance')).toBeVisible();
+		await expect(panel.getByText('Towns, cities and townships')).toBeVisible();
+		// Ranked bars: one mark per town, labelled for screen readers.
+		await expect(panel.getByRole('button', { name: /^Cumberland: \$/ })).toBeVisible();
+		expect(await panel.locator('figure[aria-label="Highest median household income"] path[role="button"]').count()).toBe(12);
+		// Switching a chart to the map frame refetches it with a bbox.
+		const req = page.waitForRequest((r) => r.url().includes('/charts/income-spread?bbox='));
+		await panel.getByRole('radiogroup', { name: /Towns by median household income/ }).getByLabel('In view').check();
+		await req;
+		await shot(page, 'admin-6-charts');
+	});
+
+	test('chart API: unknown chart fields are refused by validation', async ({ request }) => {
+		const m = await (await request.get('/api/projects/maine-overview')).json();
+		m.slug = 'zz-chart-check';
+		m.charts = [{ id: 'bad', title: 'Bad', type: 'bar', data: { collection: 'pub.maine_overview__towns', category: 'nope' } }];
+		const r = await (await request.post('/api/admin/projects/validate', { data: m })).json();
+		expect(r.errors.map((e: { code: string }) => e.code)).toContain('E_CHART_FIELD');
+	});
+
+	test('PDF report: queued by an admin, printed by the reporter, served publicly', async ({ page, request }) => {
+		test.setTimeout(150_000);
+		await page.goto('/p/maine-places/report');
+		await page.waitForFunction(() => window.__report?.ready === true, undefined, { timeout: 90_000 });
+		await expect(page.getByRole('heading', { name: 'Charts' })).toBeVisible();
+		const job = await (await request.post('/api/admin/projects/maine-places/reports')).json();
+		let status = job.status;
+		for (let i = 0; i < 50 && !['succeeded', 'failed'].includes(status); i++) {
+			await page.waitForTimeout(2000);
+			status = (await (await request.get(`/api/admin/jobs/${job.id}`)).json()).status;
+		}
+		expect(status).toBe('succeeded');
+		const pdf = await request.get('/api/projects/maine-places/reports/latest.pdf');
+		expect(pdf.headers()['content-type']).toBe('application/pdf');
+		expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+		expect((await pdf.body()).length).toBeGreaterThan(50_000);
 	});
 
 	test('project API: invalid manifests fail with specific codes', async ({ request }) => {

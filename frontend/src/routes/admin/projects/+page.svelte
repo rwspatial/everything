@@ -6,7 +6,7 @@
 	import Badge from '$lib/admin/Badge.svelte';
 	import SortTh from '$lib/admin/SortTh.svelte';
 	import { TableSort } from '$lib/admin/sort.svelte';
-	import { api, fmtAgo } from '$lib/admin/api';
+	import { api, fmtAgo, post } from '$lib/admin/api';
 	import { title as pageTitle } from '$lib/site';
 
 	interface Row {
@@ -32,9 +32,38 @@
 	let error = $state('');
 	let message = $state('');
 
+	// PDF reports: the latest one per project, and the status of a report being made.
+	let reports = $state<Record<string, { url?: string; status?: string; when?: string }>>({});
+
+	async function loadReport(slug: string) {
+		const list = await fetch(`/api/projects/${slug}/reports`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+		reports[slug] = { ...reports[slug], url: list[0]?.url, when: list[0]?.created_at };
+	}
+
+	async function makeReport(r: Row) {
+		reports[r.slug] = { ...reports[r.slug], status: 'queued' };
+		try {
+			const job = await post<{ id: number; status: string }>(fetch, `/projects/${encodeURIComponent(r.slug)}/reports`);
+			for (;;) {
+				await new Promise((ok) => setTimeout(ok, 2500));
+				const j = await api<{ status: string; error?: { message?: string } }>(fetch, `/jobs/${job.id}`);
+				reports[r.slug].status = j.status;
+				if (['succeeded', 'failed', 'cancelled'].includes(j.status)) {
+					if (j.status === 'failed') error = `Report for ${r.title} failed: ${j.error?.message ?? 'unknown error'}`;
+					break;
+				}
+			}
+			await loadReport(r.slug);
+		} catch (e) {
+			reports[r.slug].status = 'failed';
+			error = (e as Error).message;
+		}
+	}
+
 	async function load() {
 		try {
 			rows = await api<Row[]>(fetch, '/projects');
+			for (const r of rows) void loadReport(r.slug);
 		} catch (e) {
 			error = (e as Error).message;
 		}
@@ -71,7 +100,7 @@
 		<thead>
 			<tr>
 					<SortTh {sort} key="project">Project</SortTh><SortTh {sort} key="status">Status</SortTh><SortTh {sort} key="layers" class="num">Layers</SortTh>
-					<SortTh {sort} key="managed">Managed by</SortTh><SortTh {sort} key="updated">Updated</SortTh><th scope="col"><span class="sr-only">Actions</span></th>
+					<SortTh {sort} key="managed">Managed by</SortTh><SortTh {sort} key="updated">Updated</SortTh><th scope="col">PDF report</th><th scope="col"><span class="sr-only">Actions</span></th>
 				</tr>
 		</thead>
 		<tbody>
@@ -82,6 +111,14 @@
 					<td class="num">{r.layers}</td>
 					<td>{#if r.origin === 'api'}New project wizard{:else}<code>projects/{r.slug}/</code>{/if}</td>
 					<td class="sub">v{r.version} · {fmtAgo(r.updated_at)} · {r.updated_by}</td>
+					<td class="report">
+						{#if reports[r.slug]?.url}<a href={reports[r.slug].url} target="_blank" rel="noopener">PDF</a> <span class="sub">{fmtAgo(reports[r.slug].when)}</span>{/if}
+						{#if reports[r.slug]?.status === 'queued' || reports[r.slug]?.status === 'running'}
+							<span class="sub" role="status">{reports[r.slug].status === 'queued' ? 'Queued…' : 'Printing…'}</span>
+						{:else}
+							<button type="button" class="small" onclick={() => makeReport(r)} aria-label="Make a PDF report of {r.title}">{reports[r.slug]?.url ? 'Refresh' : 'Make PDF'}</button>
+						{/if}
+					</td>
 					<td>
 						{#if r.origin === 'api'}
 							<button type="button" class="danger" onclick={() => remove(r)} aria-label="Delete {r.title}">Delete</button>
@@ -91,7 +128,7 @@
 					</td>
 				</tr>
 			{:else}
-				<tr><td colspan="6" class="sub">Loading…</td></tr>
+				<tr><td colspan="7" class="sub">Loading…</td></tr>
 			{/each}
 		</tbody>
 	</table>
@@ -111,5 +148,7 @@
 	.err { color: #b42318; font-size: 0.85rem; }
 	.danger { font: inherit; font-size: 0.82rem; padding: 0.25rem 0.7rem; border-radius: 6px; border: 1px solid #b42318; color: #b42318; background: var(--surface); cursor: pointer; }
 	.danger:hover { background: #fde8e6; }
+	.small { font: inherit; font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+	.report { white-space: nowrap; }
 	.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

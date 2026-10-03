@@ -1,6 +1,6 @@
 # Project Builder (unit-first project creator) — Plan
 
-Status: **confirmed 2026-10-03; Stages 1a and 1b done (2026-10-03); 1c next**
+Status: **confirmed 2026-10-03; Stage 1 in progress**
 Replaces: the single-view wizard at `/admin/new` (`frontend/src/routes/admin/new/+page.svelte`).
 Builds on: `spatial-app-architecture.plan.md` Phase 5 (analysis workers, `app.processes`, `app.publish_job_layer`),
 `admin-dashboard.plan.md` (dataset registry, job queue).
@@ -146,11 +146,11 @@ Live preview on the right throughout (existing `Viewer`). After saving, the proj
 | Stage | Scope | Done when |
 |---|---|---|
 | **1a. Units** (done 2026-10-03) | Migration `app.units` + `src_units` lookups; `db/seed/070_units.sql`: seven `pub.units__*` views with standard columns and the catalog rows (catalog lives in the seed next to its views, not in YAML) | All 7 units listed; every block and all but 40 of 744,664 parcels matched to a town; ACS joins complete |
-| **1b. Quick map (designs)** (done 2026-10-03: 5 designs in `templates/designs/`, `pub.units__focus`, core-api `/api/admin/units`, `/units/{u}/places`, `/designs`, `/designs/{id}/manifest`; `/admin/new` = quick map, old wizard at `/admin/new/view`) | `/api/admin/units`, place search; context-layer catalog API; `pub.units_mask`; `templates/designs/*.json` (Town atlas + County overview first); `/admin/new` landing with the two paths; quick-map flow | Pick "Bethel" + "Town atlas" → a saved, good-looking project in three clicks; e2e screenshot reviewed |
+| **1b. Quick map (designs)** | `/api/admin/units`, place search; context-layer catalog API; `pub.units_mask`; `templates/designs/*.json` (Town atlas + County overview first); `/admin/new` landing with the two paths; quick-map flow | Pick "Bethel" + "Town atlas" → a saved, good-looking project in three clicks; e2e screenshot reviewed |
 | **1c. Build from units** | Steps 1–4 + 6 of §2: unit, study area (map filter + bounds), attribute choropleth, context layers, save; manifest gains optional `unit` | Build "Cumberland County tracts, median income, with contours + roads" in the UI in under a minute; old projects unchanged |
 | **2. Analyses attached to projects** | `process.v2`; `unit-ref`; `app.unit_values`; extraction processes (vector overlay %, point counts, line density, raster zonal stats via exactextract); existing Moran/Gi* adapted; Analyses drawer (run / re-run / results) | "% of each tract in a flood zone" runs from the project and becomes a mappable column |
-| **3. Charts (D3)** | `chart.v1`; Charts panel; map ↔ chart linking; process-emitted charts | Histogram + scatter of two columns, brushing highlights tracts |
-| **4. Reports (PDF)** | Quarto/Typst templates; static maps; report jobs; download list | Study-area summary PDF for the Cumberland project, opened and reviewed |
+| **3. Charts (D3)** (done 2026-10-03: `charts[]` in the manifest schema + validator (`E_CHART_*`), `GET /api/projects/{slug}/charts/{id}[?bbox]`, `lib/charts/` Chart + ChartsPanel, charts in 10 projects and all 5 designs) | `chart.v1`; Charts panel; map ↔ chart linking; process-emitted charts | Histogram + scatter of two columns, brushing highlights tracts |
+| **4. Reports (PDF)** (done 2026-10-03, **changed approach**: a printable page `/p/<slug>/report` printed by headless Chromium (`services/reporter`), not Quarto/Typst, so the PDF shows the same map and D3 charts as the site; `app.reports`, admin-only queue, public download) | Quarto/Typst templates; static maps; report jobs; download list | Study-area summary PDF for the Cumberland project, opened and reviewed |
 | **5. ML + more units** | k-means / SKATER / max-p (spopt), random forest (scikit-learn) with metrics + feature importance; WBD HUC-12, ZCTA recipes | Regionalize towns by 5 extracted columns; RF model report |
 
 ---
@@ -169,17 +169,9 @@ Live preview on the right throughout (existing `Viewer`). After saving, the proj
 1. Units: **parcel, block, block group, tract, town, county, state only.** Hex grid, HUC-12, ZCTA and districts noted in §1.1 for later.
 2. Audience: **admin only.** Building projects, running analyses and generating reports stay behind `/admin` auth, including when hosted publicly. Public visitors only view published maps, charts and reports.
 3. Charts: **D3** (linked map–chart interaction).
-4. Reports: **Quarto + Typst** (already installed; verify in Stage 4).
+4. Reports: ~~Quarto + Typst~~ → **print the report page with headless Chromium** (decided while building Stage 4: one rendering path for maps and charts; Typst remains an option for long-form text reports).
 5. **Quick map from a design** is the default entry to `/admin/new` and ships first (Stage 1b); the full builder is the second path.
 
 ## 7. Follow-ups noted (not part of this plan)
-- **Generalized contours:** `pub.maine_terrain__contours` tiles cost ~1.7 s at z11 (52k unsimplified lines). Build a simplified
-  `_gen` table for z10–12 (the Town atlas shows contours from z12 until then).
-- `pub.maine_lands__parcels` still finds the Unorganized Territory township per tile with a spatial LATERAL; switch it to
-  `src_units.parcel_town` (precomputed) like `pub.units__parcel`.
-- **Buildings at lower zooms:** to be planned with the user (see the session notes of 2026-10-03).
-- Done alongside 1b (2026-10-03): global route badges (`pub.maine_transportation__route_shields` + `frontend/src/lib/overlays.ts`),
-  hover popups off (`SHOW_HOVER_POPUPS` in Viewer), a more visible loading indicator, `/admin/database` (index health),
-  geometry normalization at import, tiPG `WEB_CONCURRENCY` 4 and catalog extents off.
 - Maine Terrain still uses the 30 m DEM; the 10 m DEM COG is now built (`data/cog/maine/dem_10m.tif`, 2.6 GB).
   Build `hillshade_10m`, `slope_10m` and 20-ft contours from it, then switch the map and the Town atlas design to them.

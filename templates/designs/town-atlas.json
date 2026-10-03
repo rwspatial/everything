@@ -2,26 +2,39 @@
   "id": "town-atlas",
   "title": "Town atlas",
   "description": "A general-purpose map of one town: terrain and contours, water and wetlands, conserved land, roads, trails, buildings and tax parcels, with the town outlined and its surroundings softened.",
-  "geographies": ["town"],
+  "geographies": [
+    "town"
+  ],
   "basemap": "positron",
   "padding": 0.06,
   "projectTitle": "{short_name}: town atlas",
-  "projectDescription": "Town atlas of {name}, {county_name} County, Maine: terrain, water, conserved land, roads, trails, buildings and tax parcels. Zoom in for contours (z12), buildings and parcels (z13).",
-  "tags": ["maine", "town atlas", "{short_name}"],
+  "projectDescription": "Town atlas of {name}, {county_name} County, Maine: terrain, water, conserved land, roads, trails, buildings and tax parcels. Built-up areas are outlined until z13, where building footprints and parcels take over; contours from z12.",
+  "tags": [
+    "maine",
+    "town atlas",
+    "{short_name}"
+  ],
   "layers": [
-    { "ref": "maine-terrain/hillshade", "visible": true, "opacity": 0.55 },
-    { "ref": "maine-lands/conserved-lands", "visible": true },
-    { "ref": "maine-water/wetlands", "visible": true },
-    { "ref": "maine-water/flood-zones", "visible": false },
-    { "ref": "maine-terrain/contours", "visible": true, "minzoom": 12 },
-    { "ref": "maine-places/buildings", "visible": true },
-    { "ref": "maine-lands/parcels", "visible": true },
-    { "ref": "maine-lands/ntd-trails", "visible": true },
-    { "ref": "maine-infrastructure/roads-local", "visible": true },
-    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
-    { "ref": "maine-infrastructure/roads-primary", "visible": true },
-    { "ref": "maine-facilities/schools", "visible": true },
-    { "ref": "maine-facilities/fire-ems", "visible": true },
-    { "focus": true }
+    { "ref": "maine-terrain/hillshade", "visible": true, "opacity": 0.55},
+    { "ref": "maine-lands/conserved-lands", "visible": true},
+    { "ref": "maine-water/wetlands", "visible": true},
+    { "ref": "maine-water/flood-zones", "visible": false},
+    { "ref": "maine-terrain/contours", "visible": true, "minzoom": 12},
+    { "ref": "maine-places/settlements", "visible": true},
+    { "ref": "maine-places/buildings", "visible": true},
+    { "ref": "maine-lands/parcels", "visible": true},
+    { "ref": "maine-lands/ntd-trails", "visible": true},
+    { "ref": "maine-infrastructure/roads-local", "visible": true},
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true},
+    { "ref": "maine-infrastructure/roads-primary", "visible": true},
+    { "ref": "maine-facilities/schools", "visible": true},
+    { "ref": "maine-facilities/fire-ems", "visible": true},
+    { "focus": true}
+  ],
+  "charts": [
+    {"id": "glance", "title": "{short_name} at a glance", "type": "stats", "data": {"collection": "pub.maine_lands__parcels", "within": "place", "stats": [{"label": "Tax parcels", "agg": "count", "format": "count"}]}},
+    {"id": "buildings", "title": "Buildings by type", "type": "bar", "layer": "buildings", "format": "count", "data": {"collection": "pub.maine_places__buildings", "category": "kind", "within": "place", "limit": 8}},
+    {"id": "conserved", "title": "Conserved land by holder", "type": "donut", "layer": "conserved-lands", "format": "acres", "description": "Whole conservation parcels with their centre in town (acres as recorded).", "data": {"collection": "pub.maine_lands__conserved_lands", "category": "holder_type", "value": "acres", "agg": "sum", "within": "place"}},
+    {"id": "parcel-sizes", "title": "Parcel sizes", "type": "histogram", "layer": "parcels", "format": "acres", "data": {"collection": "pub.maine_lands__parcels", "value": "acres", "bins": 12, "within": "place"}}
   ]
 }

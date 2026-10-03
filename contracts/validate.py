@@ -126,6 +126,32 @@ def validate_rules(m: dict, slug: str | None = None) -> list[Issue]:
             issues.append(Issue("W_NO_STYLE", f"layers[{i}].style", "vector layer has no style; it draws with defaults"))
     if m.get("status") in ("draft", "ready") and not any(l.get("status") != "todo" for l in layers):
         issues.append(Issue("E_NO_LAYERS", "layers", f"a {m.get('status')} project needs at least one layer that is not a to-do"))
+    issues += _chart_rules(m.get("charts") or [], seen)
+    return issues
+
+
+# What each chart type needs in `data` (fields are checked against the view in validate_db).
+CHART_NEEDS = {"bar": ["category"], "donut": ["category"], "histogram": ["value"], "scatter": ["x", "y"], "stats": ["stats"]}
+
+
+def _chart_rules(charts: list[dict], layer_ids: set[str]) -> list[Issue]:
+    issues: list[Issue] = []
+    seen: set[str] = set()
+    for i, c in enumerate(charts):
+        at, data = f"charts[{i}]", c.get("data") or {}
+        if c.get("id") in seen:
+            issues.append(Issue("E_DUP_CHART", f"{at}.id", f"chart id {c.get('id')!r} is used twice"))
+        seen.add(c.get("id"))
+        for k in CHART_NEEDS.get(c.get("type"), []):
+            if not data.get(k):
+                issues.append(Issue("E_CHART_FIELD", f"{at}.data.{k}", f"a {c['type']} chart needs data.{k}"))
+        if c.get("type") in ("bar", "donut") and data.get("agg", "count") != "count" and not data.get("value"):
+            issues.append(Issue("E_CHART_FIELD", f"{at}.data.value", f"agg {data.get('agg')!r} needs data.value"))
+        for j, st in enumerate(data.get("stats") or []):
+            if st.get("agg", "count") != "count" and not st.get("value"):
+                issues.append(Issue("E_CHART_FIELD", f"{at}.data.stats[{j}].value", f"agg {st.get('agg')!r} needs a value"))
+        if c.get("layer") and c["layer"] not in layer_ids:
+            issues.append(Issue("E_CHART_LAYER", f"{at}.layer", f"no layer {c['layer']!r} in this project"))
     return issues
 
 
@@ -268,6 +294,46 @@ def validate_db(m: dict, conn) -> list[Issue]:
     return issues
 
 
+_COLUMN_TYPES_SQL = """
+SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type
+FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+WHERE c.relnamespace = 'pub'::regnamespace AND c.relname = %s AND a.attnum > 0 AND NOT a.attisdropped"""
+NUMERIC_TYPES = ("integer", "bigint", "smallint", "numeric", "real", "double precision")
+
+
+def chart_columns(conn, collection: str) -> dict[str, bool] | None:
+    """{column: is_numeric} of a pub view, or None if it does not exist (shared with core-api's chart endpoint)."""
+    cur = conn.execute(_COLUMN_TYPES_SQL, (collection.split(".", 1)[1],))
+    rows = [r if isinstance(r, dict) else dict(zip(("name", "type"), r)) for r in cur.fetchall()]
+    return {r["name"]: r["type"].split("(")[0] in NUMERIC_TYPES for r in rows} or None
+
+
+def validate_charts_db(m: dict, conn) -> list[Issue]:
+    issues: list[Issue] = []
+    # The unit catalog may be unreadable for the validating role (mapgen runs as the loader); then skip that check.
+    ok = _row(conn, "SELECT CASE WHEN to_regclass('app.units') IS NULL THEN false ELSE has_table_privilege('app.units', 'SELECT') END AS ok")["ok"]
+    units = {r[0] if not isinstance(r, dict) else r["id"] for r in conn.execute("SELECT id FROM app.units").fetchall()} if ok else None
+    for i, c in enumerate(m.get("charts") or []):
+        at, data = f"charts[{i}].data", c.get("data") or {}
+        cols = chart_columns(conn, data.get("collection", "pub.x"))
+        if cols is None:
+            issues.append(Issue("E_VIEW_MISSING", f"{at}.collection", f"{data.get('collection')} does not exist in pub"))
+            continue
+        fields = [(k, data.get(k), k in ("value", "x", "y")) for k in ("category", "value", "x", "y", "label")]
+        fields += [(f"stats[{j}].value", st.get("value"), True) for j, st in enumerate(data.get("stats") or [])]
+        for key, f, numeric in fields:
+            if not f:
+                continue
+            if f not in cols:
+                issues.append(Issue("E_CHART_FIELD", f"{at}.{key}", f"{data['collection']} has no column {f!r}"))
+            elif numeric and not cols[f] and not (key == "value" and c.get("type") in ("bar", "donut") and data.get("agg", "count") == "count"):
+                issues.append(Issue("E_CHART_FIELD", f"{at}.{key}", f"{f} is not numeric"))
+        w = data.get("within")
+        if w and units is not None and w.get("unit") not in units:
+            issues.append(Issue("E_CHART_WITHIN", f"{at}.within.unit", f"unknown unit {w.get('unit')!r} (one of {', '.join(sorted(units))})"))
+    return issues
+
+
 def validate_cogs(m: dict, cog_exists: Callable[[str], bool]) -> list[Issue]:
     issues = []
     for i, layer in enumerate(m.get("layers") or []):
@@ -292,7 +358,7 @@ def validate(m: Any, slug: str | None = None, conn=None, cog_exists: Callable[[s
         issues += validate_rules(m, slug)
         checked.append("rules")
         if conn is not None:
-            issues += validate_db(m, conn)
+            issues += validate_db(m, conn) + validate_charts_db(m, conn)
             checked.append("database")
         if cog_exists is not None:
             issues += validate_cogs(m, cog_exists)

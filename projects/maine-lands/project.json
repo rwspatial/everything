@@ -586,5 +586,35 @@
       "attribution": "Maine GeoLibrary (MEGIS)",
       "visible": false
     }
+  ],
+  "charts": [
+    {
+      "id": "conserved-by-holder",
+      "title": "Conserved land by holder",
+      "type": "donut",
+      "layer": "conserved-lands",
+      "format": "acres",
+      "scope": "view",
+      "data": {
+        "collection": "pub.maine_lands__conserved_lands",
+        "category": "holder_type",
+        "value": "acres",
+        "agg": "sum"
+      }
+    },
+    {
+      "id": "conserved-by-designation",
+      "title": "Largest conservation designations",
+      "type": "bar",
+      "layer": "conserved-lands",
+      "format": "acres",
+      "data": {
+        "collection": "pub.maine_lands__conserved_lands",
+        "category": "designation",
+        "value": "acres",
+        "agg": "sum",
+        "limit": 10
+      }
+    }
   ]
 }

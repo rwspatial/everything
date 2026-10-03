@@ -94,6 +94,18 @@ test('route badges on every map: interstate, US and state routes near Bangor', a
 	await shot(page, '12-route-badges');
 });
 
+test('facility icons and settlement outlines: pictograms instead of dots, built-up areas in one colour', async ({ page }) => {
+	await page.goto('/p/maine-facilities?map=12.5/43.665/-70.27');
+	await mapIdle(page);
+	expect(await rendered(page, 'schools')).toBeGreaterThan(0);
+	expect(await page.evaluate(() => window.__spatial!.map!.hasImage('poi:school:9467bd'))).toBe(true);
+	await shot(page, '13-facility-icons');
+	await page.goto('/p/maine-places?map=10/43.75/-70.3');
+	await mapIdle(page);
+	expect(await rendered(page, 'settlements')).toBeGreaterThan(20);
+	await shot(page, '14-settlements');
+});
+
 test('maine-overview (made with mapgen): towns shaded by ACS median household income', async ({ page }) => {
 	await page.goto('/p/maine-overview');
 	await mapIdle(page);

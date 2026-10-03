@@ -244,12 +244,26 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#2166ac",
-              "circle-radius": 4.5,
-              "circle-stroke-color": "#fff",
-              "circle-stroke-width": 1
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:slipway:2166ac",
+              "icon-size": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                6,
+                0.45,
+                10,
+                0.65,
+                14,
+                0.9
+              ],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]
@@ -266,6 +280,21 @@
         }
       },
       "attribution": "Maine GeoLibrary"
+    }
+  ],
+  "charts": [
+    {
+      "id": "shellfish",
+      "title": "Shellfish growing waters by classification",
+      "type": "donut",
+      "layer": "shellfish-classes",
+      "format": "acres",
+      "data": {
+        "collection": "pub.maine_coast__shellfish_classes",
+        "category": "classification",
+        "value": "acres",
+        "agg": "sum"
+      }
     }
   ]
 }

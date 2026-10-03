@@ -6,6 +6,7 @@ data/incoming/*
 data/cache/*
 data/cog/*
 data/backups/*
+data/reports/*
 !data/**/.gitkeep
 
 # Frontend build artefacts

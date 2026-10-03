@@ -680,5 +680,74 @@
       },
       "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
     }
+  ],
+  "charts": [
+    {
+      "id": "glance",
+      "title": "Maine at a glance",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_overview__towns",
+        "stats": [
+          {
+            "label": "People",
+            "value": "pop",
+            "agg": "sum",
+            "format": "count"
+          },
+          {
+            "label": "Towns, cities and townships",
+            "agg": "count",
+            "format": "count"
+          },
+          {
+            "label": "Median town household income",
+            "value": "median_hh_income",
+            "agg": "median",
+            "format": "currency"
+          }
+        ]
+      }
+    },
+    {
+      "id": "top-income",
+      "title": "Highest median household income",
+      "type": "bar",
+      "layer": "towns",
+      "format": "currency",
+      "data": {
+        "collection": "pub.maine_overview__towns",
+        "category": "name",
+        "value": "median_hh_income",
+        "agg": "max",
+        "limit": 12
+      }
+    },
+    {
+      "id": "income-spread",
+      "title": "Towns by median household income",
+      "type": "histogram",
+      "layer": "towns",
+      "format": "currency",
+      "data": {
+        "collection": "pub.maine_overview__towns",
+        "value": "median_hh_income",
+        "bins": 14
+      }
+    },
+    {
+      "id": "income-poverty",
+      "title": "Tracts: income against poverty rate",
+      "type": "scatter",
+      "layer": "tracts-income",
+      "format": "currency",
+      "description": "Each dot is a census tract (ACS 2024 5-year).",
+      "data": {
+        "collection": "pub.maine_overview__tracts",
+        "x": "median_hh_income",
+        "y": "poverty_pct",
+        "label": "name"
+      }
+    }
   ]
 }

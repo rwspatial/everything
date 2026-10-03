@@ -7,6 +7,8 @@ declare global {
 	}
 
 	interface Window {
+		/** Set by the printable report page (/p/<slug>/report); the reporter prints once `ready` is true. */
+		__report?: { ready: boolean; error?: string };
 		/** Automation hook set by the map viewer (used by the Playwright tests). */
 		__spatial?: {
 			ready: boolean;

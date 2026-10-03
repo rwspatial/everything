@@ -11,6 +11,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@mapbox/maki": "8.2.0",
+    "d3": "7.9.0",
     "maplibre-gl": "6.11.2"
   },
   "devDependencies": {
@@ -19,6 +21,7 @@
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.70.3",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/d3": "7.4.3",
     "@types/node": "24.19.0",
     "json-schema-to-typescript": "16.0.0",
     "svelte": "5.57.1",

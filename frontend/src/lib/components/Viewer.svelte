@@ -6,6 +6,8 @@
 	import '$lib/maplibre';
 	import { fragmentsFor, isProjectId, opacityPaint, sourceIdFor, toMapLibre } from '$lib/adapters';
 	import { addOverlays, provideBadge } from '$lib/overlays';
+	import ChartsPanel from '$lib/charts/ChartsPanel.svelte';
+	import { loadIcons, providePoiIcon } from '$lib/icons';
 	import type { AdapterContext } from '$lib/adapters';
 	import { basemaps, DEFAULT_BASEMAP, resolveBasemap } from '$lib/basemaps';
 	import type { AppConfig } from '$lib/config';
@@ -70,6 +72,19 @@
 
 	/** Hover popups (the layer's popup template following the mouse). Off for now: they covered the map. */
 	const SHOW_HOVER_POPUPS = false;
+	let chartsOpen = $state(false);
+	let mapReady = $state(false);
+	/** Latest PDF report of this project, if one has been generated (admins make them; anyone can read them). */
+	let reportUrl = $state('');
+	$effect(() => {
+		if (embedded) return;
+		fetch(`/api/projects/${manifest.slug}/reports`)
+			.then((r) => (r.ok ? r.json() : []))
+			.then((list: { url: string }[]) => (reportUrl = list[0]?.url ?? ''))
+			.catch(() => undefined);
+	});
+	let moveTick = $state(0);
+	const hasCharts = $derived(!embedded && (manifest.charts?.length ?? 0) > 0);
 	let layers = $state<LayerState[]>(initialLayers());
 	let selected = $state<InspectedFeature[]>([]);
 	let cursor = $state<[number, number] | null>(null);
@@ -145,6 +160,7 @@
 	onMount(() => {
 		let disposed = false;
 		(async () => {
+			const iconsReady = loadIcons().catch((e) => console.warn('POI icons failed to load', e));
 			const bm = await resolveBasemap(basemapKey);
 			if (disposed) return;
 			basemapKey = bm.key;
@@ -167,10 +183,19 @@
 				: null;
 			// Global overlays (route badges) go on top of every style, including after a basemap switch.
 			map.on('style.load', () => addOverlays(map!, config.tilesBase));
-			map.on('styleimagemissing', (e) => provideBadge(map!, e.id));
-			map.on('load', () => {
+			// Route badges and POI icons are drawn on demand (MapLibre awaits the resolver before calling them missing).
+			map.setMissingStyleImageResolver(async (id) => {
+				await iconsReady;
+				if (!map) return;
+				provideBadge(map, id);
+				providePoiIcon(map, id);
+			});
+			map.on('load', async () => {
+				await iconsReady; // POI icons are drawn synchronously on demand, so the pictograms must be ready first
+				if (disposed) return;
 				addProjectLayers();
 				hook.ready = true;
+				mapReady = true;
 				window.__spatial = hook;
 			});
 			map.on('dataloading', () => {
@@ -182,6 +207,7 @@
 				hook.idle = hook.ready;
 			});
 			map.on('moveend', () => {
+				moveTick++;
 				zoom = map!.getZoom();
 				syncUrl();
 			});
@@ -320,6 +346,25 @@
 		syncUrl();
 	}
 
+	/** Outline the features behind a hovered chart mark on that chart's layer (a MapLibre filter; null clears). */
+	function highlight(layerId: string | undefined, filter: unknown[] | null) {
+		if (!map) return;
+		for (const id of ['o:hl-line', 'o:hl-circle']) if (map.getLayer(id)) map.removeLayer(id);
+		const ls = layerId ? layers.find((l) => l.spec.id === layerId) : undefined;
+		if (!filter || !ls || !ls.visible || ls.spec.source.type !== 'tipg-vector') return;
+		const source = sourceIdFor(ls.spec.id);
+		if (!map.getSource(source)) return;
+		const common = { source, 'source-layer': 'default', filter: filter as never };
+		map.addLayer({ id: 'o:hl-line', type: 'line', ...common, paint: { 'line-color': '#111', 'line-width': 2.5 } });
+		map.addLayer({
+			id: 'o:hl-circle',
+			type: 'circle',
+			...common,
+			filter: ['all', ['==', ['geometry-type'], 'Point'], filter] as never,
+			paint: { 'circle-radius': 7, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#111', 'circle-stroke-width': 2.5 }
+		});
+	}
+
 	function resetView() {
 		if (!map) return;
 		if (manifest.view.bounds) map.fitBounds(manifest.view.bounds, { padding: 24 });
@@ -378,6 +423,8 @@
 		</label>
 		<button onclick={resetView}>Reset view</button>
 		{#if !embedded}<button onclick={copyLink} aria-live="polite">{copied ? 'Link copied' : 'Copy link'}</button>{/if}
+		{#if hasCharts}<button aria-expanded={chartsOpen} onclick={() => (chartsOpen = !chartsOpen)}>Charts</button>{/if}
+		{#if reportUrl}<a class="report-link" href={reportUrl} target="_blank" rel="noopener">Report (PDF)</a>{/if}
 		<button class="panel-toggle" aria-expanded={panelOpen} aria-controls="layer-panel" onclick={() => (panelOpen = !panelOpen)}>
 			Layers
 		</button>
@@ -401,6 +448,22 @@
 	<main class="map-wrap">
 		<div class="map" bind:this={container} role="region" aria-label="Map: {manifest.title}"></div>
 		{#if busy}<div class="loadbar" aria-hidden="true"></div>{/if}
+		{#if chartsOpen && hasCharts && mapReady}
+			<ChartsPanel
+				slug={manifest.slug}
+				charts={manifest.charts ?? []}
+				bounds={() => {
+					const b = map?.getBounds();
+					return b ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] : null;
+				}}
+				{moveTick}
+				onhighlight={highlight}
+				onclose={() => {
+					highlight(undefined, null);
+					chartsOpen = false;
+				}}
+			/>
+		{/if}
 		{#if basemapFallback}
 			<p class="notice" role="status">Basemap unreachable (offline?). Showing a plain background; project data is unaffected.</p>
 		{/if}
@@ -477,6 +540,7 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.statusbar .err { color: #8a1c14; font-weight: 600; }
+	.report-link { font-size: 0.85rem; padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit; background: var(--surface); }
 	.load { display: inline-flex; align-items: center; gap: 0.4rem; }
 	.load.busy { background: var(--accent); color: #fff; font-weight: 600; padding: 0.05rem 0.6rem 0.05rem 0.45rem; border-radius: 999px; }
 	.spinner { width: 0.8rem; height: 0.8rem; border: 2px solid rgb(255 255 255 / 0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }

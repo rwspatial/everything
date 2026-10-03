@@ -284,5 +284,47 @@
       "attribution": "FCC Broadband Data Collection (December 2025), via Esri PolicyMap",
       "visible": false
     }
+  ],
+  "charts": [
+    {
+      "id": "locations",
+      "title": "Broadband service (FCC BDC)",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_broadband__blockgroups",
+        "stats": [
+          {
+            "label": "Locations",
+            "value": "locations",
+            "agg": "sum",
+            "format": "count"
+          },
+          {
+            "label": "Served",
+            "value": "served",
+            "agg": "sum",
+            "format": "count"
+          },
+          {
+            "label": "Unserved",
+            "value": "unserved",
+            "agg": "sum",
+            "format": "count"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unserved-spread",
+      "title": "Block groups by share of locations unserved",
+      "type": "histogram",
+      "layer": "bg-not-served",
+      "format": "percent",
+      "data": {
+        "collection": "pub.maine_broadband__blockgroups",
+        "value": "pct_unserved",
+        "bins": 10
+      }
+    }
   ]
 }

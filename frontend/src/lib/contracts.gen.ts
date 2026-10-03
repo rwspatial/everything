@@ -55,6 +55,16 @@ export type StyleFragment = MapLibreStyleFragment;
  * via the `definition` "LegendSpec".
  */
 export type LegendSpec = CategoricalLegend | GradientLegend | SingleLegend | NoLegend;
+/**
+ * This interface was referenced by `ProjectManifest`'s JSON-Schema
+ * via the `definition` "ChartFormat".
+ */
+export type ChartFormat = 'number' | 'count' | 'currency' | 'percent' | 'acres' | 'sqmi' | 'years' | 'mw';
+/**
+ * This interface was referenced by `ProjectManifest`'s JSON-Schema
+ * via the `definition` "ChartAgg".
+ */
+export type ChartAgg = 'count' | 'sum' | 'avg' | 'median' | 'min' | 'max';
 
 /**
  * One map project (plan §2.1). Source of truth for the TypeScript types (frontend/src/lib/contracts.gen.ts) and for validation in mapgen and core-api (contracts/validate.py).
@@ -72,6 +82,10 @@ export interface ProjectManifest {
 	 * Free-text to-do notes for placeholder projects, shown on the hub and in the viewer.
 	 */
 	notes?: string[];
+	/**
+	 * D3 charts computed on the fly from the project's published data (GET /api/projects/{slug}/charts/{id}), shown in the viewer's Charts panel and in PDF reports.
+	 */
+	charts?: ChartSpec[];
 }
 /**
  * This interface was referenced by `ProjectManifest`'s JSON-Schema
@@ -266,4 +280,49 @@ export interface ParamControl {
 	min: number;
 	max: number;
 	step?: number;
+}
+/**
+ * One chart: an aggregate of a pub view computed by core-api (never free SQL). bar/donut: `category` with `agg` of `value` (count needs no value); histogram: bins of `value`; scatter: `x` against `y`; stats: a row of headline numbers.
+ *
+ * This interface was referenced by `ProjectManifest`'s JSON-Schema
+ * via the `definition` "ChartSpec".
+ */
+export interface ChartSpec {
+	id: string;
+	title: string;
+	description?: string;
+	type: 'bar' | 'donut' | 'histogram' | 'scatter' | 'stats';
+	/**
+	 * Id of the map layer showing this data: hovering a mark highlights its features there.
+	 */
+	layer?: string;
+	/**
+	 * Initial scope: the whole layer (all) or the features in the map view (view). The viewer can switch.
+	 */
+	scope?: 'all' | 'view';
+	format?: ChartFormat;
+	data: {
+		collection: Collection;
+		category?: string;
+		value?: string;
+		agg?: ChartAgg;
+		x?: string;
+		y?: string;
+		label?: string;
+		bins?: number;
+		limit?: number;
+		/**
+		 * Only features intersecting one place (a row of a pub.units__* view), e.g. the town of a map design.
+		 */
+		within?: {
+			unit: string;
+			place: string;
+		};
+		stats?: {
+			label: string;
+			value?: string;
+			agg: ChartAgg;
+			format?: ChartFormat;
+		}[];
+	};
 }

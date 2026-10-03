@@ -2,18 +2,29 @@
   "id": "neighbourhood-demographics",
   "title": "Neighbourhood demographics",
   "description": "The tract or block group and its neighbours shaded by median household income and by poverty rate (ACS 2024 5-year), with roads.",
-  "geographies": ["tract", "blockgroup"],
+  "geographies": [
+    "tract",
+    "blockgroup"
+  ],
   "basemap": "positron",
   "padding": 0.6,
   "projectTitle": "{short_name}, {county_name} County: demographics",
   "projectDescription": "{name} and its neighbours: median household income and poverty rate (ACS 2024 5-year estimates), with roads.",
-  "tags": ["maine", "demographics", "acs"],
+  "tags": [
+    "maine",
+    "demographics",
+    "acs"
+  ],
   "layers": [
-    { "ref": { "tract": "maine-overview/tracts-poverty", "blockgroup": "maine-overview/bg-poverty" }, "visible": false, "opacity": 0.85 },
-    { "ref": { "tract": "maine-overview/tracts-income", "blockgroup": "maine-overview/bg-income" }, "visible": true, "opacity": 0.85 },
-    { "ref": "maine-infrastructure/roads-local", "visible": true },
-    { "ref": "maine-infrastructure/roads-secondary", "visible": true },
-    { "ref": "maine-infrastructure/roads-primary", "visible": true },
-    { "focus": true }
+    { "ref": { "tract": "maine-overview/tracts-poverty", "blockgroup": "maine-overview/bg-poverty" }, "visible": false, "opacity": 0.85},
+    { "ref": { "tract": "maine-overview/tracts-income", "blockgroup": "maine-overview/bg-income" }, "visible": true, "opacity": 0.85},
+    { "ref": "maine-infrastructure/roads-local", "visible": true},
+    { "ref": "maine-infrastructure/roads-secondary", "visible": true},
+    { "ref": "maine-infrastructure/roads-primary", "visible": true},
+    { "focus": true}
+  ],
+  "charts": [
+    {"id": "income-poverty", "title": "{county_name} County tracts: income against poverty", "type": "scatter", "format": "currency", "data": {"collection": "pub.maine_overview__tracts", "x": "median_hh_income", "y": "poverty_pct", "label": "name", "within": "county"}},
+    {"id": "income-spread", "title": "{county_name} County tracts by median household income", "type": "histogram", "format": "currency", "data": {"collection": "pub.maine_overview__tracts", "value": "median_hh_income", "bins": 10, "within": "county"}}
   ]
 }

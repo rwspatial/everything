@@ -172,12 +172,26 @@
         "kind": "maplibre",
         "layers": [
           {
-            "type": "circle",
-            "paint": {
-              "circle-color": "#5e3c99",
-              "circle-radius": 4,
-              "circle-stroke-color": "#fff",
-              "circle-stroke-width": 1
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:windmill:5e3c99",
+              "icon-size": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                6,
+                0.45,
+                10,
+                0.65,
+                14,
+                0.9
+              ],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
             }
           }
         ]

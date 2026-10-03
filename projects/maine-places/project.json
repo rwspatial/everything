@@ -20,6 +20,81 @@
   },
   "layers": [
     {
+      "id": "settlements",
+      "title": "Settlements (built-up areas)",
+      "group": "Built environment",
+      "minzoom": 7,
+      "maxzoom": 13,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_places__settlements",
+        "properties": [
+          "town",
+          "county",
+          "buildings",
+          "acres",
+          "size_class"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#f2a93b",
+              "fill-opacity": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                0.8,
+                12,
+                0.5
+              ]
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#c47f12",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                7,
+                0.3,
+                12,
+                1
+              ],
+              "line-opacity": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#f2a93b",
+        "label": "Built-up area (clustered buildings)"
+      },
+      "interaction": {
+        "popup": {
+          "template": "{size_class}, {town}: {buildings} buildings on {acres} acres"
+        },
+        "inspect": true
+      },
+      "attribution": "Built-up areas derived from Overture Maps buildings (DBSCAN 58 m; at least 10 buildings)",
+      "visible": true
+    },
+    {
       "id": "buildings",
       "title": "Buildings",
       "group": "Built environment",
@@ -228,6 +303,60 @@
         "inspect": true
       },
       "attribution": "Overture Maps Foundation"
+    }
+  ],
+  "charts": [
+    {
+      "id": "settlements-glance",
+      "title": "Settlements",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_places__settlements",
+        "stats": [
+          {
+            "label": "Built-up areas",
+            "agg": "count",
+            "format": "count"
+          },
+          {
+            "label": "Buildings in them",
+            "value": "buildings",
+            "agg": "sum",
+            "format": "count"
+          },
+          {
+            "label": "Land they cover",
+            "value": "acres",
+            "agg": "sum",
+            "format": "acres"
+          }
+        ]
+      }
+    },
+    {
+      "id": "settlements-by-size",
+      "title": "Settlements by size",
+      "type": "donut",
+      "layer": "settlements",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_places__settlements",
+        "category": "size_class"
+      }
+    },
+    {
+      "id": "largest-settlements",
+      "title": "Buildings in built-up areas, by town",
+      "type": "bar",
+      "layer": "settlements",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_places__settlements",
+        "category": "town",
+        "value": "buildings",
+        "agg": "sum",
+        "limit": 12
+      }
     }
   ]
 }
