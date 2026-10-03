@@ -7,6 +7,7 @@ tipg_collection  tiPG answers for the collection and returns data (items for vie
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import urllib.error
 import urllib.request
@@ -89,6 +90,8 @@ def check_tipg_collection(conn, locator: str) -> tuple[str, str]:
 
 
 COG_ROOT = Path("/work/data/cog")
+# What titiler reads: the same files at /data/cog, or their S3 copy (COG_ROOT=s3://..., compose.s3.yaml).
+TITILER_COG_ROOT = os.environ.get("COG_ROOT", "/data/cog").rstrip("/")
 TITILER = "http://titiler:8000"
 
 
@@ -121,10 +124,10 @@ def check_tile_url(conn, locator: str) -> tuple[str, str]:
         return "unknown", "no COG footprint recorded"
     lon, lat = row
     x, y = _tile_xy(lon, lat, 7)
-    status, body = _get(f"{TITILER}/cog/tiles/WebMercatorQuad/7/{x}/{y}.png?url=/data/cog/{name}.tif")
+    status, body = _get(f"{TITILER}/cog/tiles/WebMercatorQuad/7/{x}/{y}.png?url={TITILER_COG_ROOT}/{name}.tif")
     if status != 200 or not body.startswith(b"\x89PNG"):
         return "fail", f"titiler tile returned HTTP {status}"
-    status, body = _get(f"{TITILER}/cog/point/{lon:.5f},{lat:.5f}?url=/data/cog/{name}.tif")
+    status, body = _get(f"{TITILER}/cog/point/{lon:.5f},{lat:.5f}?url={TITILER_COG_ROOT}/{name}.tif")
     value = json.loads(body).get("values", [None])[0] if status == 200 else None
     return "ok", f"titiler tile z7 served; value at centre {value if value is None else round(value, 2)}"
 

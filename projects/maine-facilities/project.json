@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-facilities",
   "title": "Maine Critical Facilities",
-  "status": "draft",
+  "status": "ready",
   "description": "Hospitals, care facilities, fire and EMS stations, law enforcement, emergency shelters, schools, colleges and cell towers across Maine, from the final HIFLD Open snapshot (DHS retired HIFLD Open in August 2025; the archive is not updated).",
   "tags": [
     "maine",

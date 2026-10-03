@@ -1,0 +1,115 @@
+# Production proxy (compose.prod.yaml). Two listeners, one set of routes:
+#
+#   {$SITE_ADDRESS}  the public site, e.g. maps.example.org (automatic HTTPS from Let's Encrypt) or :80 for a local
+#                    test. Only published maps (status `ready`) exist here: every request carries X-Public-Site: 1
+#                    (set here, overwriting any client value) and core-api filters on it. /admin and /api/admin are
+#                    not served at all. config.json switches the frontend to public mode (no Admin link, no /new).
+#   :8081            the admin listener, published on the server's 127.0.0.1 only: reach it through an SSH tunnel
+#                    (ssh -L 8081:127.0.0.1:8081 server) at http://localhost:8081. Full site + admin (core-api login).
+{
+	admin off
+	email {$ACME_EMAIL}
+	servers {
+		# Real client addresses in the logs when CloudFront or an ALB sits in front later.
+		trusted_proxies static private_ranges
+	}
+}
+
+(shared) {
+	encode zstd gzip
+
+	# OGC API Features + Tiles. tiPG sets Cache-Control (TIPG_CACHECONTROL in compose.prod.yaml).
+	handle_path /tiles/* {
+		reverse_proxy tipg:8000
+	}
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# Raster tiles for COGs in data/cog/ (named rasters only; see services/proxy/Caddyfile for the rules).
+	handle_path /raster/* {
+		header Cache-Control "public, max-age=86400"
+		@tile path_regexp tile ^/([a-z0-9_/-]+)/(\d+)/(\d+)/(\d+)\.png$
+		handle @tile {
+			rewrite * /cog/tiles/WebMercatorQuad/{re.tile.2}/{re.tile.3}/{re.tile.4}.png?{query}
+			uri query url {$COG_ROOT:/data/cog}/{re.tile.1}.tif
+			reverse_proxy titiler:8000
+		}
+		@point path_regexp point ^/([a-z0-9_/-]+)/point/(-?[0-9.]+),(-?[0-9.]+)$
+		handle @point {
+			rewrite * /cog/point/{re.point.2},{re.point.3}?{query}
+			uri query url {$COG_ROOT:/data/cog}/{re.point.1}.tif
+			reverse_proxy titiler:8000
+		}
+		@info path_regexp info ^/([a-z0-9_/-]+)/info$
+		handle @info {
+			rewrite * /cog/info
+			uri query url {$COG_ROOT:/data/cog}/{re.info.1}.tif
+			reverse_proxy titiler:8000
+		}
+		respond 404
+	}
+
+	# Project registry, public reads only (hub, viewer, charts, reports).
+	@projects_read {
+		path /api/projects /api/projects/*
+		method GET HEAD
+	}
+	handle @projects_read {
+		reverse_proxy core-api:8000
+	}
+	handle /api/projects* {
+		respond "method not allowed" 405
+	}
+}
+
+{$SITE_ADDRESS::80} {
+	request_header X-Public-Site 1
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options SAMEORIGIN
+		Permissions-Policy "geolocation=(), camera=(), microphone=()"
+		-Server
+	}
+
+	# The admin dashboard, its API and the raw manifest files (drafts included) do not exist on the public site.
+	# Analysis results (pub.analysis_sandbox__job_*) are working data for admins, not part of the public Data API.
+	@hidden path /admin /admin/* /api/admin/* /projects/* /tiles/collections/pub.analysis_sandbox__*
+	handle @hidden {
+		respond "Not found" 404
+	}
+
+	handle /config.json {
+		header Content-Type application/json
+		header Cache-Control "no-cache"
+		respond `{"tilesBase": "/tiles", "projectsBase": "/projects", "publicMode": true}` 200
+	}
+
+	import shared
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+:8081 {
+	request_header -X-Public-Site
+
+	@admin path /admin /admin/* /api/admin/*
+	forward_auth @admin core-api:8000 {
+		uri /api/admin/auth
+	}
+	header @admin Cache-Control "no-store"
+	handle /api/admin/* {
+		reverse_proxy core-api:8000
+	}
+
+	# Drafts are visible here, from the database (the manifest files are not served in production).
+	import shared
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}

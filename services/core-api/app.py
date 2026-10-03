@@ -45,6 +45,8 @@ projects_pool = ConnectionPool(os.environ["PROJECTS_DATABASE_URL"], min_size=1, 
                                kwargs={"row_factory": dict_row, "autocommit": True,
                                        "options": "-c statement_timeout=10000"})  # field stats scan views
 TITILER = os.environ.get("TITILER_URL", "http://titiler:8000")
+# Where titiler reads the COGs: data/cog mounted at /data/cog, or s3://<bucket>/<prefix> (compose.s3.yaml).
+COG_ROOT = os.environ.get("COG_ROOT", "/data/cog").rstrip("/")
 MAX_MANIFEST_BYTES = 1_000_000
 
 
@@ -433,7 +435,7 @@ def _cog_exists(name: str) -> bool:
     if not COG.match(name):
         return False
     try:
-        with urllib.request.urlopen(f"{TITILER}/cog/info?url=/data/cog/{name}.tif", timeout=10) as r:
+        with urllib.request.urlopen(f"{TITILER}/cog/info?url={COG_ROOT}/{name}.tif", timeout=10) as r:
             return r.status == 200
     except (urllib.error.URLError, TimeoutError):
         return False
@@ -451,20 +453,36 @@ def _summary(p: dict) -> dict:
     }
 
 
+# ---- public site: only published projects -----------------------------------------------------------------
+# In production the public listener of the proxy stamps every request with `X-Public-Site: 1` (overwriting anything
+# a client sends); the admin-only listener (localhost, SSH tunnel) strips it. On the public site only projects with
+# status `ready` exist: the hub, the viewer, charts and reports all 404 for drafts and stubs.
+
+def _public(request: Request) -> bool:
+    return request.headers.get("x-public-site") == "1"
+
+
+def _project_visible(conn, request: Request, slug: str) -> bool:
+    sql_ = "SELECT 1 FROM app.projects WHERE slug = %s" + (" AND status = 'ready'" if _public(request) else "")
+    return conn.execute(sql_, (slug,)).fetchone() is not None
+
+
 @app.get("/api/projects")
-def list_projects(response: Response) -> dict:
+def list_projects(request: Request, response: Response) -> dict:
     with projects_pool.connection() as conn:
-        ps = conn.execute("SELECT slug, manifest::text AS manifest, version, updated_at, validation "
-                          "FROM app.projects ORDER BY position, slug").fetchall()
+        ps = conn.execute("SELECT slug, manifest::text AS manifest, version, updated_at, validation FROM app.projects "
+                          + ("WHERE status = 'ready' " if _public(request) else "")
+                          + "ORDER BY position, slug").fetchall()
     response.headers["Cache-Control"] = "no-cache"
     return {"projects": [_summary(p) for p in ps]}
 
 
 @app.get("/api/projects/{slug}")
-def get_project(slug: str) -> Response:
+def get_project(slug: str, request: Request) -> Response:
     """The manifest exactly as stored (json keeps key order), for the viewer and `mapgen export`."""
     with projects_pool.connection() as conn:
-        p = conn.execute("SELECT manifest::text AS manifest FROM app.projects WHERE slug = %s", (slug,)).fetchone()
+        p = conn.execute("SELECT manifest::text AS manifest FROM app.projects WHERE slug = %s"
+                         + (" AND status = 'ready'" if _public(request) else ""), (slug,)).fetchone()
     if not p:
         raise HTTPException(404, f"no project {slug}")
     return Response(p["manifest"], media_type="application/json", headers={"Cache-Control": "no-cache"})
@@ -716,7 +734,7 @@ def _chart_data(conn, chart: dict, bbox: list[float] | None) -> dict:
 
 
 @app.get("/api/projects/{slug}/charts/{chart_id}")
-def project_chart(slug: str, chart_id: str, bbox: str | None = None) -> dict:
+def project_chart(slug: str, chart_id: str, request: Request, bbox: str | None = None) -> dict:
     """Data for one of a project's charts; `bbox=w,s,e,n` limits it to the map view."""
     box = None
     if bbox:
@@ -727,7 +745,8 @@ def project_chart(slug: str, chart_id: str, bbox: str | None = None) -> dict:
         if len(box) != 4 or not (-180 <= box[0] < box[2] <= 180 and -90 <= box[1] < box[3] <= 90):
             raise HTTPException(400, "bbox must be w,s,e,n in degrees")
     with projects_pool.connection() as conn:
-        p = conn.execute("SELECT manifest, version FROM app.projects WHERE slug = %s", (slug,)).fetchone()
+        p = conn.execute("SELECT manifest, version FROM app.projects WHERE slug = %s"
+                         + (" AND status = 'ready'" if _public(request) else ""), (slug,)).fetchone()
         if not p:
             raise HTTPException(404, f"no project {slug}")
         chart = next((c for c in p["manifest"].get("charts") or [] if c.get("id") == chart_id), None)
@@ -777,19 +796,23 @@ def queue_report(slug: str, request: Request, response: Response) -> dict:
 
 
 @app.get("/api/projects/{slug}/reports")
-def list_reports(slug: str) -> list[dict]:
+def list_reports(slug: str, request: Request) -> list[dict]:
     with projects_pool.connection() as conn:
+        if not _project_visible(conn, request, slug):
+            raise HTTPException(404, f"no project {slug}")
         return [_report_out(r) for r in conn.execute(
             f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s ORDER BY created_at DESC LIMIT 20", (slug,)).fetchall()]
 
 
 @app.get("/api/projects/{slug}/reports/{name}")
-def get_report(slug: str, name: str) -> FileResponse:
+def get_report(slug: str, name: str, request: Request) -> FileResponse:
     """`<id>.pdf`, or `latest.pdf` for the newest report of the project."""
     m = re.fullmatch(r"(\d+|latest)\.pdf", name)
     if not m:
         raise HTTPException(404, "not a report")
     with projects_pool.connection() as conn:
+        if not _project_visible(conn, request, slug):
+            raise HTTPException(404, f"no report {name} for {slug}")
         r = conn.execute(f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s"
                          + ("" if m[1] == "latest" else " AND id = %s") + " ORDER BY created_at DESC LIMIT 1",
                          (slug,) if m[1] == "latest" else (slug, int(m[1]))).fetchone()

@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-terrain",
   "title": "Maine Terrain",
-  "status": "draft",
+  "status": "ready",
   "description": "Elevation, hillshade, slope and 100-foot contours for all of Maine, from the USGS 3D Elevation Program (30 m). Click the map for the elevation or slope at that spot.",
   "tags": [
     "maine",

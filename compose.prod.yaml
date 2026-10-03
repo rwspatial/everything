@@ -1,0 +1,31 @@
+# Production overlay: use INSTEAD of compose.dev.yaml, i.e. in the server's .env
+#   COMPOSE_FILE=compose.yaml:compose.prod.yaml
+# Without the dev overlay, PostGIS publishes no port, tiPG runs without debug and caches tiles for an hour
+# (TIPG_CACHECONTROL default "public, max-age=3600"), and the catalog TTL is the 300 s default.
+# Here: the public site on 80/443 with automatic HTTPS (Caddyfile.prod), only published maps visible, no admin;
+# the admin listener on the server's 127.0.0.1:8081 (SSH tunnel). See docs/setup/10-production.md.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+services:
+  proxy:
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile.prod", "--adapter", "caddyfile"]
+    ports: !override
+      - "${PUBLIC_HTTP_BIND:-80}:80"
+      - "${PUBLIC_HTTPS_BIND:-443}:443"
+      - "127.0.0.1:${ADMIN_PORT:-8081}:8081"
+    volumes: !override
+      - ./services/proxy:/etc/caddy:ro
+      - caddy_data:/data          # TLS certificates: keep this volume
+      - caddy_config:/config
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}   # set a real address before using a domain (Let's Encrypt notices)
+    logging: *logging
+
+  postgis: { logging: *logging }
+  tipg: { logging: *logging }
+  titiler: { logging: *logging }
+  core-api: { logging: *logging }
+  frontend: { logging: *logging }

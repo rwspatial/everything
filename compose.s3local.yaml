@@ -1,0 +1,38 @@
+# Local S3 stand-in for compose.s3.yaml (never on a server): SeaweedFS with its S3 gateway, and titiler/cog-sync
+# pointed at it. (MinIO no longer publishes free container images.)
+#   COMPOSE_FILE=compose.yaml:compose.dev.yaml:compose.s3.yaml:compose.s3local.yaml
+# Without configured identities the gateway accepts any credentials, which is fine for a local test.
+services:
+  s3local:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_TAG:-4.48}
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-ip.bind=0.0.0.0", "-volume.max=0", "-master.volumeSizeLimitMB=1024"]
+    volumes:
+      - s3local_data:/data
+    networks: [api]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9333/cluster/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  titiler:
+    environment:
+      AWS_S3_ENDPOINT: s3local:8333
+      AWS_HTTPS: "NO"
+      AWS_VIRTUAL_HOSTING: "FALSE"
+    depends_on:
+      s3local:
+        condition: service_healthy
+
+  cog-sync:
+    environment:
+      S3_ENDPOINT_URL: http://s3local:8333
+
+  backup-upload:
+    environment:
+      S3_ENDPOINT_URL: http://s3local:8333
+
+volumes:
+  s3local_data:

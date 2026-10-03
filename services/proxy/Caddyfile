@@ -5,6 +5,8 @@
 }
 
 :80 {
+	# The public-site marker is set only by the production proxy (Caddyfile.prod); never trust it from a client.
+	request_header -X-Public-Site
 	encode zstd gzip
 
 	# OGC API Features + Tiles. Prefix is stripped; tiPG knows it via TIPG_ROOT_PATH.
@@ -27,7 +29,8 @@
 		respond "ok" 200
 	}
 
-	# Raster tiles (titiler) for COGs in data/cog/. Named rasters only: the file path is built here from the
+	# Raster tiles (titiler) for COGs in data/cog/, or in S3 when COG_ROOT=s3://<bucket>/<prefix> (compose.s3.yaml).
+	# Named rasters only: the file path is built here from the
 	# URL path and any client-supplied `url` parameter is replaced, so titiler can only read data/cog/*.tif.
 	# Names: lowercase letters, digits, _ - / (no dots, so no path traversal).
 	#   /raster/<name>/{z}/{x}/{y}.png?rescale=0,1600&colormap_name=terrain   map tiles (WebMercatorQuad)
@@ -37,19 +40,19 @@
 		@tile path_regexp tile ^/([a-z0-9_/-]+)/(\d+)/(\d+)/(\d+)\.png$
 		handle @tile {
 			rewrite * /cog/tiles/WebMercatorQuad/{re.tile.2}/{re.tile.3}/{re.tile.4}.png?{query}
-			uri query url /data/cog/{re.tile.1}.tif
+			uri query url {$COG_ROOT:/data/cog}/{re.tile.1}.tif
 			reverse_proxy titiler:8000
 		}
 		@point path_regexp point ^/([a-z0-9_/-]+)/point/(-?[0-9.]+),(-?[0-9.]+)$
 		handle @point {
 			rewrite * /cog/point/{re.point.2},{re.point.3}?{query}
-			uri query url /data/cog/{re.point.1}.tif
+			uri query url {$COG_ROOT:/data/cog}/{re.point.1}.tif
 			reverse_proxy titiler:8000
 		}
 		@info path_regexp info ^/([a-z0-9_/-]+)/info$
 		handle @info {
 			rewrite * /cog/info
-			uri query url /data/cog/{re.info.1}.tif
+			uri query url {$COG_ROOT:/data/cog}/{re.info.1}.tif
 			reverse_proxy titiler:8000
 		}
 		respond 404

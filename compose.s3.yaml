@@ -1,0 +1,80 @@
+# COGs served from S3 (plan: spatial-app-architecture §5.2). Add to COMPOSE_FILE after the dev or prod overlay:
+#   COMPOSE_FILE=compose.yaml:compose.prod.yaml:compose.s3.yaml              (AWS S3; on EC2 prefer an instance role)
+#   COMPOSE_FILE=compose.yaml:compose.dev.yaml:compose.s3.yaml:compose.s3local.yaml  (local test against SeaweedFS)
+# Also: `make backup-offsite` uploads database dumps to s3://$BACKUP_S3_BUCKET/backups/ (expired after
+# BACKUP_KEEP_DAYS by a bucket lifecycle rule).
+# Imports keep writing COGs to data/cog; `make cog-sync` mirrors them to s3://$COG_S3_BUCKET/$COG_S3_PREFIX, and
+# titiler reads from there (COG_ROOT). Health checks and core-api ask titiler, so they test the S3 copy.
+x-cog-root: &cog_root s3://${COG_S3_BUCKET:-spatial-cog}/${COG_S3_PREFIX:-cog}
+
+services:
+  proxy:
+    environment:
+      COG_ROOT: *cog_root
+  core-api:
+    environment:
+      COG_ROOT: *cog_root
+  dataset-worker:
+    environment:
+      COG_ROOT: *cog_root
+
+  titiler:
+    environment:
+      AWS_REGION: ${COG_S3_REGION:-us-east-1}
+      # Empty keys = GDAL's other credential sources (on EC2: the instance role).
+      AWS_ACCESS_KEY_ID: ${COG_S3_ACCESS_KEY:-}
+      AWS_SECRET_ACCESS_KEY: ${COG_S3_SECRET_KEY:-}
+      AWS_NO_SIGN_REQUEST: "NO"
+    networks: [api, egress]   # S3 is on the internet
+
+  # `make cog-sync`: mirror data/cog to the bucket (the official AWS CLI, so the same command works for AWS and MinIO).
+  cog-sync:
+    profiles: [tools]
+    image: amazon/aws-cli:${AWS_CLI_TAG:-2.27.50}
+    environment:
+      AWS_ACCESS_KEY_ID: ${COG_S3_ACCESS_KEY:-}
+      AWS_SECRET_ACCESS_KEY: ${COG_S3_SECRET_KEY:-}
+      AWS_DEFAULT_REGION: ${COG_S3_REGION:-us-east-1}
+      COG_S3_BUCKET: ${COG_S3_BUCKET:-spatial-cog}
+      COG_S3_PREFIX: ${COG_S3_PREFIX:-cog}
+      S3_ENDPOINT_URL: ${COG_S3_ENDPOINT_URL:-}
+    volumes:
+      - ./data/cog:/data/cog:ro
+    networks: [api, egress]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        ep=$${S3_ENDPOINT_URL:+--endpoint-url $$S3_ENDPOINT_URL}
+        aws $$ep s3api head-bucket --bucket "$$COG_S3_BUCKET" 2>/dev/null || aws $$ep s3 mb "s3://$$COG_S3_BUCKET"
+        aws $$ep s3 sync /data/cog "s3://$$COG_S3_BUCKET/$$COG_S3_PREFIX" --delete --no-progress \
+          --exclude ".versions/*" --exclude "*.tmp.tif" --exclude ".*" --exclude "*/.*"
+        echo "synced data/cog -> s3://$$COG_S3_BUCKET/$$COG_S3_PREFIX"
+
+  # `make backup-offsite`: upload the newest data/backups/*.dump to its own private bucket.
+  backup-upload:
+    profiles: [tools]
+    image: amazon/aws-cli:${AWS_CLI_TAG:-2.27.50}
+    environment:
+      AWS_ACCESS_KEY_ID: ${COG_S3_ACCESS_KEY:-}
+      AWS_SECRET_ACCESS_KEY: ${COG_S3_SECRET_KEY:-}
+      AWS_DEFAULT_REGION: ${COG_S3_REGION:-us-east-1}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-spatial-backups}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      S3_ENDPOINT_URL: ${COG_S3_ENDPOINT_URL:-}
+    volumes:
+      - ./data/backups:/backups:ro
+    networks: [api, egress]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        ep=$${S3_ENDPOINT_URL:+--endpoint-url $$S3_ENDPOINT_URL}
+        f=$$(ls -1t /backups/*.dump 2>/dev/null | head -1)
+        [ -n "$$f" ] || { echo "no dump in data/backups (run make backup)"; exit 1; }
+        aws $$ep s3api head-bucket --bucket "$$BACKUP_S3_BUCKET" 2>/dev/null || aws $$ep s3 mb "s3://$$BACKUP_S3_BUCKET"
+        aws $$ep s3api put-bucket-lifecycle-configuration --bucket "$$BACKUP_S3_BUCKET" --lifecycle-configuration \
+          "{\"Rules\": [{\"ID\": \"expire-backups\", \"Status\": \"Enabled\", \"Filter\": {\"Prefix\": \"backups/\"}, \"Expiration\": {\"Days\": $$BACKUP_KEEP_DAYS}}]}" \
+          || echo "note: this S3 server does not support lifecycle rules; old backups are not expired"
+        aws $$ep s3 cp "$$f" "s3://$$BACKUP_S3_BUCKET/backups/$$(basename "$$f")" --no-progress
+        echo "uploaded $$(basename "$$f") -> s3://$$BACKUP_S3_BUCKET/backups/"

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { site, title } from '$lib/site';
 
 	let { data } = $props();
@@ -58,7 +59,7 @@
 		{:else}
 			<p class="lede">Project maps are loading or unavailable right now.</p>
 		{/if}
-		<p><a href="/maps">All {data.total || ''} map projects, including experiments →</a></p>
+		<p><a href="/maps">{page.data.config?.publicMode ? `All ${data.total || ''} maps →` : `All ${data.total || ''} map projects, including experiments →`}</a></p>
 	</section>
 
 	<section class="band" aria-label="About, services and contact">

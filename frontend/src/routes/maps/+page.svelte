@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { title } from '$lib/site';
 
@@ -61,13 +62,15 @@
 				</div>
 			</li>
 		{/each}
-		<li class="card new">
-			<div class="body">
-				<h2><a href="/new">Create a project</a></h2>
-				<p class="desc">Register PostGIS views and a manifest. A guided creator arrives in Phase 3.</p>
-				<a class="open" href="/new">How to add one →</a>
-			</div>
-		</li>
+		{#if !page.data.config?.publicMode}
+			<li class="card new">
+				<div class="body">
+					<h2><a href="/new">Create a project</a></h2>
+					<p class="desc">Pick a design and a place, or build a map from a published view (admin).</p>
+					<a class="open" href="/new">How to add one →</a>
+				</div>
+			</li>
+		{/if}
 	</ul>
 </main>
 

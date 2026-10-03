@@ -95,6 +95,13 @@ def tipg_serves(collection: str) -> bool:
         return False
 
 
+def tipg_serves_everywhere(collection: str, tries: int = 12) -> bool:
+    """tiPG runs several processes (WEB_CONCURRENCY), each with its own catalog, refreshed in the background: the first
+    request after the TTL is still answered from the old catalog. So one 200 proves nothing about the others. Ask
+    repeatedly (the misses are what start each process's refresh) and accept only a run of answers that all know it."""
+    return all(tipg_serves(collection) for _ in range(tries))
+
+
 def layer_spec(job: dict, proc, collection: str, out: dict) -> dict:
     d = proc.descriptor
     title = out.get("title") or f"{d['title']} (job {job['id']})"
@@ -163,12 +170,11 @@ def run_job(conn, job: dict, proc) -> None:
         conn.execute("UPDATE app.jobs SET progress = 0.95, progress_message = 'publishing' WHERE id = %s", (jid,))
         collection = conn.execute("SELECT app.publish_job_layer(%s) AS c", (jid,)).fetchone()["c"]
         spec = layer_spec(job, proc, collection, out)
-        # Each tiPG process refreshes its catalog lazily, on its first request after TIPG_CATALOG_TTL. Once one TTL
-        # has passed since publishing, every process picks the view up on its next request, so wait that long
-        # (and until tiPG answers) before calling the layer served.
+        # Each tiPG process refreshes its catalog in the background, triggered by its first request after
+        # TIPG_CATALOG_TTL. Wait one TTL since publishing, then until every process answers for the view.
         published = time.monotonic()
         deadline = published + max(TIPG_WAIT, TIPG_TTL + 30)
-        while time.monotonic() < published + TIPG_TTL + 1 or not tipg_serves(collection):
+        while time.monotonic() < published + TIPG_TTL + 1 or not tipg_serves_everywhere(collection):
             if time.monotonic() > deadline:
                 raise RuntimeError(f"tiPG did not list {collection} within {TIPG_WAIT} s (TIPG_CATALOG_TTL?)")
             conn.execute("UPDATE app.jobs SET heartbeat_at = now(), progress_message = 'waiting for tiPG' WHERE id = %s", (jid,))

@@ -47,6 +47,29 @@ bootstrap: check-env ## First run: start, build geotools, import recipes, seed, 
 verify: check-env ## Run the automated Phase 1 checks
 	@bash scripts/verify.sh
 
+verify-prod: check-env ## Check a production-mode stack: public site has no admin/drafts (PUBLIC_URL=, ADMIN_URL=)
+	@set -a; . ./.env; set +a; bash scripts/verify_prod.sh
+
+prod-local: check-env ## Try production mode locally: public site on :8090, admin on :8081 (make dev-proxy to undo)
+	COMPOSE_FILE=compose.yaml:compose.prod.yaml PUBLIC_HTTP_BIND=127.0.0.1:8090 PUBLIC_HTTPS_BIND=127.0.0.1:8453 \
+		$(COMPOSE) up -d --force-recreate --no-deps proxy
+
+cog-sync: check-env ## Mirror data/cog to s3://$$COG_S3_BUCKET/$$COG_S3_PREFIX (needs compose.s3.yaml in COMPOSE_FILE)
+	@case "$${COMPOSE_FILE:-$$(grep -E '^COMPOSE_FILE=' .env | cut -d= -f2)}" in *compose.s3.yaml*) ;; \
+	  *) echo "add compose.s3.yaml to COMPOSE_FILE first (docs/setup/10-production.md)"; exit 2;; esac
+	$(COMPOSE) run --rm cog-sync
+
+backup-offsite: check-env ## make backup, then upload it to s3://$$BACKUP_S3_BUCKET/backups/ (needs compose.s3.yaml)
+	@case "$${COMPOSE_FILE:-$$(grep -E '^COMPOSE_FILE=' .env | cut -d= -f2)}" in *compose.s3.yaml*) ;; \
+	  *) echo "add compose.s3.yaml to COMPOSE_FILE first (docs/setup/10-production.md)"; exit 2;; esac
+	@$(OPS) backup
+	$(COMPOSE) run --rm backup-upload
+	@if [ "$${BACKUP_PRUNE_LOCAL:-$$(grep -E '^BACKUP_PRUNE_LOCAL=' .env | cut -d= -f2)}" = 1 ]; then \
+	  find data/backups -maxdepth 1 -name '*.dump' -mtime +7 -print -delete; fi
+
+dev-proxy: check-env ## Back to the dev proxy on :8080 after make prod-local
+	$(COMPOSE) up -d --force-recreate --no-deps proxy
+
 arch-check: ## Check docs/architecture.md still names every service, adapter and project
 	@bash scripts/check_architecture.sh
 

@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-overview",
   "title": "Maine Overview",
-  "status": "draft",
+  "status": "ready",
   "description": "Median household income, poverty and more for Maine towns, census tracts and counties (ACS 2020-2024 5-year estimates on TIGER/Line 2024 boundaries).",
   "tags": [
     "maine",

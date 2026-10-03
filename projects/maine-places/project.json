@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-places",
   "title": "Maine Places & Buildings",
-  "status": "draft",
+  "status": "ready",
   "description": "Points of interest and building footprints across Maine from Overture Maps (OpenStreetMap, Microsoft, Google, Meta and partner data). Zoom in for buildings.",
   "tags": [
     "maine",

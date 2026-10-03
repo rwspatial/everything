@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-transportation",
   "title": "Maine Transportation",
-  "status": "draft",
+  "status": "ready",
   "description": "MaineDOT's road network by functional class, posted speed limits and scenic byways; bridges and large culverts by condition; traffic signals and park-and-ride lots; railroads and grade crossings; and airports, seaplane bases and heliports (USGS National Transportation Dataset).",
   "tags": [
     "maine",

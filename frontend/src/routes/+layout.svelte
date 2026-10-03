@@ -18,7 +18,9 @@
 			<a href="/#work">Work</a>
 			<a href="/maps" aria-current={current('/maps')}>Maps</a>
 			<a href="/about" aria-current={current('/about')}>About &amp; contact</a>
-			<a href="/admin" aria-current={page.url.pathname.startsWith('/admin') ? 'page' : undefined}>Admin</a>
+			{#if !page.data.config?.publicMode}
+				<a href="/admin" aria-current={page.url.pathname.startsWith('/admin') ? 'page' : undefined}>Admin</a>
+			{/if}
 			<a href="/tiles/" rel="external">Data API</a>
 		</nav>
 	</header>
@@ -33,7 +35,7 @@
 		<span>© {new Date().getFullYear()} {site.person || site.studio} · {site.location}</span>
 		<nav aria-label="Developer">
 			<a href="/tiles/" rel="external">Data API</a>
-			<a href="/new" aria-current={current('/new')}>Add a project</a>
+			{#if !page.data.config?.publicMode}<a href="/new" aria-current={current('/new')}>Add a project</a>{/if}
 		</nav>
 	</footer>
 {/if}

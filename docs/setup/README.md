@@ -14,6 +14,7 @@ Every command here is a `make` target. `make help` prints the same list.
 | [07-projects.md](07-projects.md) | Creating projects: `./mapgen`, the `/admin/new` wizard, validation codes, the project registry | 3 |
 | [08-mcp.md](08-mcp.md) | MCP servers for Claude Code: the read-only spatial-db server, credentials, testing | 4 |
 | [09-ml-workers.md](09-ml-workers.md) | Analysis workers: R and Python processes, jobs, the /admin/analysis page, adding a process | 5 |
+| [10-production.md](10-production.md) | Production mode: public site with published maps only, admin over an SSH tunnel, first server, `prod` branch | 6 (start) |
 | [99-troubleshooting.md](99-troubleshooting.md) | Known problems and fixes | all |
 
 ## Five-minute version
