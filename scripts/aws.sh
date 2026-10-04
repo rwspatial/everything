@@ -5,6 +5,9 @@
 #   down      stop it (backup=1: upload a database backup to S3 first, ~10 minutes)
 #   deploy    up + update the server: src=git (default: pushed master) or src=local (this working tree, uncommitted
 #             changes included); data=1 also ships a fresh database backup and the COGs. Then the production checks.
+#   present   up + present mode (scripts/present.sh): the public site at a temporary https://….trycloudflare.com link,
+#             read-only, admin off; checked from outside before the link is printed. minutes=90 (then it powers off),
+#             password=1 (a viewer password), src=local|git (deploy first). make aws-down ends it.
 #   status    state, address, running since
 #   ssh       a shell on the server;  tunnel: the admin listener on http://localhost:8081
 set -euo pipefail
@@ -41,6 +44,41 @@ allow_my_ip() {  # keep the owner-only rules on the current public IP (never 0.0
   done
 }
 
+# From outside, through the public link: nothing can be changed, admin does not exist, only published maps.
+present_checks() {
+  local url=$1; shift
+  local auth=("$@") fail=0 c body
+  pass() { echo "  PASS $1"; }
+  bad() { echo "  FAIL $1"; fail=1; }
+  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/maps"); [[ $c == 200 ]] && pass "the site loads ($url/maps)" || bad "the site: HTTP $c"
+  if ((${#auth[@]})); then
+    c=$(curl -s -o /dev/null -w '%{http_code}' "$url/maps"); [[ $c == 401 ]] && pass "without the viewer password: refused" || bad "no password asked: HTTP $c"
+  fi
+  for m in POST PUT DELETE; do
+    c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" -X $m -H 'Content-Type: application/json' -d '{}' "$url/api/projects/maine-overview")
+    [[ $c == 405 || $c == 404 ]] && pass "$m /api/projects refused ($c)" || bad "$m /api/projects: HTTP $c"
+  done
+  # Admin paths must not exist: asked with the admin login (or, behind a viewer password, as the viewer).
+  local who=(-u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-x}")
+  ((${#auth[@]})) && who=("${auth[@]}")
+  for p in /admin /admin/projects /api/admin/datasets /api/admin/auth /projects/index.json; do
+    c=$(curl -s -o /dev/null -w '%{http_code}' "${who[@]}" "$url$p")
+    [[ $c == 404 ]] && pass "$p not served ($c)" || bad "$p: HTTP $c"
+  done
+  body=$(curl -s "${auth[@]}" -H 'X-Public-Site: 0' "$url/api/projects")
+  python3 -c 'import json,sys; d=json.loads(sys.argv[1])["projects"]; s={p["status"] for p in d}; sys.exit(0 if d and s=={"ready"} else 1)' "$body" \
+    && pass "only published maps listed (even with a forged X-Public-Site header)" || bad "unpublished maps are listed"
+  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections/pub.maine_coast__growing_areas")
+  [[ $c == 404 ]] && pass "draft data not in the Data API ($c)" || bad "draft collection served: HTTP $c"
+  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections/pub.maine_water__stream_gauges")
+  [[ $c == 200 ]] && pass "published data still served ($c)" || bad "published collection: HTTP $c"
+  body=$(curl -s "${auth[@]}" "$url/raster/maine/dem_30m/info?url=s3://$BACKUP_BUCKET/backups/x.dump")
+  grep -q '"bounds"' <<<"$body" && pass "raster tiles ignore a swapped file path" || bad "raster info: ${body:0:120}"
+  open=$(aws ec2 describe-security-groups --group-ids "$SG" --query "SecurityGroups[0].IpPermissions[].IpRanges[?CidrIp=='0.0.0.0/0'].CidrIp" --output text)
+  [[ -z $open ]] && pass "firewall: no port open to the internet" || bad "firewall has 0.0.0.0/0 rules"
+  return $fail
+}
+
 wait_site() {
   for _ in $(seq 1 60); do curl -s -o /dev/null --max-time 5 "http://$IP/healthz" && return 0; sleep 5; done
   echo "the site did not answer on http://$IP/" >&2; return 1
@@ -72,6 +110,7 @@ case "${1:-status}" in
     fi
     echo "server: build what changed, migrate, views, projects"
     "${SSH[@]}" "$R" 'set -e; cd /srv/everything
+      [ -f scripts/present.sh ] && bash scripts/present.sh off >/dev/null
       docker compose up -d --build --remove-orphans 2>&1 | grep -E "Built|Recreated|Error" || true
       docker compose run --rm migrator migrate 2>&1 | grep -E "Applying|Error" || true
       docker compose run --rm migrator seed 2>&1 | grep -iE "error" || true
@@ -104,6 +143,8 @@ case "${1:-status}" in
     fi
     echo "waiting for the site on http://$IP/ ..."
     wait_site || true
+    # A present session left on (or interrupted) is switched off: admin back, database writable, no tunnel.
+    [[ ${KEEP_PRESENT:-0} == 1 ]] || "${SSH[@]}" "ubuntu@$IP" 'cd /srv/everything && [ -f scripts/present.sh ] && bash scripts/present.sh off >/dev/null' || true
     curl -s -o /dev/null -w "site: HTTP %{http_code}\n" --max-time 10 "http://$IP/" || true
     echo
     echo "  site (your IP only):  http://$IP/"
@@ -122,6 +163,40 @@ case "${1:-status}" in
       aws ec2 wait instance-stopped --instance-ids "$IID"
     fi
     echo "stopped: only its disk is billed now"
+    ;;
+  present)
+    if [[ -n ${SRC:-} ]]; then DATA=0 "$0" deploy | tail -3; else "$0" up >/dev/null; fi
+    read_instance
+    R="ubuntu@$IP"
+    # The present-mode files go up with each session, so it works on whatever code the server has.
+    tar -C "$REPO" -czf - scripts/present.sh compose.present.yaml services/proxy/Caddyfile.prod \
+      | "${SSH[@]}" "$R" 'cd /srv/everything && tar -xzf -'
+    pw=""; auth=()
+    if [[ ${PASSWORD:-0} == 1 ]]; then
+      pw=$(python3 -c 'import secrets; print("".join(secrets.choice("abcdefghijkmnpqrstuvwxyz23456789") for _ in range(12)))')
+      auth=(-u "viewer:$pw")
+    fi
+    echo "present mode: read-only, admin off, tunnel starting ..."
+    url=$("${SSH[@]}" "$R" "cd /srv/everything && bash scripts/present.sh on ${MINUTES:-90} '$pw'" | sed -n 's/^URL=//p')
+    [[ -n $url ]] || { echo "present mode did not start; switching it off" >&2; "${SSH[@]}" "$R" 'cd /srv/everything && bash scripts/present.sh off' >/dev/null; exit 1; }
+    echo "checks (on the server, then from outside through $url):"
+    rc=0
+    "${SSH[@]}" "$R" 'cd /srv/everything && bash scripts/present.sh check' | sed 's/^/  /' || rc=1
+    for _ in $(seq 1 20); do curl -s -o /dev/null --max-time 5 "${auth[@]}" "$url/healthz" && break; sleep 3; done
+    (set -a; [[ -f $REPO/.env ]] && . "$REPO/.env"; set +a; present_checks "$url" "${auth[@]}") || rc=1
+    if [[ $rc != 0 ]]; then
+      echo "a check failed: the link is closed again (present mode off)." >&2
+      echo "if 'admin login refused' failed, the server runs older code: make aws-present src=local" >&2
+      "${SSH[@]}" "$R" 'cd /srv/everything && bash scripts/present.sh off' >/dev/null
+      exit 1
+    fi
+    echo
+    echo "  ┌ PRESENTING ─────────────────────────────────────────────────────────────"
+    echo "  │ link:      $url"
+    [[ -n $pw ]] && echo "  │ password:  user viewer, password $pw"
+    echo "  │ read-only: admin is off, nothing can be changed; only published maps"
+    echo "  │ ends:      make aws-down   (or by itself in ${MINUTES:-90} minutes, and at 1 AM)"
+    echo "  └─────────────────────────────────────────────────────────────────────────"
     ;;
   status)
     read_instance

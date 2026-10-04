@@ -99,6 +99,7 @@ starts, AWS gives it a new public IP, and the start command prints it. Only your
 | **Running, private** | The site is up in production mode: published maps only, no admin pages | `make aws-up` (≈ 1 min) | `http://<IP>/`, printed by the command; `make aws-status` shows it again | your home IP (74.75.120.122) only | ≈ $0.10/hour |
 | **Running + admin** | Same, plus the admin pages through an SSH tunnel | `make aws-tunnel` in a second terminal | `http://localhost:8081/admin` | you (SSH key + admin login) | same |
 | **Updated** | The server runs your latest code (and optionally data) | `make aws-deploy src=local` (≈ 40 s) or `src=git`; `data=1` adds database + COGs (≈ 15 min) | printed at the end | your home IP only | same |
+| **Presenting** | Anyone with the link can view the published maps; nothing can be changed | `make aws-present` (≈ 2 min; `password=1` adds a viewer password, `minutes=` sets the time limit, default 90) | `https://<words>.trycloudflare.com`, printed by the command; new each time | whoever has the link (and password) | same; the tunnel is free |
 | **Public** (not yet) | Anyone can open it, on a domain with HTTPS | needs a domain (see "Domain" below) and opening ports 80/443 to everyone | the domain | everyone | same + domain (≈ $15/year) |
 
 A normal session: `make aws-deploy src=local` → open the printed address → (`make aws-tunnel` for admin) →
@@ -111,6 +112,26 @@ A normal session: `make aws-deploy src=local` → open the printed address → (
 - **What runs there:** the published site, tiles, rasters from S3 and charts. Not there: imports, the R/Python analysis
   workers and the PDF reporter (they stay on the workstation), so PDFs are made locally.
 - **Credit:** costs come out of the AWS Free-plan credit ($100, until 2027-04-03).
+
+### Presenting (temporary public link)
+
+For an interview or a talk: `make aws-present` (after `make aws-deploy src=local` if the code or data changed), share
+the printed link, and `make aws-down` afterwards. What it does (`scripts/present.sh`, `compose.present.yaml`):
+
+- **A Cloudflare quick tunnel** (free, no account, no domain) connects *out* from the server to Cloudflare and gives a
+  random HTTPS address. The AWS firewall stays closed to everyone but you; the tunnel only reaches the public listener,
+  never the admin one.
+- **Read-only:** the admin login is switched off (even with the password, even through the SSH tunnel), the app's
+  database roles are set to read-only, and the workers are stopped.
+- **Published maps only:** the hub, the viewers and the Data API list only maps with status `ready` and the data
+  behind them; drafts stay private.
+- **Checked before you get the link:** writes are refused, admin pages do not exist, a forged header changes nothing,
+  raster tiles ignore a swapped file path, drafts are not served, no firewall port is open to the internet, the admin
+  login is refused and the database roles are read-only. If any check fails, the link is closed again.
+- **It ends by itself:** the server powers off after `minutes` (default 90), and at 1 AM in any case. `make aws-up`
+  or `make aws-deploy` switch present mode off (admin back, database writable).
+- **Not a secret:** anyone with the link can see the published maps and download their data through the Data API,
+  like any public map site. `password=1` adds a viewer password (user `viewer`) printed with the link.
 
 ### Domain (when the site goes public)
 

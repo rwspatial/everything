@@ -76,6 +76,9 @@ aws-deploy: ## Start and update the AWS server (src=local: this working tree; da
 aws-down: ## Stop the AWS server (backup=1: upload a database backup first)
 	@BACKUP=$(if $(backup),1,0) bash scripts/aws.sh down
 
+aws-present: ## Present the site: temporary public https link, read-only (minutes=90, password=1, src=local|git)
+	@MINUTES=$(or $(minutes),90) PASSWORD=$(if $(password),1,0) SRC=$(src) bash scripts/aws.sh present
+
 aws-status: ## Is the AWS server running? Its address
 	@bash scripts/aws.sh status
 

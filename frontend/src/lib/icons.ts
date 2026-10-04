@@ -42,7 +42,6 @@ const SVG: Record<string, string> = {
 	'windmill': i16,
 	'slipway': i17,
 };
-export const ICON_NAMES = Object.keys(SVG);
 
 const R = 2; // pixel ratio
 const SIZE = 26; // disc diameter + border, CSS px

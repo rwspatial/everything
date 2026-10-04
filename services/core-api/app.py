@@ -37,6 +37,9 @@ import validate as V  # noqa: E402  contracts/validate.py, shared with mapgen
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+# Present mode (make aws-present) sets ADMIN_LOGIN=off: no login succeeds, so nothing can be changed even through the
+# admin listener while the site is public.
+ADMIN_LOGIN_OFF = os.environ.get("ADMIN_LOGIN", "on").lower() == "off"
 REALM = 'Basic realm="Spatial admin", charset="UTF-8"'
 
 pool = ConnectionPool(os.environ["DATABASE_URL"], min_size=1, max_size=5, open=False,
@@ -66,6 +69,8 @@ app = FastAPI(title="Spatial admin API", lifespan=lifespan, docs_url=None, redoc
 # ---- auth ------------------------------------------------------------------------------------
 
 def _credentials_ok(request: Request) -> bool:
+    if ADMIN_LOGIN_OFF or not ADMIN_PASSWORD:  # an empty password never opens the admin
+        return False
     header = request.headers.get("authorization", "")
     if not header.lower().startswith("basic "):
         return False
@@ -1117,20 +1122,28 @@ async def submit_job(request: Request, response: Response) -> dict:
         values, errors = check_inputs(conn, proc["descriptor"], body.get("inputs", {}))
         if errors:
             raise HTTPException(422, {"errors": errors})
-        dedupe = hashlib.sha256(json.dumps([proc["id"], values], sort_keys=True).encode()).hexdigest()
         timeout = int(proc["descriptor"].get("resources", {}).get("timeoutSec", 900))
-        row = conn.execute(
-            f"""INSERT INTO app.jobs (kind, action, process_id, inputs, concurrency_class, max_attempts, dedupe_key, created_by)
-                VALUES ('process', 'run', %s, %s, 'analysis', 2, %s, %s)
-                ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
-                RETURNING {JOB_COLUMNS}""", (proc["id"], json.dumps(values), dedupe, _caller(request))).fetchone()
-        if row is None:  # the same job is already queued or running
-            row = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
-                               (dedupe,)).fetchone()
-            response.status_code = 200
-            row["deduplicated"] = True
+        row, deduplicated = _queue_process_job(conn, proc["id"], values, _caller(request))
+    if deduplicated:  # the same job is already queued or running
+        response.status_code = 200
+        row["deduplicated"] = True
     row["timeout_seconds"] = timeout
     return row
+
+
+def _queue_process_job(conn, process_id: str, values: dict, who: str) -> tuple[dict, bool]:
+    """Queue a process job with checked inputs -> (job, deduplicated): the same job already queued or running is
+    returned instead of a second one."""
+    dedupe = hashlib.sha256(json.dumps([process_id, values], sort_keys=True).encode()).hexdigest()
+    row = conn.execute(
+        f"""INSERT INTO app.jobs (kind, action, process_id, inputs, concurrency_class, max_attempts, dedupe_key, created_by)
+            VALUES ('process', 'run', %s, %s, 'analysis', 2, %s, %s)
+            ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
+            RETURNING {JOB_COLUMNS}""", (process_id, json.dumps(values), dedupe, who)).fetchone()
+    if row is not None:
+        return row, False
+    return conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
+                        (dedupe,)).fetchone(), True
 
 
 @app.get("/api/admin/jobs/{job_id}", dependencies=[Depends(require_admin_or_analysis)])
@@ -1241,15 +1254,7 @@ async def run_project_analysis(slug: str, request: Request) -> dict:
         values, errors = check_inputs(conn, proc["descriptor"], {"unit": place["unit"], "place": place["key"]})
         if errors:
             raise HTTPException(422, {"errors": errors})
-        dedupe = hashlib.sha256(json.dumps([proc["id"], values], sort_keys=True).encode()).hexdigest()
-        row = conn.execute(
-            f"""INSERT INTO app.jobs (kind, action, process_id, inputs, concurrency_class, max_attempts, dedupe_key, created_by)
-                VALUES ('process', 'run', %s, %s, 'analysis', 2, %s, %s)
-                ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
-                RETURNING {JOB_COLUMNS}""", (proc["id"], json.dumps(values), dedupe, _admin_user(request))).fetchone()
-        if row is None:
-            row = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
-                               (dedupe,)).fetchone()
+        row, _deduplicated = _queue_process_job(conn, proc["id"], values, _admin_user(request))
     return row
 
 

@@ -33,3 +33,6 @@ __pycache__/
 .RData
 .Rproj.user/
 everything-cli_accessKeys.csv
+
+# Present mode viewer password (scripts/present.sh)
+services/proxy/present/

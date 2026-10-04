@@ -1,0 +1,11 @@
+# Present mode (make aws-present; scripts/present.sh): the public site shown through a temporary Cloudflare quick tunnel,
+# read-only. Added to the server's COMPOSE_FILE only while presenting; `scripts/present.sh off` (run by make aws-up and
+# make aws-deploy) recreates the services without it.
+services:
+  core-api:
+    environment:
+      ADMIN_LOGIN: "off"   # no admin login succeeds, not even through the SSH tunnel
+  tipg:
+    environment:
+      # The Data API lists only the views behind published maps (drafts stay private while the link is out).
+      TIPG_DB_TABLES: ${PRESENT_TIPG_TABLES:?set by scripts/present.sh}

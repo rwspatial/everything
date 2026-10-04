@@ -66,6 +66,8 @@
 
 {$SITE_ADDRESS::80} {
 	request_header X-Public-Site 1
+	# Present mode with a viewer password (make aws-present password=1) writes present/viewer.caddy; no file, no password.
+	import present/*.caddy
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
