@@ -1,0 +1,101 @@
+{
+  "id": "fire-risk",
+  "title": "Wildfire fuel hazard (parcels)",
+  "summary": "How much fire the vegetation on and around a parcel could carry. The LANDFIRE fire behavior fuel models inside the parcel are rated from their flame length and rate of spread, raised on steep slopes, and blended with the fuels within 500 m; the report adds the buildings within 100 ft of high-hazard fuel. Run per parcel from the project workspace. A fuel hazard, not a probability of fire.",
+  "project": null,
+  "layer": null,
+  "process": "py.fire_risk",
+  "code": "workers/processes/py_fire_risk.py",
+  "outputs": [],
+  "inputs": [
+    {
+      "name": "maine/landfire_fbfm40 (COG)",
+      "role": "LANDFIRE 40 Scott & Burgan Fire Behavior Fuel Models (30 m, 2023): the fuel type of every pixel, including the non-burnable classes (developed, agricultural, water, bare ground)."
+    },
+    {
+      "name": "maine/slope_30m (COG)",
+      "role": "Slope in degrees from the USGS 3DEP 30 m DEM, averaged over each fuel type's area on the parcel."
+    },
+    {
+      "name": "pub.units__parcel",
+      "role": "The parcel (MEGIS tax parcels): its outline clips the fuels, and a 500 m ring around it defines the surroundings."
+    },
+    {
+      "name": "src_overture.buildings",
+      "role": "Building footprints on the parcel (Overture Maps): the structures exposed."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Fuels on the parcel",
+      "detail": "The fuel model raster is clipped to the parcel (plus one pixel) at its native 30 m in UTM 19N, turned into polygons by fuel model, and cut to the parcel's outline, so each fuel type on the parcel is one piece with its acreage."
+    },
+    {
+      "title": "Fuel hazard",
+      "detail": "Each fuel model is rated from the qualitative fire behavior Scott & Burgan (2005) give it under standard dry conditions: rate of spread and flame length, each very low (5), low (20), moderate (45), high (70), very high (85) or extreme (100). Flame length weighs more because it decides whether a fire can be fought directly. Non-burnable classes score 0.",
+      "math": "F = 0.6\\,R_{\\text{flame}} + 0.4\\,R_{\\text{spread}}"
+    },
+    {
+      "title": "Slope",
+      "detail": "Fire runs faster uphill. Each piece's hazard is multiplied by a simplified form of Rothermel's slope factor, which grows with the square of the slope's tangent, capped at 1.6 (reached at about 29°, a 55 % grade).",
+      "math": "H = \\min\\big(F\\,(1 + 2\\tan^2\\theta),\\ 100\\big)"
+    },
+    {
+      "title": "Surroundings",
+      "detail": "Fire and embers arrive from outside the parcel. The share of each fuel model in a 500 m ring around the parcel gives an area-weighted surrounding hazard (without slope)."
+    },
+    {
+      "title": "Parcel score",
+      "detail": "The parcel's score blends its own area-weighted hazard with its surroundings, and is classed Very high (75+), High (55-75), Moderate (35-55), Low (15-35) or Very low (under 15).",
+      "math": "S = 0.65\\,\\bar{H}_{\\text{parcel}} + 0.35\\,\\bar{F}_{\\text{500 m}}"
+    },
+    {
+      "title": "Exposure",
+      "detail": "The report counts the buildings on the parcel and those within 100 ft (30 m) of high or very high hazard fuel on it: the home ignition zone of Firewise USA and NFPA 1144, where clearing fuel matters most."
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Rating scale",
+      "value": "very low 5 · low 20 · moderate 45 · high 70 · very high 85 · extreme 100",
+      "why": "Turns Scott & Burgan's qualitative rate-of-spread and flame-length ratings into numbers with roughly even steps, leaving room at the top for the extreme grass and shrub models that Maine rarely has."
+    },
+    {
+      "name": "Flame / spread weights",
+      "value": "0.6 / 0.4",
+      "why": "Flame length sets suppression difficulty (hand crews up to about 4 ft, equipment to about 8 ft); fast spread with short flames, as in grass, is dangerous but more easily stopped."
+    },
+    {
+      "name": "Slope factor",
+      "value": "1 + 2·tan²θ, at most 1.6",
+      "why": "Keeps the shape of Rothermel's slope coefficient (proportional to tan² of the slope) with a cap, so a steep pocket raises hazard without dominating the score."
+    },
+    {
+      "name": "Surroundings ring",
+      "value": "500 m",
+      "why": "Wind-driven embers travel hundreds of metres; a ring of this size captures the fuels a fire would cross to reach the parcel."
+    },
+    {
+      "name": "Parcel / surroundings weights",
+      "value": "0.65 / 0.35",
+      "why": "What is on the parcel can be managed by its owner and matters most; the surroundings set the exposure the owner cannot change."
+    },
+    {
+      "name": "Home ignition zone",
+      "value": "100 ft (30 m)",
+      "why": "The Firewise USA / NFPA 1144 distance around a structure in which fuels decide whether it ignites."
+    },
+    {
+      "name": "Class breaks",
+      "value": "75 / 55 / 35 / 15",
+      "why": "Worked examples (flat ground): conifer or broadleaf litter (TL1-TL3) scores 5-14 (Very low); humid shrub (SH3) 20 (Low); moderate broadleaf litter (TL6) 30 (Low); dry grass (GR2) 55 (High); humid shrub with high flame lengths (SH6) 70 (High); a 25° slope raises SH6 to 100."
+    }
+  ],
+  "caveats": [
+    "A fuel hazard, not a probability of fire: ignitions, weather, fire history and suppression are not included. Burn probability and conditional flame length (e.g. the national Wildfire Risk to Communities data) are not imported yet.",
+    "Ratings are Scott & Burgan's qualitative fire behavior under standard dry conditions; Maine's humid climate makes most fuels burn less readily most of the year.",
+    "LANDFIRE fuels are a 30 m national product mapped from vegetation type; small parcels may be only a few pixels, and fuel treatments or recent clearing are not reflected.",
+    "Grass fields score High because grass spreads fast, even though flames are short and fires are easily stopped; read the fuel table with the score.",
+    "Buildings come from Overture footprints, which miss some outbuildings."
+  ]
+}

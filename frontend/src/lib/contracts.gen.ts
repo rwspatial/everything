@@ -245,6 +245,14 @@ export interface CategoricalLegend {
 	items: {
 		label: string;
 		color: string;
+		/**
+		 * Fill pattern of this class (frontend/src/lib/patterns.ts), as used in the style's fill-pattern
+		 */
+		pattern?: string;
+		/**
+		 * Outline style of this class, when outlines tell classes apart
+		 */
+		outline?: 'solid' | 'dashed';
 	}[];
 }
 export interface GradientLegend {

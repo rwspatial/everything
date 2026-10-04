@@ -1,5 +1,6 @@
 <script lang="ts">
 	// About, services ("What I do") and contact ("Work with me") on one page; the landing page keeps the work.
+	import { page } from '$app/state';
 	import { site, title } from '$lib/site';
 
 	const c = site.contact;
@@ -61,7 +62,8 @@
 			{#each site.stack as t (t)}<li>{t}</li>{/each}
 		</ul>
 		<p class="small">
-			Vector layers come from PostGIS views through an OGC API (<a href="/tiles/" rel="external">browse the Data API</a>),
+			Vector layers come from PostGIS views through an OGC API{#if !page.data.config?.publicMode}
+				(<a href="/tiles/" rel="external">browse the Data API</a>){/if},
 			rasters are Cloud-Optimized GeoTIFFs rendered on the fly, and a small API runs the imports, analysis jobs and PDF
 			reports behind them. Maps are defined as validated JSON manifests, browser tests check every page, and the whole stack
 			runs in Docker.

@@ -1,7 +1,7 @@
 {
   "id": "parcel-site",
   "title": "Parcel site",
-  "description": "One parcel and its land: farmland soils, drainage, slope and contours, current crops and land cover, wetlands and flood zones, with neighbouring parcels. Open it in the project workspace to run analyses such as agricultural potential.",
+  "description": "One parcel and its land: farmland soils, drainage, slope and contours, current crops and land cover, wildfire fuels, wetlands and flood zones, with neighbouring parcels. Open it in the project workspace to run analyses such as agricultural potential and wildfire fuel hazard.",
   "geographies": [
     "parcel"
   ],
@@ -25,6 +25,11 @@
       "ref": "maine-landcover/cdl-2025",
       "visible": false,
       "opacity": 0.8
+    },
+    {
+      "ref": "maine-landcover/fbfm40",
+      "visible": false,
+      "opacity": 0.75
     },
     {
       "ref": "maine-terrain/slope",

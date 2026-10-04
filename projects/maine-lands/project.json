@@ -48,6 +48,17 @@
         "layers": [
           {
             "type": "fill",
+            "filter": [
+              "!",
+              [
+                "==",
+                [
+                  "get",
+                  "interest"
+                ],
+                "easement"
+              ]
+            ],
             "paint": {
               "fill-color": [
                 "match",
@@ -56,35 +67,65 @@
                   "holder_type"
                 ],
                 "State",
-                "#1b7837",
-                "Federal",
-                "#5aae61",
+                "#2a78d6",
                 "Municipal",
-                "#a6dba0",
+                "#eb6834",
+                "Federal",
+                "#4a3aa7",
                 "Private",
-                "#762a83",
+                "#e34948",
                 "Other",
-                "#c2a5cf",
-                "#c2a5cf"
+                "#8a8f98",
+                "#8a8f98"
               ],
-              "fill-opacity": [
-                "case",
+              "fill-opacity": 0.22
+            }
+          },
+          {
+            "type": "fill",
+            "filter": [
+              "==",
+              [
+                "get",
+                "interest"
+              ],
+              "easement"
+            ],
+            "paint": {
+              "fill-pattern": [
+                "match",
                 [
-                  "==",
-                  [
-                    "get",
-                    "interest"
-                  ],
-                  "easement"
+                  "get",
+                  "holder_type"
                 ],
-                0.3,
-                0.6
+                "State",
+                "pat:diag:2a78d6",
+                "Municipal",
+                "pat:diag:eb6834",
+                "Federal",
+                "pat:diag:4a3aa7",
+                "Private",
+                "pat:diag:e34948",
+                "Other",
+                "pat:diag:8a8f98",
+                "pat:diag:8a8f98"
               ]
             }
           },
           {
             "type": "line",
-            "minzoom": 9,
+            "minzoom": 8,
+            "filter": [
+              "!",
+              [
+                "==",
+                [
+                  "get",
+                  "interest"
+                ],
+                "easement"
+              ]
+            ],
             "paint": {
               "line-color": [
                 "match",
@@ -93,45 +134,155 @@
                   "holder_type"
                 ],
                 "State",
-                "#1b7837",
-                "Federal",
-                "#5aae61",
+                "#2a78d6",
                 "Municipal",
-                "#a6dba0",
+                "#eb6834",
+                "Federal",
+                "#4a3aa7",
                 "Private",
-                "#762a83",
+                "#e34948",
                 "Other",
-                "#c2a5cf",
-                "#c2a5cf"
+                "#8a8f98",
+                "#8a8f98"
               ],
-              "line-width": 0.6
+              "line-width": 1
+            }
+          },
+          {
+            "type": "line",
+            "minzoom": 8,
+            "filter": [
+              "==",
+              [
+                "get",
+                "interest"
+              ],
+              "easement"
+            ],
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "holder_type"
+                ],
+                "State",
+                "#2a78d6",
+                "Municipal",
+                "#eb6834",
+                "Federal",
+                "#4a3aa7",
+                "Private",
+                "#e34948",
+                "Other",
+                "#8a8f98",
+                "#8a8f98"
+              ],
+              "line-width": 1,
+              "line-dasharray": [
+                3,
+                2
+              ]
+            }
+          },
+          {
+            "type": "symbol",
+            "minzoom": 11,
+            "layout": {
+              "text-field": [
+                "get",
+                "name"
+              ],
+              "text-font": [
+                "Noto Sans Italic"
+              ],
+              "text-size": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                11,
+                10,
+                15,
+                12.5
+              ],
+              "text-max-width": 8,
+              "text-padding": 6,
+              "symbol-sort-key": [
+                "-",
+                0,
+                [
+                  "coalesce",
+                  [
+                    "get",
+                    "acres"
+                  ],
+                  0
+                ]
+              ]
+            },
+            "paint": {
+              "text-color": [
+                "match",
+                [
+                  "get",
+                  "holder_type"
+                ],
+                "State",
+                "#1d5ca8",
+                "Municipal",
+                "#b54a14",
+                "Federal",
+                "#3a2d85",
+                "Private",
+                "#b3282a",
+                "Other",
+                "#5f6670",
+                "#5f6670"
+              ],
+              "text-halo-color": "#ffffff",
+              "text-halo-width": 1.4
             }
           }
         ]
       },
       "legend": {
         "type": "categorical",
-        "title": "Holder (paler: conservation easement)",
+        "title": "Conserved land, by holder",
         "items": [
           {
             "label": "State",
-            "color": "#1b7837"
-          },
-          {
-            "label": "Federal",
-            "color": "#5aae61"
+            "color": "#2a78d6"
           },
           {
             "label": "Municipal",
-            "color": "#a6dba0"
+            "color": "#eb6834"
+          },
+          {
+            "label": "Federal",
+            "color": "#4a3aa7"
           },
           {
             "label": "Private (land trusts, others)",
-            "color": "#762a83"
+            "color": "#e34948"
           },
           {
             "label": "Other",
-            "color": "#c2a5cf"
+            "color": "#8a8f98"
+          },
+          {
+            "label": "Owned outright (fee): tinted, solid outline",
+            "color": "#5f6670",
+            "outline": "solid"
+          },
+          {
+            "label": "Conservation easement: hatched, dashed outline",
+            "color": "#5f6670",
+            "pattern": "pat:diag:5f6670",
+            "outline": "dashed"
           }
         ]
       },
@@ -319,63 +470,234 @@
           {
             "type": "fill",
             "paint": {
-              "fill-color": [
+              "fill-pattern": [
                 "match",
                 [
                   "get",
                   "designation"
                 ],
-                "Public Land",
-                "#1b7837",
-                "State Park",
-                "#5aae61",
-                "State Wildlife Management Area",
-                "#a6dba0",
-                "Coastal Island",
-                "#80cdc1",
-                "Easement",
-                "#c2a5cf",
-                "#bababa"
-              ],
-              "fill-opacity": 0.65
+                [
+                  "Public Land",
+                  "State Ecological Reserve",
+                  "Miscellaneous State Lands",
+                  "Land for Maine's Future"
+                ],
+                "pat:back:1b5e20",
+                [
+                  "State Park",
+                  "State Park Property",
+                  "State Historic Site",
+                  "Multi-use Recreational Trail",
+                  "AT Corridor"
+                ],
+                "pat:back:b8860b",
+                [
+                  "State Wildlife Management Area"
+                ],
+                "pat:back:8d4b1f",
+                [
+                  "Coastal Island"
+                ],
+                "pat:back:00838f",
+                [
+                  "Easement",
+                  "Conservation Easement",
+                  "Public Access Easement",
+                  "Third Party Easement",
+                  "Enforcement Easement",
+                  "National Park Easement",
+                  "Project Agreement",
+                  "Deed Restricted"
+                ],
+                "pat:back:6a1b9a",
+                "pat:back:757575"
+              ]
             }
           },
           {
             "type": "line",
+            "filter": [
+              "!",
+              [
+                "in",
+                [
+                  "get",
+                  "designation"
+                ],
+                [
+                  "literal",
+                  [
+                    "Easement",
+                    "Conservation Easement",
+                    "Public Access Easement",
+                    "Third Party Easement",
+                    "Enforcement Easement",
+                    "National Park Easement",
+                    "Project Agreement",
+                    "Deed Restricted"
+                  ]
+                ]
+              ]
+            ],
             "paint": {
-              "line-color": "#1b4d1b",
-              "line-width": 0.4
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "designation"
+                ],
+                [
+                  "Public Land",
+                  "State Ecological Reserve",
+                  "Miscellaneous State Lands",
+                  "Land for Maine's Future"
+                ],
+                "#1b5e20",
+                [
+                  "State Park",
+                  "State Park Property",
+                  "State Historic Site",
+                  "Multi-use Recreational Trail",
+                  "AT Corridor"
+                ],
+                "#b8860b",
+                [
+                  "State Wildlife Management Area"
+                ],
+                "#8d4b1f",
+                [
+                  "Coastal Island"
+                ],
+                "#00838f",
+                [
+                  "Easement",
+                  "Conservation Easement",
+                  "Public Access Easement",
+                  "Third Party Easement",
+                  "Enforcement Easement",
+                  "National Park Easement",
+                  "Project Agreement",
+                  "Deed Restricted"
+                ],
+                "#6a1b9a",
+                "#757575"
+              ],
+              "line-width": 1.2
+            }
+          },
+          {
+            "type": "line",
+            "filter": [
+              "in",
+              [
+                "get",
+                "designation"
+              ],
+              [
+                "literal",
+                [
+                  "Easement",
+                  "Conservation Easement",
+                  "Public Access Easement",
+                  "Third Party Easement",
+                  "Enforcement Easement",
+                  "National Park Easement",
+                  "Project Agreement",
+                  "Deed Restricted"
+                ]
+              ]
+            ],
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "designation"
+                ],
+                [
+                  "Public Land",
+                  "State Ecological Reserve",
+                  "Miscellaneous State Lands",
+                  "Land for Maine's Future"
+                ],
+                "#1b5e20",
+                [
+                  "State Park",
+                  "State Park Property",
+                  "State Historic Site",
+                  "Multi-use Recreational Trail",
+                  "AT Corridor"
+                ],
+                "#b8860b",
+                [
+                  "State Wildlife Management Area"
+                ],
+                "#8d4b1f",
+                [
+                  "Coastal Island"
+                ],
+                "#00838f",
+                [
+                  "Easement",
+                  "Conservation Easement",
+                  "Public Access Easement",
+                  "Third Party Easement",
+                  "Enforcement Easement",
+                  "National Park Easement",
+                  "Project Agreement",
+                  "Deed Restricted"
+                ],
+                "#6a1b9a",
+                "#757575"
+              ],
+              "line-width": 1.2,
+              "line-dasharray": [
+                3,
+                2
+              ]
             }
           }
         ]
       },
       "legend": {
         "type": "categorical",
-        "title": "Designation",
+        "title": "Public lands (hatched), by designation",
         "items": [
           {
-            "label": "Public Land",
-            "color": "#1b7837"
+            "label": "Public reserved lands",
+            "color": "#1b5e20",
+            "pattern": "pat:back:1b5e20",
+            "outline": "solid"
           },
           {
-            "label": "State Park",
-            "color": "#5aae61"
+            "label": "State parks and historic sites",
+            "color": "#b8860b",
+            "pattern": "pat:back:b8860b",
+            "outline": "solid"
           },
           {
-            "label": "State Wildlife Management Area",
-            "color": "#a6dba0"
+            "label": "Wildlife management areas",
+            "color": "#8d4b1f",
+            "pattern": "pat:back:8d4b1f",
+            "outline": "solid"
           },
           {
-            "label": "Coastal Island",
-            "color": "#80cdc1"
+            "label": "Coastal islands",
+            "color": "#00838f",
+            "pattern": "pat:back:00838f",
+            "outline": "solid"
           },
           {
-            "label": "Easement",
-            "color": "#c2a5cf"
+            "label": "Easements and agreements",
+            "color": "#6a1b9a",
+            "pattern": "pat:back:6a1b9a",
+            "outline": "dashed"
           },
           {
             "label": "Other",
-            "color": "#bababa"
+            "color": "#757575",
+            "pattern": "pat:back:757575",
+            "outline": "solid"
           }
         ]
       },

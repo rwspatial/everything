@@ -21,7 +21,8 @@ You ──ssh -L 8081──▶ proxy: admin listener (server's 127.0.0.1:8081 on
 | `/admin`, `/api/admin/*` | 404, even with the login | login required |
 | Raw manifests `/projects/*.json` | 404 | 404 (production reads the database) |
 | Admin link, "Add a project", `/new` | hidden / 404 | shown |
-| Data API `/tiles/*`, rasters `/raster/*` | public (tiles cached 1 h, rasters 1 day) | same |
+| Map tiles and GeoJSON items (`/tiles/collections/<view>/tiles/…`, `…/items`), rasters `/raster/*` | public (tiles cached 1 h, rasters 1 day) | same |
+| Data API pages (`/tiles/` catalogue, collection pages, docs) | 404: an admin tool (Admin → Data API) | shown |
 | Database port | not published | not published |
 
 The filter is enforced in core-api, not only in the page: a guessed URL for a draft is a 404.
@@ -123,15 +124,15 @@ the printed link, and `make aws-down` afterwards. What it does (`scripts/present
   never the admin one.
 - **Read-only:** the admin login is switched off (even with the password, even through the SSH tunnel), the app's
   database roles are set to read-only, and the workers are stopped.
-- **Published maps only:** the hub, the viewers and the Data API list only maps with status `ready` and the data
-  behind them; drafts stay private.
+- **Published maps only:** the hub and the viewers list only maps with status `ready`, and tiles are served only for
+  the data behind them; drafts stay private.
 - **Checked before you get the link:** writes are refused, admin pages do not exist, a forged header changes nothing,
   raster tiles ignore a swapped file path, drafts are not served, no firewall port is open to the internet, the admin
   login is refused and the database roles are read-only. If any check fails, the link is closed again.
 - **It ends by itself:** the server powers off after `minutes` (default 90), and at 1 AM in any case. `make aws-up`
   or `make aws-deploy` switch present mode off (admin back, database writable).
-- **Not a secret:** anyone with the link can see the published maps and download their data through the Data API,
-  like any public map site. `password=1` adds a viewer password (user `viewer`) printed with the link.
+- **Not a secret:** anyone with the link can see the published maps, and their data reaches the browser as map tiles,
+  like any public map site (the browsable Data API is admin only). `password=1` adds a viewer password (user `viewer`) printed with the link.
 
 ### Domain (when the site goes public)
 

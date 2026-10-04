@@ -302,7 +302,12 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": ["label", "color"],
-                "properties": { "label": { "type": "string" }, "color": { "type": "string" } }
+                "properties": {
+                  "label": { "type": "string" },
+                  "color": { "type": "string" },
+                  "pattern": { "type": "string", "pattern": "^pat:(diag|back|cross|horiz|dots):[0-9a-f]{6}$", "description": "Fill pattern of this class (frontend/src/lib/patterns.ts), as used in the style's fill-pattern" },
+                  "outline": { "enum": ["solid", "dashed"], "description": "Outline style of this class, when outlines tell classes apart" }
+                }
               }
             }
           }

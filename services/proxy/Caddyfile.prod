@@ -83,6 +83,16 @@
 		respond "Not found" 404
 	}
 
+	# The Data API (tiPG's catalogue, collection pages, docs) is an admin tool, reached through the admin listener.
+	# The public site passes only what its maps request: vector tiles and GeoJSON items of a collection.
+	@data_api {
+		path /tiles /tiles/*
+		not path_regexp ^/tiles/collections/[A-Za-z0-9_.]+/(tiles/[A-Za-z0-9]+/\d+/\d+/\d+|items)$
+	}
+	handle @data_api {
+		respond "Not found" 404
+	}
+
 	handle /config.json {
 		header Content-Type application/json
 		header Cache-Control "no-cache"

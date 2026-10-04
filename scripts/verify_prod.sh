@@ -34,7 +34,8 @@ c=$(code -X POST "$PUBLIC_URL/api/projects"); [[ $c == 405 ]]; check "no writes 
 h=$(curl -s -D - -o /dev/null --max-time 10 "$PUBLIC_URL/")
 grep -qi '^x-content-type-options: nosniff' <<<"$h" && grep -qi '^referrer-policy:' <<<"$h" && ! grep -qi '^server:' <<<"$h"
 check "security headers set, Server header removed" $?
-c=$(code "$PUBLIC_URL/tiles/collections"); [[ $c == 200 ]]; check "the data API (tiles) is public" $? "HTTP $c"
+c=$(code "$PUBLIC_URL/tiles/collections/pub.maine_water__stream_gauges/tiles/WebMercatorQuad/7/38/46"); [[ $c == 200 || $c == 204 ]]; check "map tiles are public" $? "HTTP $c"
+c=$(code "$PUBLIC_URL/tiles/collections"); [[ $c == 404 ]]; check "the Data API catalogue is admin only" $? "HTTP $c"
 job=$(curl -s --max-time 20 "$ADMIN_URL/tiles/collections?f=json&limit=1000" | python3 -c '
 import sys, json; ids = [c["id"] for c in json.load(sys.stdin)["collections"] if c["id"].startswith("pub.analysis_sandbox__job_")]; print(ids[0] if ids else "")' 2>/dev/null)
 if [[ -n $job ]]; then

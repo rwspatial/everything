@@ -8,6 +8,7 @@
 	import { fragmentsFor, opacityPaint, toMapLibre, type AdapterContext } from '$lib/adapters';
 	import { resolveBasemap } from '$lib/basemaps';
 	import { loadIcons, providePoiIcon } from '$lib/icons';
+	import { providePattern } from '$lib/patterns';
 	import { addOverlays, hasOwnRoads, isRoadLayer, provideBadge } from '$lib/overlays';
 	import { PALETTE } from '$lib/format';
 	import type { ProjectManifest } from '$lib/types';
@@ -46,6 +47,7 @@
 			map.setMissingStyleImageResolver(async (id) => {
 				provideBadge(map!, id);
 				providePoiIcon(map!, id);
+				providePattern(map!, id);
 			});
 			map.on('style.load', () => addOverlays(map!, tilesBase, { roads: !hasOwnRoads(manifest) }));
 			map.once('load', () => {
@@ -57,7 +59,9 @@
 						try {
 							const parts = toMapLibre({ ...spec, visible: true }, ctx);
 							if (!map!.getSource(parts.sourceId)) map!.addSource(parts.sourceId, parts.source);
-							for (const layer of parts.layers) map!.addLayer(layer, before);
+							// Text labels need the basemap's fonts (none on the offline basemap).
+							for (const layer of parts.layers)
+								if (map!.getStyle().glyphs || !(layer as { layout?: Record<string, unknown> }).layout?.['text-field']) map!.addLayer(layer, before);
 							if (spec.opacity !== undefined && spec.opacity !== 1) {
 								fragmentsFor(spec, ctx).forEach((f, j) => {
 									const id = parts.layers[j]?.id;

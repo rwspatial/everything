@@ -8,6 +8,7 @@
 	import { addOverlays, hasOwnRoads, isRoadLayer, provideBadge } from '$lib/overlays';
 	import ChartsPanel from '$lib/charts/ChartsPanel.svelte';
 	import { loadIcons, providePoiIcon } from '$lib/icons';
+	import { providePattern } from '$lib/patterns';
 	import type { AdapterContext } from '$lib/adapters';
 	import { basemaps, DEFAULT_BASEMAP, resolveBasemap } from '$lib/basemaps';
 	import type { AppConfig } from '$lib/config';
@@ -116,6 +117,10 @@
 	/** First lifted road or basemap label layer: project layers go below it so roads and place names stay readable. */
 	const labelAnchor = () => map?.getStyle().layers.find(isLabelLayer)?.id;
 
+	/** Text labels need the basemap's fonts: on a basemap without glyphs (the offline "None") they are left out. */
+	const hasText = (l: { layout?: unknown }) => !!(l.layout as Record<string, unknown> | undefined)?.['text-field'];
+	const drawable = (l: { layout?: unknown }) => !hasText(l) || !!map?.getStyle().glyphs;
+
 	function addProjectLayers() {
 		if (!map) return;
 		const before = labelAnchor();
@@ -123,7 +128,7 @@
 			try {
 				const parts = toMapLibre({ ...ls.spec, visible: ls.visible }, ctxFor(ls));
 				if (!map.getSource(parts.sourceId)) map.addSource(parts.sourceId, parts.source);
-				for (const layer of parts.layers) if (!map.getLayer(layer.id)) map.addLayer(layer, before);
+				for (const layer of parts.layers) if (!map.getLayer(layer.id) && drawable(layer)) map.addLayer(layer, before);
 				if (ls.opacity !== 1) applyOpacity(ls);
 			} catch (e) {
 				ls.error = `Could not add layer: ${(e as Error).message}`;
@@ -193,6 +198,7 @@
 				if (!map) return;
 				provideBadge(map, id);
 				providePoiIcon(map, id);
+				providePattern(map, id);
 			});
 			map.on('load', async () => {
 				await iconsReady; // POI icons are drawn synchronously on demand, so the pictograms must be ready first
@@ -338,7 +344,7 @@
 		map.setStyle(bm.style, {
 			// Carry the project's sources and layers (current paint/visibility) onto the new basemap.
 			transformStyle: (prev, next) => {
-				const ours = (prev?.layers ?? []).filter((l) => isProjectId(l.id));
+				const ours = (prev?.layers ?? []).filter((l) => isProjectId(l.id) && (!!next.glyphs || !hasText(l)));
 				const cut = next.layers.findIndex(isLabelLayer);
 				const at = cut === -1 ? next.layers.length : cut;
 				return {

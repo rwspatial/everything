@@ -1,0 +1,25 @@
+/* Shared look of analysis reports in the project workspace (scoped by .report). */
+.report { border-top: 1px solid var(--border); padding-top: 0.6rem; margin-top: 0.2rem; }
+.report h4 { margin: 0.7rem 0 0.3rem; font-size: 0.82rem; }
+.report .hint { color: var(--muted); font-size: 0.78rem; font-weight: 400; }
+.report .score { display: flex; align-items: center; gap: 0.7rem; }
+.report .score > div { display: grid; font-size: 0.92rem; }
+.report .big { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; padding-left: 0.5rem; border-left: 5px solid var(--c); }
+.report .stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surface); }
+.report .stack span { display: block; height: 100%; }
+.report .legend { list-style: none; margin: 0.35rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; font-size: 0.78rem; }
+.report .legend i, .report .dot { display: inline-block; width: 0.65rem; height: 0.65rem; border-radius: 2px; margin-right: 0.3rem; vertical-align: -0.05rem; border: 1px solid rgb(0 0 0 / 0.15); }
+.report .legend span { color: var(--muted); }
+.report .bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.report .bars li { display: grid; grid-template-columns: 9.5rem 1fr 2.2rem; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+.report .track { height: 8px; background: var(--surface-muted); border-radius: 4px; overflow: hidden; }
+.report .fill { display: block; height: 100%; background: var(--bar, #31a354); border-radius: 0 4px 4px 0; }
+.report .val { text-align: right; font-variant-numeric: tabular-nums; }
+.report .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.report table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.report th, .report td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.report th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-muted); }
+.report .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.report .facts { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.8rem; margin: 0; font-size: 0.8rem; }
+.report .facts dt { color: var(--muted); }
+.report .facts dd { margin: 0; }

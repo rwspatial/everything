@@ -46,6 +46,14 @@
         "layers": [
           {
             "type": "fill",
+            "filter": [
+              "!=",
+              [
+                "get",
+                "hazard"
+              ],
+              "undetermined"
+            ],
             "paint": {
               "fill-color": [
                 "match",
@@ -54,18 +62,48 @@
                   "hazard"
                 ],
                 "coastal high hazard",
-                "#7b3294",
+                "#1f4e9c",
                 "floodway",
-                "#08306b",
+                "#3b8bd8",
                 "1% annual chance",
-                "#2171b5",
+                "#3b8bd8",
                 "0.2% annual chance",
-                "#9ecae1",
-                "undetermined",
-                "#bdbdbd",
+                "#f5a442",
                 "#bdbdbd"
               ],
-              "fill-opacity": 0.5
+              "fill-opacity": 0.4
+            }
+          },
+          {
+            "type": "fill",
+            "filter": [
+              "in",
+              [
+                "get",
+                "hazard"
+              ],
+              [
+                "literal",
+                [
+                  "floodway",
+                  "coastal high hazard",
+                  "undetermined"
+                ]
+              ]
+            ],
+            "paint": {
+              "fill-pattern": [
+                "match",
+                [
+                  "get",
+                  "hazard"
+                ],
+                "floodway",
+                "pat:diag:d7301f",
+                "coastal high hazard",
+                "pat:cross:1f4e9c",
+                "pat:dots:8a8f98"
+              ]
             }
           },
           {
@@ -79,18 +117,16 @@
                   "hazard"
                 ],
                 "coastal high hazard",
-                "#7b3294",
+                "#1f4e9c",
                 "floodway",
-                "#08306b",
+                "#d7301f",
                 "1% annual chance",
-                "#2171b5",
+                "#3b8bd8",
                 "0.2% annual chance",
-                "#9ecae1",
-                "undetermined",
-                "#bdbdbd",
-                "#bdbdbd"
+                "#e08a1e",
+                "#8a8f98"
               ],
-              "line-width": 0.5
+              "line-width": 0.6
             }
           }
         ]
@@ -101,23 +137,29 @@
         "items": [
           {
             "label": "Coastal high hazard (VE, V)",
-            "color": "#7b3294"
+            "color": "#1f4e9c",
+            "pattern": "pat:cross:1f4e9c",
+            "outline": "solid"
           },
           {
-            "label": "Regulatory floodway",
-            "color": "#08306b"
+            "label": "Regulatory floodway (red hatch)",
+            "color": "#d7301f",
+            "pattern": "pat:diag:d7301f",
+            "outline": "solid"
           },
           {
             "label": "1% annual chance, the 100-year flood (A, AE, AO, AH)",
-            "color": "#2171b5"
+            "color": "#3b8bd8"
           },
           {
             "label": "0.2% annual chance, 500-year (shaded X)",
-            "color": "#9ecae1"
+            "color": "#f5a442"
           },
           {
             "label": "Undetermined (D)",
-            "color": "#bdbdbd"
+            "color": "#8a8f98",
+            "pattern": "pat:dots:8a8f98",
+            "outline": "solid"
           }
         ]
       },

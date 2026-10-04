@@ -189,6 +189,21 @@ test('maine-overview: county outlines over the town choropleth; block groups and
 	await shot(page, '16-maine-overview-blocks');
 });
 
+test('GIS symbology: easements and public lands hatched, flood floodway hatched, patterns in the legend', async ({ page }) => {
+	await page.goto('/p/maine-lands?map=12.2/44.43/-70.80&v=conserved-lands,public-lands,maine-boundary');
+	await mapIdle(page);
+	expect(await rendered(page, 'conserved-lands')).toBeGreaterThan(3);
+	// Patterns are drawn on demand: the map asked for the easement and public-land hatches.
+	const images = await page.evaluate(() => ['pat:diag:2a78d6', 'pat:back:1b5e20'].map((id) => window.__spatial!.map!.hasImage(id)));
+	expect(images).toEqual([true, true]);
+	// The legend shows the hatch, and the fee / easement outlines.
+	const easement = page.locator('.legend li', { hasText: 'Conservation easement: hatched, dashed outline' }).locator('.swatch');
+	await expect(easement).toHaveClass(/patterned/);
+	await expect(easement).toHaveClass(/dashed/);
+	expect(await easement.evaluate((e) => getComputedStyle(e).backgroundImage)).toContain('data:image/png');
+	await shot(page, '15-gis-symbology');
+});
+
 test('maine-places: Overture buildings and places over downtown Portland', async ({ page }) => {
 	await page.goto('/p/maine-places?map=15.00/43.6570/-70.2560');
 	await mapIdle(page);
@@ -197,16 +212,18 @@ test('maine-places: Overture buildings and places over downtown Portland', async
 	await shot(page, '12-maine-places');
 });
 
-test('main nav: Maps, About & contact, Admin, then Data API at the far right', async ({ page }) => {
+test('main nav: Maps, About & contact, Admin (the Data API lives in the admin)', async ({ page }) => {
 	await page.goto('/');
 	// The app draws the header after loading (static SPA): wait for it before reading the links.
-	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' })).toBeVisible();
+	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Admin' })).toBeVisible();
 	const links = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents();
-	expect(links.map((t) => t.trim())).toEqual(['Maps', 'About & contact', 'Admin', 'Data API']);
+	expect(links.map((t) => t.trim())).toEqual(['Maps', 'About & contact', 'Admin']);
+	await expect(page.getByRole('link', { name: 'Data API' })).toHaveCount(0);
+	// The Data API pages are part of the admin: same site bar, with Admin as the current section.
 	await page.goto('/tiles/');
-	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' })).toBeVisible();
-	const api = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents();
-	expect(api.map((t) => t.trim())).toEqual(['Maps', 'About & contact', 'Admin', 'Data API']);
+	const api = page.getByRole('navigation', { name: 'Main' });
+	await expect(api.getByRole('link', { name: 'Admin' })).toHaveAttribute('aria-current', 'page');
+	expect((await api.getByRole('link').allTextContents()).map((t) => t.trim())).toEqual(['Maps', 'About & contact', 'Admin']);
 });
 
 test('maine-energy and maine-facilities: EIA plants and grid, HIFLD facilities', async ({ page }) => {
@@ -429,10 +446,8 @@ test('analysis-sandbox (empty placeholder) opens cleanly', async ({ page }) => {
 	await shot(page, '5-analysis-sandbox');
 });
 
-test('Data API pages (tiPG at /tiles/) carry the site bar, banner and footer, and the site links to them', async ({ page }) => {
-	await page.goto('/');
-	await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' }).click();
-	await expect(page).toHaveURL(/\/tiles\/$/);
+test('Data API pages (tiPG at /tiles/) carry the site bar, banner and footer', async ({ page }) => {
+	await page.goto('/tiles/');
 	await expect(page).toHaveTitle(/Data API · Downeast Geospatial/);
 	await expect(page.getByRole('heading', { name: 'Downeast Geospatial Data API', level: 1 })).toBeVisible(); // tiPG's page title
 	await expect(page.getByRole('region', { name: 'Data API' })).toContainText('served live from PostGIS'); // the banner

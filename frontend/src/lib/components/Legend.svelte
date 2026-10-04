@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { patternCss } from '$lib/patterns';
 	import type { LayerSpec } from '$lib/types';
 
 	let { spec, color }: { spec: LayerSpec; color: string } = $props();
@@ -23,7 +24,16 @@
 		{#if spec.legend.title}<div class="title">{spec.legend.title}</div>{/if}
 		<ul>
 			{#each spec.legend.items as item (item.label)}
-				<li><span class="swatch {shape}" style:--c={item.color}></span>{item.label}</li>
+				<li>
+					<span
+						class="swatch {shape}"
+						class:patterned={!!item.pattern}
+						class:dashed={item.outline === 'dashed'}
+						style:--c={item.color}
+						style:background={item.pattern ? `${patternCss(item.pattern)}, color-mix(in srgb, ${item.color} 12%, transparent)` : undefined}
+						style:border-color={item.pattern || item.outline ? item.color : undefined}
+					></span>{item.label}
+				</li>
 			{/each}
 		</ul>
 	</div>
@@ -50,6 +60,8 @@
 	.swatch.fill { border-radius: 3px; border: 1px solid rgb(0 0 0 / 0.15); }
 	.swatch.circle { border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.2); }
 	.swatch.line { height: 3px; border-radius: 2px; }
+	.swatch.patterned, .swatch.dashed { border-width: 1.5px; border-style: solid; }
+	.swatch.dashed { border-style: dashed; }
 	.ramp { height: 10px; border-radius: 3px; border: 1px solid rgb(0 0 0 / 0.1); }
 	.ramp-labels { display: flex; justify-content: space-between; }
 </style>

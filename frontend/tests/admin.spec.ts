@@ -304,6 +304,12 @@ test.describe('signed in', () => {
 		await expect(runs.getByRole('row').nth(1)).toContainText('admin:');
 	});
 
+	test('admin nav links to the Data API (tiPG), which is no longer in the site nav', async ({ page }) => {
+		await page.goto('/admin');
+		await expect(page.getByRole('link', { name: 'Data API' })).toHaveAttribute('href', '/tiles/');
+		await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' })).toHaveCount(0);
+	});
+
 	test('jobs page shows recent runs', async ({ page }) => {
 		await page.goto('/admin/jobs');
 		await expect(page.getByRole('heading', { name: 'Recent runs' })).toBeVisible();
@@ -388,6 +394,16 @@ test.describe('signed in', () => {
 			await expect(result).toContainText(/(High|Good|Moderate|Limited|Unsuitable) agricultural potential/);
 			await expect(result.getByRole('table')).toContainText(/loam|silt|sand|muck|peat/i);
 			await shot(page, 'admin-parcel-2-workspace');
+			// A second analysis on the same parcel: wildfire fuel hazard (LANDFIRE fuel models), with its own report.
+			const fire = page.getByRole('article', { name: 'Wildfire fuel hazard' });
+			await expect(fire.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/admin/methods/fire-risk');
+			await fire.getByRole('button', { name: /^Run/ }).click();
+			await expect
+				.poll(async () => ((await (await request.get(`/api/projects/${slug}`)).json()).layers as { group?: string }[]).filter((l) => l.group === 'Analysis results').length, { timeout: 180_000 })
+				.toBe(2);
+			await expect(fire.getByLabel('Latest result')).toContainText(/(Very high|High|Moderate|Low|Very low) wildfire fuel hazard/);
+			await expect(fire.getByLabel('Latest result').getByRole('table')).toContainText(/GR|GS|SH|TU|TL|NB/);
+
 			// The analyses stay reachable from the map itself (admin, not the public site).
 			await page.goto(`/p/${slug}`);
 			await expect(page.getByRole('link', { name: 'Analyses' })).toHaveAttribute('href', `/admin/projects/${slug}`);
@@ -403,7 +419,7 @@ test.describe('signed in', () => {
 	});
 
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential', '/admin/methods/fire-risk']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

@@ -102,7 +102,7 @@
     },
     {
       "id": "buildings",
-      "title": "Buildings",
+      "title": "Buildings by type",
       "group": "Built environment",
       "minzoom": 13,
       "source": {
@@ -110,7 +110,9 @@
         "collection": "pub.maine_places__buildings",
         "properties": [
           "name",
-          "kind",
+          "category",
+          "subtype",
+          "class",
           "height_m",
           "num_floors"
         ]
@@ -122,22 +124,28 @@
             "type": "fill",
             "paint": {
               "fill-color": [
-                "step",
+                "match",
                 [
-                  "coalesce",
-                  [
-                    "get",
-                    "height_m"
-                  ],
-                  0
+                  "get",
+                  "category"
                 ],
-                "#cfd8dc",
-                6,
-                "#90a4ae",
-                12,
-                "#546e7a",
-                25,
-                "#263238"
+                "Residential",
+                "#2a78d6",
+                "Commercial",
+                "#eb6834",
+                "Agricultural",
+                "#1baf7a",
+                "Education",
+                "#eda100",
+                "Medical",
+                "#e87ba4",
+                "Civic & religious",
+                "#008300",
+                "Industrial & service",
+                "#4a3aa7",
+                "Other",
+                "#9aa0a6",
+                "#d9dcdf"
               ],
               "fill-opacity": 0.85
             }
@@ -145,37 +153,58 @@
           {
             "type": "line",
             "paint": {
-              "line-color": "#78909c",
-              "line-width": 0.3
+              "line-color": "#5f6b73",
+              "line-width": 0.3,
+              "line-opacity": 0.6
             }
           }
         ]
       },
       "legend": {
         "type": "categorical",
-        "title": "Building height",
+        "title": "Building type (Overture subtype)",
         "items": [
           {
-            "label": "unknown or under 6 m",
-            "color": "#cfd8dc"
+            "label": "Residential",
+            "color": "#2a78d6"
           },
           {
-            "label": "6–12 m",
-            "color": "#90a4ae"
+            "label": "Commercial",
+            "color": "#eb6834"
           },
           {
-            "label": "12–25 m",
-            "color": "#546e7a"
+            "label": "Agricultural",
+            "color": "#1baf7a"
           },
           {
-            "label": "25 m and over",
-            "color": "#263238"
+            "label": "Education",
+            "color": "#eda100"
+          },
+          {
+            "label": "Medical",
+            "color": "#e87ba4"
+          },
+          {
+            "label": "Civic & religious",
+            "color": "#008300"
+          },
+          {
+            "label": "Industrial & service",
+            "color": "#4a3aa7"
+          },
+          {
+            "label": "Other",
+            "color": "#9aa0a6"
+          },
+          {
+            "label": "Unknown (not tagged)",
+            "color": "#d9dcdf"
           }
         ]
       },
       "interaction": {
         "popup": {
-          "template": "{name} {kind}, {height_m} m"
+          "template": "{name} {class} ({category})"
         },
         "inspect": true
       },
@@ -242,12 +271,12 @@
                   "zoom"
                 ],
                 12,
-                3,
+                1.5,
                 16,
-                6
+                3
               ],
               "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 0.6
+              "circle-stroke-width": 0.4
             }
           }
         ]

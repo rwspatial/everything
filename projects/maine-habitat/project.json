@@ -87,14 +87,13 @@
           {
             "type": "fill",
             "paint": {
-              "fill-color": "#b8e186",
-              "fill-opacity": 0.35
+              "fill-pattern": "pat:dots:6b7a1f"
             }
           },
           {
             "type": "line",
             "paint": {
-              "line-color": "#7fbc41",
+              "line-color": "#6b7a1f",
               "line-width": 0.8
             }
           }
@@ -105,8 +104,10 @@
         "title": "Undeveloped block",
         "items": [
           {
-            "label": "Undeveloped block",
-            "color": "#b8e186"
+            "label": "Undeveloped block (stippled)",
+            "color": "#6b7a1f",
+            "pattern": "pat:dots:6b7a1f",
+            "outline": "solid"
           }
         ]
       },
@@ -323,14 +324,20 @@
             "type": "fill",
             "paint": {
               "fill-color": "#8c510a",
-              "fill-opacity": 0.4
+              "fill-opacity": 0.12
+            }
+          },
+          {
+            "type": "fill",
+            "paint": {
+              "fill-pattern": "pat:back:8c510a"
             }
           },
           {
             "type": "line",
             "paint": {
               "line-color": "#8c510a",
-              "line-width": 0.8
+              "line-width": 0.9
             }
           }
         ]
@@ -340,8 +347,10 @@
         "title": "Deer wintering area",
         "items": [
           {
-            "label": "Deer wintering area",
-            "color": "#8c510a"
+            "label": "Deer wintering area (hatched)",
+            "color": "#8c510a",
+            "pattern": "pat:back:8c510a",
+            "outline": "solid"
           }
         ]
       },
@@ -373,7 +382,22 @@
           {
             "type": "fill",
             "paint": {
-              "fill-color": [
+              "fill-pattern": [
+                "match",
+                [
+                  "get",
+                  "rating"
+                ],
+                "high",
+                "pat:horiz:2166ac",
+                "pat:horiz:67a9cf"
+              ]
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
                 "match",
                 [
                   "get",
@@ -381,11 +405,9 @@
                 ],
                 "high",
                 "#2166ac",
-                "moderate",
-                "#67a9cf",
                 "#67a9cf"
               ],
-              "fill-opacity": 0.5
+              "line-width": 0.8
             }
           }
         ]
@@ -396,11 +418,15 @@
         "items": [
           {
             "label": "High value",
-            "color": "#2166ac"
+            "color": "#2166ac",
+            "pattern": "pat:horiz:2166ac",
+            "outline": "solid"
           },
           {
             "label": "Moderate value",
-            "color": "#67a9cf"
+            "color": "#67a9cf",
+            "pattern": "pat:horiz:67a9cf",
+            "outline": "solid"
           }
         ]
       },
@@ -598,10 +624,17 @@
                   "status"
                 ],
                 "Significant",
-                "#1b7837",
-                "#a6dba0"
+                "#01665e",
+                "#5ab4ac"
               ],
               "fill-opacity": 0.55
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#01665e",
+              "line-width": 0.6
             }
           }
         ]
@@ -612,11 +645,11 @@
         "items": [
           {
             "label": "Significant",
-            "color": "#1b7837"
+            "color": "#01665e"
           },
           {
             "label": "Potentially significant",
-            "color": "#a6dba0"
+            "color": "#5ab4ac"
           }
         ]
       },

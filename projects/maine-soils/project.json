@@ -389,11 +389,11 @@
                   "farmland"
                 ],
                 "All areas are prime farmland",
-                "#1b7837",
+                "#a6611a",
                 "Farmland of statewide importance",
-                "#7fbf7b",
+                "#dfc27d",
                 "Farmland of local importance",
-                "#d9f0d3",
+                "#f6e8c3",
                 "Not prime farmland",
                 "#f2f2f2",
                 "#d9d9d9"
@@ -418,15 +418,15 @@
         "items": [
           {
             "label": "All areas are prime farmland",
-            "color": "#1b7837"
+            "color": "#a6611a"
           },
           {
             "label": "Farmland of statewide importance",
-            "color": "#7fbf7b"
+            "color": "#dfc27d"
           },
           {
             "label": "Farmland of local importance",
-            "color": "#d9f0d3"
+            "color": "#f6e8c3"
           },
           {
             "label": "Not prime farmland",

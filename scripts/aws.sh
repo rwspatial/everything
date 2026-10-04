@@ -68,10 +68,12 @@ present_checks() {
   body=$(curl -s "${auth[@]}" -H 'X-Public-Site: 0' "$url/api/projects")
   python3 -c 'import json,sys; d=json.loads(sys.argv[1])["projects"]; s={p["status"] for p in d}; sys.exit(0 if d and s=={"ready"} else 1)' "$body" \
     && pass "only published maps listed (even with a forged X-Public-Site header)" || bad "unpublished maps are listed"
-  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections/pub.maine_coast__growing_areas")
-  [[ $c == 404 ]] && pass "draft data not in the Data API ($c)" || bad "draft collection served: HTTP $c"
-  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections/pub.maine_water__stream_gauges")
-  [[ $c == 200 ]] && pass "published data still served ($c)" || bad "published collection: HTTP $c"
+  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections")
+  [[ $c == 404 ]] && pass "the Data API catalogue is not public ($c)" || bad "Data API catalogue: HTTP $c"
+  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections/pub.maine_coast__growing_areas/tiles/WebMercatorQuad/7/38/46")
+  [[ $c == 404 ]] && pass "draft data not served ($c)" || bad "draft tiles served: HTTP $c"
+  c=$(curl -s -o /dev/null -w '%{http_code}' "${auth[@]}" "$url/tiles/collections/pub.maine_water__stream_gauges/tiles/WebMercatorQuad/7/38/46")
+  [[ $c == 200 || $c == 204 ]] && pass "published map tiles still served ($c)" || bad "published tiles: HTTP $c"
   body=$(curl -s "${auth[@]}" "$url/raster/maine/dem_30m/info?url=s3://$BACKUP_BUCKET/backups/x.dump")
   grep -q '"bounds"' <<<"$body" && pass "raster tiles ignore a swapped file path" || bad "raster info: ${body:0:120}"
   open=$(aws ec2 describe-security-groups --group-ids "$SG" --query "SecurityGroups[0].IpPermissions[].IpRanges[?CidrIp=='0.0.0.0/0'].CidrIp" --output text)

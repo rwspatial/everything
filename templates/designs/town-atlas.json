@@ -33,7 +33,7 @@
   ],
   "charts": [
     {"id": "glance", "title": "{short_name} at a glance", "type": "stats", "data": {"collection": "pub.maine_lands__parcels", "within": "place", "stats": [{"label": "Tax parcels", "agg": "count", "format": "count"}]}},
-    {"id": "buildings", "title": "Buildings by type", "type": "bar", "layer": "buildings", "format": "count", "data": {"collection": "pub.maine_places__buildings", "category": "kind", "within": "place", "limit": 8}},
+    {"id": "buildings", "title": "Buildings by type", "type": "bar", "layer": "buildings", "format": "count", "data": {"collection": "pub.maine_places__buildings", "category": "category", "within": "place", "limit": 9}},
     {"id": "conserved", "title": "Conserved land by holder", "type": "donut", "layer": "conserved-lands", "format": "acres", "description": "Whole conservation parcels with their centre in town (acres as recorded).", "data": {"collection": "pub.maine_lands__conserved_lands", "category": "holder_type", "value": "acres", "agg": "sum", "within": "place"}},
     {"id": "parcel-sizes", "title": "Parcel sizes", "type": "histogram", "layer": "parcels", "format": "acres", "data": {"collection": "pub.maine_lands__parcels", "value": "acres", "bins": 12, "within": "place"}}
   ]
