@@ -1,7 +1,7 @@
 {
   "id": "settlements",
   "title": "Settlements (built-up areas)",
-  "summary": "Outlines of every village, town centre and city in Maine, drawn by clustering building footprints. Used at zooms 7-12, where the 925k footprints are too dense to draw.",
+  "summary": "Outlines of every village, town centre and city in Maine, drawn by clustering building footprints wall to wall. Used at zooms 7-12, where the 925k footprints are too dense to draw.",
   "project": "maine-places",
   "layer": "settlements",
   "sql": "projects/maine-places/sql/030_settlements.sql",
@@ -18,7 +18,7 @@
   "inputs": [
     {
       "name": "src_overture.buildings",
-      "role": "Building footprints (Overture Maps). One point is taken on each footprint."
+      "role": "Building footprints (Overture Maps), clustered by their outlines."
     },
     {
       "name": "src_census.cousub",
@@ -31,39 +31,45 @@
   ],
   "steps": [
     {
-      "title": "One point per building",
-      "detail": "A point on the surface of each footprint, projected to UTM 19N (EPSG:26919) so distances are in metres. The footprint area is kept for the footprint_acres total."
+      "title": "Footprints in metres",
+      "detail": "Each building footprint, projected to UTM 19N (EPSG:26919) so distances are in metres. Its area is kept for the footprint_acres total."
     },
     {
-      "title": "Cluster the points (DBSCAN)",
-      "detail": "Statewide ST_ClusterDBSCAN: a building joins a cluster when at least 4 buildings lie within 58 m. Buildings with no such neighbours stay unclustered and are not part of any settlement.",
-      "math": "p \\text{ is a core building} \\iff \\bigl|\\{\\, q : \\lVert p - q \\rVert \\le \\varepsilon \\,\\}\\bigr| \\ge k, \\quad \\varepsilon = 58\\ \\text{m},\\ k = 4"
+      "title": "Cluster the footprints (DBSCAN)",
+      "detail": "Statewide ST_ClusterDBSCAN on the footprints themselves, so distance is measured wall to wall: a building joins a cluster when at least 4 buildings lie within 45 m of it. A school or mill counts by its walls, not its centre, so it no longer splits a neighbourhood. Buildings with no such neighbours are not part of any settlement.",
+      "math": "p \\text{ is a core building} \\iff \\bigl|\\{\\, q : d(p, q) \\le \\varepsilon \\,\\}\\bigr| \\ge k, \\quad d(p,q) = \\min_{x \\in p,\\, y \\in q} \\lVert x - y \\rVert,\\ \\varepsilon = 45\\ \\text{m},\\ k = 4"
     },
     {
       "title": "Close each cluster into a shape",
-      "detail": "Buffer the cluster's points out 60 m, then back in 35 m. The outward buffer fills the gaps between houses; the inward one pulls the edge back so it hugs the outermost buildings (about 25 m beyond them).",
-      "math": "S_c = \\bigl(\\textstyle\\bigcup_{p \\in c} B(p,\\, 60\\ \\text{m})\\bigr) \\ominus B(0,\\, 35\\ \\text{m})"
+      "detail": "Buffer the cluster's footprints out 45 m, then back in 35 m. The outward buffer fills the gaps between buildings; the inward one pulls the edge back to about 10 m beyond the outermost walls.",
+      "math": "S_c = \\bigl(\\textstyle\\bigcup_{p \\in c} p \\oplus B(45\\ \\text{m})\\bigr) \\ominus B(35\\ \\text{m})"
     },
     {
       "title": "Dissolve touching shapes",
-      "detail": "Shapes that touch or overlap are merged into one settlement (a second DBSCAN with distance 0). This joins a city split by parking lots and highways wider than the cluster distance."
+      "detail": "Shapes that touch or overlap are merged into one settlement (a second DBSCAN with distance 0). This joins a city split by parking lots and highways wider than the cluster distance. Settlements with fewer than 10 buildings are dropped."
     },
     {
-      "title": "Simplify and filter",
-      "detail": "Simplified to 5 m (topology preserved). Settlements with fewer than 10 buildings are dropped."
+      "title": "Attach large buildings at the edge",
+      "detail": "A building of 2,000 m² or more that is still outside every settlement but within 100 m of one is joined to the nearest: a local closing (60 m) around the building and the nearby part of the settlement, plus a 30 m-wide bridge along the shortest line between them, so the settlement stays in one piece. Large buildings further out (a lone mill, warehouse or farm complex) stay outside by design.",
+      "math": "S' = S \\cup P \\cup \\Bigl(\\bigl(P \\cup (S \\cap P \\oplus B(150\\ \\text{m}))\\bigr) \\bullet B(60\\ \\text{m})\\Bigr) \\cup \\overline{PS} \\oplus B(15\\ \\text{m})"
     },
     {
-      "title": "Name and classify",
-      "detail": "Town = the town containing a point on the settlement's surface. Size class from the building count: 1000+ city or large town, 250+ town centre, 50+ village, otherwise hamlet.",
+      "title": "Fill small holes",
+      "detail": "Gaps between building clusters (parking lots, school fields, a block of lawns) leave holes inside a settlement, which made larger towns look like swiss cheese. Every hole smaller than 10 acres, or 3 % of the settlement's area if that is larger, is filled; bigger holes (large parks, ponds, river corridors) stay.",
+      "math": "\\text{fill hole } h \\text{ of } S \\iff A(h) < \\max\\bigl(10\\ \\text{acres},\\ 0.03\\, A(S)\\bigr)"
+    },
+    {
+      "title": "Simplify, name and classify",
+      "detail": "Simplified to 5 m (topology preserved). Town = the town containing a point on the settlement's surface. Size class from the building count.",
       "math": "\\text{class}(n) = \\begin{cases} \\text{City or large town} & n \\ge 1000 \\\\ \\text{Town centre} & 250 \\le n < 1000 \\\\ \\text{Village} & 50 \\le n < 250 \\\\ \\text{Hamlet} & 10 \\le n < 50 \\end{cases}"
     }
   ],
   "parameters": [
     {
       "name": "Neighbour distance (DBSCAN eps)",
-      "value": "58 m",
-      "why": "Raised from 50 m. Density scales with distance squared, so 58 m admits areas about 25 % less dense.",
-      "math": "\\left(\\tfrac{50}{58}\\right)^2 \\approx 0.74"
+      "value": "45 m, wall to wall",
+      "why": "The old centre-to-centre 58 m less the median house width (11 m), so ordinary neighbourhoods cluster as before while large buildings are measured by their walls. Tested on Androscoggin County: about the same settlements (302 vs 305) and area (+3 %).",
+      "math": "58\\ \\text{m} - \\tilde{w}_{\\text{house}} \\approx 58 - 11 \\approx 45\\ \\text{m}"
     },
     {
       "name": "Minimum neighbours (DBSCAN minpoints)",
@@ -72,8 +78,23 @@
     },
     {
       "name": "Buffer out / in",
-      "value": "60 m / 35 m",
-      "why": "Out must exceed half the neighbour distance so neighbours' buffers join; the net 25 m keeps yards inside the outline."
+      "value": "45 m / 35 m",
+      "why": "Out must reach half the neighbour distance so neighbours' buffers join; the net 10 m beyond the walls keeps yards inside the outline."
+    },
+    {
+      "name": "Large building / attach distance",
+      "value": "2,000 m² / 100 m",
+      "why": "Schools, mills, plants and big-box stores at the edge of town; 100 m spans a parking lot or a road with its verges, but not open country."
+    },
+    {
+      "name": "Closing radius / bridge width",
+      "value": "60 m / 30 m",
+      "why": "60 m closes any gap up to the 100 m attach distance with a smooth edge; the bridge guarantees one piece where the closing alone would not."
+    },
+    {
+      "name": "Hole-filling threshold",
+      "value": "max(10 acres, 3 % of the settlement)",
+      "why": "Before this step 90 % of the 1,236 holes were under 10 acres (median 1-2 acres): noise from the closing step. Scaling with the settlement lets a city absorb parking lots and fields up to about 45 acres while a large park or pond still shows."
     },
     {
       "name": "Simplify tolerance",
@@ -93,8 +114,11 @@
   ],
   "caveats": [
     "Scattered rural houses are not in any settlement by design, so the buildings in settlements are well below the footprint count.",
+    "Large buildings more than 100 m from a settlement (a lone mill, warehouse or farm complex) stay outside.",
     "A settlement spanning two towns is named after one of them only.",
     "acres is the outline's area; footprint_acres is the area of the buildings themselves.",
-    "Rebuilt only when the number of building footprints changes (about two minutes). An Overture update that keeps the same count is not picked up; to force a rebuild run TRUNCATE src_units.settlements_meta, then ./mapgen apply maine-places."
+    "Rebuilt only when the number of building footprints or the method version (in the SQL) changes, about five minutes. An Overture update that keeps the same count is not picked up; to force a rebuild run TRUNCATE src_units.settlements_meta, then ./mapgen apply maine-places.",
+    "Method history: v1 clustered one point per building (58 m, buffer 60/-35 m); large buildings were measured from their centre, which split towns around schools and mills and left 91 % of buildings over 5,000 m² outside every settlement.",
+    "Small parks, cemeteries and fields inside a settlement are drawn as built-up (holes under the threshold are filled)."
   ]
 }

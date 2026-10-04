@@ -21,7 +21,7 @@ usage: ./mapgen <command> ...
   sync [--check]           register every project in projects/index.json (--check: report drift only)
   export <slug>            write a project saved in the /new wizard to projects/<slug>/project.json
   list                     registered projects
-  check-templates          the placeholder projects must be reproducible from their templates
+  check-templates          every template renders a valid manifest
   import ...               alias for scripts/geoimport.py (e.g. ./mapgen import recipe me_cousub)
 EOF
 }

@@ -802,8 +802,10 @@ def list_reports(slug: str, request: Request) -> list[dict]:
     with projects_pool.connection() as conn:
         if not _project_visible(conn, request, slug):
             raise HTTPException(404, f"no project {slug}")
-        return [_report_out(r) for r in conn.execute(
-            f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s ORDER BY created_at DESC LIMIT 20", (slug,)).fetchall()]
+        rows = conn.execute(
+            f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s ORDER BY created_at DESC LIMIT 20", (slug,)).fetchall()
+    # Only reports whose file is here: a database restored on another machine brings the rows, not the PDFs.
+    return [_report_out(r) for r in rows if (REPORTS_DIR / r["path"]).is_file()]
 
 
 @app.get("/api/projects/{slug}/reports/{name}")
@@ -815,9 +817,10 @@ def get_report(slug: str, name: str, request: Request) -> FileResponse:
     with projects_pool.connection() as conn:
         if not _project_visible(conn, request, slug):
             raise HTTPException(404, f"no report {name} for {slug}")
-        r = conn.execute(f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s"
-                         + ("" if m[1] == "latest" else " AND id = %s") + " ORDER BY created_at DESC LIMIT 1",
-                         (slug,) if m[1] == "latest" else (slug, int(m[1]))).fetchone()
+        candidates = conn.execute(f"SELECT {REPORT_COLUMNS} FROM app.reports WHERE slug = %s"
+                                  + ("" if m[1] == "latest" else " AND id = %s") + " ORDER BY created_at DESC LIMIT 20",
+                                  (slug,) if m[1] == "latest" else (slug, int(m[1]))).fetchall()
+    r = next((c for c in candidates if (REPORTS_DIR / c["path"]).is_file()), None)
     path = (REPORTS_DIR / r["path"]).resolve() if r else None
     if not r or not path.is_relative_to(REPORTS_DIR.resolve()) or not path.is_file():
         raise HTTPException(404, f"no report {name} for {slug}")

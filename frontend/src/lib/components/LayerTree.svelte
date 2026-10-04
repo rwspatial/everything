@@ -22,6 +22,20 @@
 		while (j >= 0 && j < layers.length && layers[j].spec.status === 'todo') j += d;
 		return j >= 0 && j < layers.length;
 	};
+
+	// Opacity lives in one floating panel (a light-dismiss popover: Escape or a click elsewhere closes it), opened
+	// from a small button on the layer row, so the list stays compact. The button shows the value when not 100 %.
+	let panel = $state<HTMLDivElement>();
+	let editing = $state<number | null>(null);
+	let pos = $state({ top: 0, left: 0 });
+	function openAdjust(i: number, e: MouseEvent) {
+		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const width = 240;
+		pos = { top: r.bottom + 6, left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)) };
+		editing = i;
+		panel?.showPopover();
+	}
+	const pct = (v: number) => `${Math.round(v * 100)}%`;
 </script>
 
 <ul class="tree" aria-label="Layers, top to bottom">
@@ -37,6 +51,27 @@
 				<label for={cid}>{ls.spec.title}</label>
 				{#if todo}<StatusBadge status="todo" />{/if}
 				{#if ls.error}<StatusBadge status="error" />{/if}
+				{#if !todo}
+					<button
+						class="icon adjust"
+						class:changed={ls.opacity !== 1}
+						aria-label="Adjust {ls.spec.title}"
+						aria-haspopup="dialog"
+						aria-expanded={editing === index}
+						title="Opacity"
+						onclick={(e) => openAdjust(index, e)}
+						>{#if ls.opacity !== 1}{pct(ls.opacity)}{:else}<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"
+								><path d="M2 4h7M13 4h1M2 12h1M7 12h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /><circle
+									cx="11"
+									cy="4"
+									r="1.8"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								/><circle cx="5" cy="12" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5" /></svg
+							>{/if}</button
+					>
+				{/if}
 				<span class="move">
 					<button class="icon" aria-label="Move {ls.spec.title} up" disabled={!canMove(index, 1)} onclick={() => onmove(index, 1)}>▲</button>
 					<button class="icon" aria-label="Move {ls.spec.title} down" disabled={!canMove(index, -1)} onclick={() => onmove(index, -1)}>▼</button>
@@ -46,19 +81,6 @@
 				<p class="note">{ls.spec.todo ?? 'Not configured yet.'}</p>
 			{:else}
 				{#if ls.error}<p class="error" role="alert">{ls.error}</p>{/if}
-				<label class="slider">
-					<span>Opacity</span>
-					<input
-						type="range"
-						min="0"
-						max="1"
-						step="0.05"
-						value={ls.opacity}
-						aria-label="{ls.spec.title} opacity"
-						oninput={(e) => onopacity(index, Number(e.currentTarget.value))}
-					/>
-					<output>{Math.round(ls.opacity * 100)}%</output>
-				</label>
 				{#each ls.spec.controls ?? [] as c (c.param)}
 					<label class="slider">
 						<span>{c.label}</span>
@@ -79,6 +101,42 @@
 		</li>
 	{/each}
 </ul>
+
+<div
+	class="adjust-panel"
+	role="dialog"
+	aria-label={editing !== null ? `Adjust ${layers[editing]?.spec.title}` : 'Adjust layer'}
+	popover="auto"
+	bind:this={panel}
+	style:top="{pos.top}px"
+	style:left="{pos.left}px"
+	ontoggle={(e) => {
+		if ((e as ToggleEvent).newState === 'closed') editing = null;
+	}}
+>
+	{#if editing !== null && layers[editing]}
+		{@const ls = layers[editing]}
+		{@const i = editing}
+		<div class="panel-head">
+			<strong>{ls.spec.title}</strong>
+			<button class="icon" aria-label="Close" onclick={() => panel?.hidePopover()}>✕</button>
+		</div>
+		<label class="slider">
+			<span>Opacity</span>
+			<input
+				type="range"
+				min="0"
+				max="1"
+				step="0.05"
+				value={ls.opacity}
+				aria-label="{ls.spec.title} opacity"
+				oninput={(e) => onopacity(i, Number(e.currentTarget.value))}
+			/>
+			<output>{pct(ls.opacity)}</output>
+		</label>
+		{#if ls.opacity !== 1}<button class="reset" onclick={() => onopacity(i, 1)}>Reset to 100%</button>{/if}
+	{/if}
+</div>
 
 <style>
 	.tree { list-style: none; margin: 0; padding: 0; }
@@ -101,6 +159,17 @@
 	.move .icon { font-size: 0.65rem; padding: 0.15rem 0.3rem; }
 	.note { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--muted); }
 	.error { margin: 0.35rem 0 0; font-size: 0.78rem; color: #8a1c14; }
+	.adjust { font-size: 0.68rem; min-width: 1.6rem; padding: 0.15rem 0.3rem; display: inline-grid; place-items: center; color: var(--muted); }
+	.adjust.changed { color: var(--accent-strong); font-weight: 700; font-variant-numeric: tabular-nums; }
+	.adjust-panel {
+		position: fixed; margin: 0; inset: auto; width: 240px; padding: 0.6rem 0.75rem 0.7rem;
+		background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+		box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+	}
+	.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; }
+	.panel-head .icon { font-size: 0.7rem; padding: 0.1rem 0.35rem; }
+	.adjust-panel .slider { grid-template-columns: 3.6rem 1fr 2.6rem; }
+	.reset { margin-top: 0.45rem; font-size: 0.75rem; padding: 0.2rem 0.5rem; }
 	.slider { display: grid; grid-template-columns: 5.5rem 1fr 2.8rem; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); margin-top: 0.35rem; }
 	.slider input { width: 100%; accent-color: var(--accent); }
 	.slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }

@@ -1,0 +1,21 @@
+name: me_usgs_stream_sites
+title: Stream monitoring locations (USGS, Maine)
+description: Every USGS stream monitoring location in Maine (current and historical), with name, drainage area and
+  hydrologic unit, from the USGS Water Data OGC API.
+agency: U.S. Geological Survey (Water Mission Area)
+source:
+  url: https://api.waterdata.usgs.gov/ogcapi/v0/collections/monitoring-locations/items?state_code=23&site_type_code=ST&limit=5000&f=json
+  filename: usgs_me_stream_sites.geojson
+upstream:
+  url: https://api.waterdata.usgs.gov/ogcapi/v0/collections/monitoring-locations/items
+target: src_hydro.usgs_stream_sites
+srs: EPSG:4326
+freshness:
+  method: none
+license: Public domain (USGS)
+attribution: U.S. Geological Survey, Water Data for the Nation
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -8,7 +8,7 @@
 	import { fragmentsFor, opacityPaint, toMapLibre, type AdapterContext } from '$lib/adapters';
 	import { resolveBasemap } from '$lib/basemaps';
 	import { loadIcons, providePoiIcon } from '$lib/icons';
-	import { addOverlays, provideBadge } from '$lib/overlays';
+	import { addOverlays, hasOwnRoads, isRoadLayer, provideBadge } from '$lib/overlays';
 	import { PALETTE } from '$lib/format';
 	import type { ProjectManifest } from '$lib/types';
 
@@ -47,9 +47,9 @@
 				provideBadge(map!, id);
 				providePoiIcon(map!, id);
 			});
-			map.on('style.load', () => addOverlays(map!, tilesBase));
+			map.on('style.load', () => addOverlays(map!, tilesBase, { roads: !hasOwnRoads(manifest) }));
 			map.once('load', () => {
-				const before = map!.getStyle().layers.find((l) => l.type === 'symbol' && !l.id.startsWith('o:'))?.id;
+				const before = map!.getStyle().layers.find((l) => isRoadLayer(map!, l.id) || (l.type === 'symbol' && !l.id.startsWith('o:')))?.id;
 				manifest.layers
 					.filter((l) => l.status !== 'todo' && l.visible !== false)
 					.forEach((spec, i) => {

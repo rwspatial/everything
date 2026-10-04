@@ -15,7 +15,6 @@
 	<header class="site">
 		<a class="brand" href="/"><span aria-hidden="true">◈</span> {site.studio}</a>
 		<nav aria-label="Main">
-			<a href="/#work">Work</a>
 			<a href="/maps" aria-current={current('/maps')}>Maps</a>
 			<a href="/about" aria-current={current('/about')}>About &amp; contact</a>
 			{#if !page.data.config?.publicMode}

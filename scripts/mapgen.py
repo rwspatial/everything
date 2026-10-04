@@ -31,15 +31,15 @@ sys.path.insert(0, str(REPO / "contracts"))
 sys.path.insert(0, str(REPO / "scripts"))
 
 import validate as V  # noqa: E402  contracts/validate.py
-from etl import health  # noqa: E402
-from etl import outputs as outputs_mod  # noqa: E402
 
 PROJECTS = REPO / "projects"
 TEMPLATES = REPO / "templates" / "projects"
 INDEX = PROJECTS / "index.json"
 COG_DIR = REPO / "data" / "cog"
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-APP = "service=app"        # app_rw: registry writes
+# app_rw: registry writes. MAPGEN_APP_DSN lets mapgen run outside geotools (e.g. in the core-api container on the
+# AWS server, where `make aws-deploy` syncs projects without the 7 GB tools image).
+APP = os.environ.get("MAPGEN_APP_DSN") or "service=app"
 LOADER = "service=loader"  # dataset registry: which projects use which outputs
 WHO = os.environ.get("TRIGGERED_BY", "cli:unknown")
 # Errors that make a manifest unusable (sync skips it). Live errors (a missing view, ...) are registered
@@ -83,6 +83,15 @@ def checksum(m: dict) -> str:
 
 
 def cog_exists(name: str) -> bool:
+    root = os.environ.get("COG_ROOT", "")
+    if root.startswith("s3://"):  # COGs served from S3 (compose.s3.yaml): ask titiler, which reads them
+        import urllib.request
+        titiler = os.environ.get("TITILER_URL", "http://titiler:8000")
+        try:
+            with urllib.request.urlopen(f"{titiler}/cog/info?url={root.rstrip('/')}/{name}.tif", timeout=20) as r:
+                return r.status == 200
+        except Exception:  # noqa: BLE001  missing or unreadable: reported as E_COG_MISSING
+            return False
     return (COG_DIR / f"{name}.tif").is_file()
 
 
@@ -136,6 +145,12 @@ def refresh_usage(manifests: list[dict]) -> None:
     names = sorted({(l.get("source") or {}).get("collection") or (l.get("source") or {}).get("cog")
                     for m in manifests for l in m.get("layers", []) if l.get("status") != "todo"} - {None})
     if not names:
+        return
+    try:  # needs GDAL and the loader role (geotools); skipped where mapgen runs without them
+        from etl import health
+        from etl import outputs as outputs_mod
+    except ImportError as e:
+        print(f"INFO  dataset usage not refreshed here ({e.name} unavailable); the dashboard's 'used by' may lag")
         return
     with psycopg.connect(LOADER) as conn:
         for recipe in outputs_mod.recipes_behind(conn, names):
@@ -207,20 +222,19 @@ def cmd_new(a) -> None:
     print(f"\nnext: edit {target.relative_to(REPO)}, then ./mapgen apply {slug}")
 
 
-# Placeholder projects that must be reproducible from their templates (plan Phase 3, deliverable 6).
-TEMPLATE_PROJECTS = [("hydrology-sketch", "hydro", "Hydrology Sketch"), ("analysis-sandbox", "analysis", "Analysis Sandbox")]
-
-
 def cmd_check_templates(_a) -> None:
+    """Every template renders into a valid manifest (schema + rules). The hub's example projects (hydrology-sketch,
+    analysis-sandbox) started from templates but are free to grow: they are not compared with them any more."""
     failed = 0
-    for slug, template, title in TEMPLATE_PROJECTS:
-        args = argparse.Namespace(slug=slug, template=template, title=title, layer="features", layer_title=None,
-                                  source_table=None)
-        generated, _ = render_template(args)
-        same = V.normalize(generated) == V.normalize(load_manifest(slug))
-        failed += not same
-        print(f"{'PASS' if same else 'FAIL'}  ./mapgen new {slug} --template {template} "
-              f"{'reproduces' if same else 'differs from'} projects/{slug}/project.json")
+    for tdir in sorted(p for p in TEMPLATES.iterdir() if (p / "project.json").is_file()):
+        args = argparse.Namespace(slug=f"template-check-{tdir.name}", template=tdir.name, title=f"Template check {tdir.name}",
+                                  layer="features", layer_title=None, source_table=None)
+        try:
+            render_template(args)
+            print(f"PASS  ./mapgen new <slug> --template {tdir.name} renders a valid manifest")
+        except MapgenError as e:
+            failed += 1
+            print(f"FAIL  template {tdir.name}: {e}")
     sys.exit(1 if failed else 0)
 
 
@@ -343,7 +357,7 @@ def main() -> None:
     p.add_argument("--from", dest="source_table", help="source table for the layer's view, e.g. src_census.cousub")
     p.add_argument("--stdout", action="store_true", help="print the manifest instead of writing files")
     p.set_defaults(func=cmd_new)
-    sub.add_parser("check-templates", help="the placeholder projects must be reproducible from their templates"
+    sub.add_parser("check-templates", help="every template renders a valid manifest"
                    ).set_defaults(func=cmd_check_templates)
     p = sub.add_parser("validate", help="validate a project (schema, rules, database, COGs)")
     p.add_argument("slug")

@@ -3,7 +3,7 @@
   "slug": "maine-water",
   "status": "ready",
   "title": "Maine Water",
-  "description": "National Wetlands Inventory and EPA ATTAINS assessed waters (Maine DEP integrated report).",
+  "description": "National Wetlands Inventory and EPA ATTAINS assessed waters (Maine DEP integrated report); HUC-8 and HUC-12 watersheds (USGS WBD) and active real-time stream gauges with their latest streamflow. Wetlands appear from zoom 11 (587,644 polygons). A statewide generalized view is a later step.",
   "tags": [
     "maine",
     "water",
@@ -24,9 +24,6 @@
     ],
     "basemap": "positron"
   },
-  "notes": [
-    "Wetlands appear from zoom 11 (587,644 polygons). A statewide generalized view is a later step."
-  ],
   "layers": [
     {
       "id": "flood-zones",
@@ -483,6 +480,175 @@
       "visible": false
     },
     {
+      "id": "watersheds",
+      "title": "Watersheds (HUC-8)",
+      "group": "Watersheds",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__watersheds",
+        "properties": [
+          "huc8",
+          "name",
+          "area_sqmi"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#3a6ea5",
+              "fill-opacity": 0.04
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#3a6ea5",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                6,
+                0.9,
+                12,
+                2
+              ],
+              "line-opacity": 0.8
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#3a6ea5",
+        "label": "Watershed boundary (HUC-8)"
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} watershed (HUC {huc8}), {area_sqmi} sq mi"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Geological Survey, Watershed Boundary Dataset",
+      "visible": true
+    },
+    {
+      "id": "subwatersheds",
+      "title": "Sub-watersheds (HUC-12)",
+      "group": "Watersheds",
+      "minzoom": 9,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__subwatersheds",
+        "properties": [
+          "huc12",
+          "name",
+          "area_sqmi"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#6b9bd1",
+              "fill-opacity": 0.03
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#6b9bd1",
+              "line-width": 0.8,
+              "line-dasharray": [
+                3,
+                2
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#6b9bd1",
+        "label": "Sub-watershed boundary (HUC-12)"
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name} (HUC {huc12}), {area_sqmi} sq mi"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Geological Survey, Watershed Boundary Dataset",
+      "visible": false
+    },
+    {
+      "id": "stream-gauges",
+      "title": "Stream gauges (USGS, real time)",
+      "group": "Monitoring",
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_water__stream_gauges",
+        "properties": [
+          "site_no",
+          "name",
+          "county",
+          "drainage_sqmi",
+          "flow_cfs",
+          "latest",
+          "link"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "symbol",
+            "layout": {
+              "icon-image": "poi:water:08519c",
+              "icon-size": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                6,
+                0.45,
+                10,
+                0.65,
+                14,
+                0.9
+              ],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "single",
+        "color": "#08519c",
+        "label": "Active USGS stream gauge"
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: {latest}"
+        },
+        "inspect": true
+      },
+      "attribution": "U.S. Geological Survey, Water Data for the Nation (provisional real-time data)",
+      "visible": true
+    },
+    {
       "id": "maine-boundary",
       "title": "Maine boundary",
       "group": "Boundaries",
@@ -556,6 +722,21 @@
       "data": {
         "collection": "pub.maine_water__flood_zones",
         "category": "hazard"
+      }
+    },
+    {
+      "id": "streamflow",
+      "title": "Highest streamflow right now (ft³/s)",
+      "type": "bar",
+      "layer": "stream-gauges",
+      "format": "number",
+      "description": "Latest provisional reading at each active USGS gauge, as of the last import.",
+      "data": {
+        "collection": "pub.maine_water__stream_gauges",
+        "category": "name",
+        "value": "flow_cfs",
+        "agg": "max",
+        "limit": 10
       }
     }
   ]

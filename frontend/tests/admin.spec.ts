@@ -329,7 +329,7 @@ test.describe('signed in', () => {
 		await expect(page.getByRole('heading', { name: 'Settlements (built-up areas)' })).toBeVisible();
 		await expect(page.getByText('rows in pub.maine_places__settlements')).toBeVisible();
 		await expect(page.locator('.katex').first()).toBeVisible();
-		await expect(page.getByRole('row', { name: /Neighbour distance/ })).toContainText('58 m');
+		await expect(page.getByRole('row', { name: /Neighbour distance/ })).toContainText('45 m');
 		await page.getByText('SQL:').click();
 		await expect(page.locator('pre')).toContainText('ST_ClusterDBSCAN');
 		await shot(page, 'admin-methods-settlements');

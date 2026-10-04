@@ -7,7 +7,10 @@ export const load: PageLoad = async ({ parent, fetch }) => {
 	const { config } = await parent();
 	try {
 		const projects = await projectRepository(config, fetch).list();
-		return { featured: projects.filter((p) => !p.error && p.tags.includes(site.featuredTag)), total: projects.length };
+		// Three published maps up front; the Maps page is the full catalogue (published, in progress, create).
+		const published = projects.filter((p) => !p.error && p.status === 'ready');
+		const featured = published.filter((p) => p.tags.includes(site.featuredTag));
+		return { featured: (featured.length ? featured : published).slice(0, 3), total: published.length };
 	} catch {
 		return { featured: [], total: 0 };
 	}

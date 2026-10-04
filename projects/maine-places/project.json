@@ -97,7 +97,7 @@
         },
         "inspect": true
       },
-      "attribution": "Built-up areas derived from Overture Maps buildings (DBSCAN 58 m; at least 10 buildings)",
+      "attribution": "Built-up areas derived from Overture Maps buildings (DBSCAN 45 m wall to wall; at least 10 buildings; small holes filled)",
       "visible": true
     },
     {

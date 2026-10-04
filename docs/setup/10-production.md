@@ -88,10 +88,49 @@ make backup-offsite    # make backup + upload the dump; the bucket expires backu
 
 ## The AWS server (on demand, private)
 
+### How on-demand hosting works
+
+There is **one server, and it is off unless you turn it on.** It has no fixed address and no domain yet: each time it
+starts, AWS gives it a new public IP, and the start command prints it. Only your home connection can open it.
+
+| State | What it means | Get there with | Address | Who can see it | Cost |
+|---|---|---|---|---|---|
+| **Stopped** (default) | Server off; data kept on its disk | `make aws-down`, or automatically at 1 AM Eastern | none | nobody | ≈ $3.20/month (disk) |
+| **Running, private** | The site is up in production mode: published maps only, no admin pages | `make aws-up` (≈ 1 min) | `http://<IP>/`, printed by the command; `make aws-status` shows it again | your home IP (74.75.120.122) only | ≈ $0.10/hour |
+| **Running + admin** | Same, plus the admin pages through an SSH tunnel | `make aws-tunnel` in a second terminal | `http://localhost:8081/admin` | you (SSH key + admin login) | same |
+| **Updated** | The server runs your latest code (and optionally data) | `make aws-deploy src=local` (≈ 40 s) or `src=git`; `data=1` adds database + COGs (≈ 15 min) | printed at the end | your home IP only | same |
+| **Public** (not yet) | Anyone can open it, on a domain with HTTPS | needs a domain (see "Domain" below) and opening ports 80/443 to everyone | the domain | everyone | same + domain (≈ $15/year) |
+
+A normal session: `make aws-deploy src=local` → open the printed address → (`make aws-tunnel` for admin) →
+`make aws-down`.
+
+- **The address changes at every start** (no Elastic IP: one costs ≈ $3.65/month even while stopped). A domain will
+  give one stable name; `make aws-up` will point it at the new IP each time.
+- **If your home IP changes,** `make aws-up` moves the firewall rule to the new IP. A phone on mobile data, or anyone
+  else, gets no response.
+- **What runs there:** the published site, tiles, rasters from S3 and charts. Not there: imports, the R/Python analysis
+  workers and the PDF reporter (they stay on the workstation), so PDFs are made locally.
+- **Credit:** costs come out of the AWS Free-plan credit ($100, until 2027-04-03).
+
+### Domain (when the site goes public)
+
+The Free plan does not allow registering domains in Route 53. Options, decided later:
+
+1. **Upgrade to the Paid plan** (unused credit stays valid; the domain itself, ≈ $15/year, is billed to the card because
+   credits cannot pay for domains). Add an AWS Budgets alert (e.g. $10 and $25/month). Then Route 53 + automatic DNS
+   update in `make aws-up` + HTTPS through Route 53 (DNS-01), even while the firewall stays private.
+2. **Buy the domain elsewhere** (e.g. Cloudflare Registrar, at cost, with free DNS): works on the Free plan; `make aws-up`
+   updates the record through Cloudflare's API and HTTPS uses Cloudflare DNS.
+3. **No domain** while testing privately: the printed IP is enough.
+
+
 Created 2026-10-03 in account 277659481909, **us-east-2**. It is **stopped by default and not public**: ports
 22/80/443 accept the owner's IP only, and a schedule stops it every night at 1 AM America/New_York.
 
 ```bash
+make aws-deploy    # start + update to the pushed master, migrate, re-apply views, sync projects, run the checks
+make aws-deploy src=local   # same with this working tree (uncommitted UI work included); ~40 s when only code changed
+make aws-deploy data=1      # also a fresh database backup + COGs (restored on the server; ~15 min)
 make aws-up        # start (moves the owner-only firewall rule if your IP changed), wait, print the URL
 make aws-tunnel    # admin listener -> http://localhost:8081/admin
 make aws-ssh       # a shell (the stack lives in /srv/everything; .env there is the server's)
@@ -115,6 +154,11 @@ Everything carries the tag `project=everything`.
 until **2027-04-03**; upgrade to the Paid plan in the Billing console before then (or before the credits run
 out), or AWS closes the account. The Free plan only allows free-tier instance types (m7i-flex.large is the
 largest).
+
+**Deploys:** `src=git` resets the server to `origin/master` (and removes anything a `src=local` deploy copied);
+`src=local` copies the files git tracks plus new ones it does not ignore. Projects are registered with `mapgen`
+running in the core-api container (no geotools image on the server); the dashboard's "used by" column is not
+refreshed there. Generated PDFs stay on the machine that printed them (the reporter does not run on the server).
 
 **What runs there:** the core stack only (database, tiPG, titiler from S3, core-api, site, proxy) in production
 mode. Imports, the R/Python workers and the reporter stay on the workstation; data goes over as a database

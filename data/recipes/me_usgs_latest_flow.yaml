@@ -1,0 +1,21 @@
+name: me_usgs_latest_flow
+title: Latest streamflow at real-time gauges (USGS, Maine)
+description: 'A snapshot of the latest real-time discharge reading (parameter 00060, ft3/s) at every active USGS gauge in
+  and around Maine. Active = reporting continuously. Readings are as of the import: re-run with --redownload to refresh.'
+agency: U.S. Geological Survey (Water Mission Area)
+source:
+  url: https://api.waterdata.usgs.gov/ogcapi/v0/collections/latest-continuous/items?bbox=-71.09,42.97,-66.94,47.46&parameter_code=00060&limit=1000&f=json
+  filename: usgs_me_latest_flow.geojson
+upstream:
+  url: https://api.waterdata.usgs.gov/ogcapi/v0/collections/latest-continuous/items
+target: src_hydro.usgs_latest_flow
+srs: EPSG:4326
+freshness:
+  method: none
+license: Public domain (USGS)
+attribution: U.S. Geological Survey, Water Data for the Nation (provisional real-time data)
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

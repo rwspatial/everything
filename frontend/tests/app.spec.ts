@@ -26,15 +26,15 @@ test('landing page (identity, live selected work) and the About page (services, 
 	await expect(page).toHaveTitle(/Downeast Geospatial/);
 	await expect(page.getByText('Bold Coast Geospatial')).toHaveCount(0); // the old studio name (the photo credit names the Bold Coast itself)
 	await expect(page.getByRole('link', { name: /New England Wilderness Trust/ })).toBeVisible();
-	const work = page.getByRole('list', { name: 'Selected work' });
-	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure']) {
-		await expect(work.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
-	}
-	await expect(work.getByRole('link', { name: /World Overview/ })).toHaveCount(0);
+	// Three published maps up front; the Maps page is the full catalogue.
+	const work = page.getByRole('list', { name: 'Featured maps' });
+	await expect(work.getByRole('link')).toHaveCount(3);
+	await expect(work.getByRole('link', { name: /^Maine Water/ })).toBeVisible();
+	await expect(work.getByRole('link', { name: /Maine Lands|World Overview/ })).toHaveCount(0); // drafts are never featured
 	await expect(page.getByRole('heading', { name: 'What I do' })).toHaveCount(0); // moved to /about
 	await shot(page, '0-landing');
-	await work.getByRole('link', { name: /^Maine Lands/ }).click();
-	await expect(page).toHaveURL(/\/p\/maine-lands/);
+	await work.getByRole('link', { name: /^Maine Water/ }).click();
+	await expect(page).toHaveURL(/\/p\/maine-water/);
 	await page.getByRole('link', { name: '← All maps' }).click();
 	await expect(page).toHaveURL(/\/maps$/);
 
@@ -51,35 +51,53 @@ test('landing page (identity, live selected work) and the About page (services, 
 	await shot(page, '0b-about');
 });
 
-test('hub lists the placeholder projects with status and what is missing', async ({ page }) => {
+test('maps page: published maps, maps in progress with what is missing, and create', async ({ page }) => {
 	const api = page.waitForResponse((r) => r.url().endsWith('/api/projects') && r.status() === 200);
 	await page.goto('/maps');
 	await api; // the hub reads the project registry (core-api), not the static files
-	const cards = page.getByRole('list', { name: 'Projects' });
-	await expect(cards.getByRole('link', { name: 'World Overview', exact: true })).toBeVisible();
-	await expect(cards.getByRole('link', { name: 'Hydrology Sketch', exact: true })).toBeVisible();
-	await expect(cards.getByRole('link', { name: 'Analysis Sandbox', exact: true })).toBeVisible();
-	for (const name of ['Maine Coast', 'Maine Water', 'Maine Lands', 'Maine Infrastructure', 'Maine Overview']) {
+	const published = page.getByRole('list', { name: 'Published maps' });
+	for (const name of ['Maine Water', 'Maine Census Demographics', 'Maine Terrain']) {
+		await expect(published.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
+	}
+	const cards = page.getByRole('list', { name: 'Maps in progress' });
+	for (const name of ['World Overview', 'Hydrology Sketch', 'Analysis Sandbox', 'Maine Coast', 'Maine Lands', 'Maine Infrastructure']) {
 		await expect(cards.getByRole('link', { name, exact: true })).toBeVisible();
 	}
+	await expect(page.getByRole('complementary', { name: 'Create a map' }).getByRole('link', { name: 'New map →' })).toHaveAttribute('href', '/admin/new');
 	// Count drafts from the registry: projects saved in the /admin/new wizard also appear on the hub.
 	const registry = await (await page.request.get('/api/projects')).json();
 	const drafts = registry.projects.filter((p: { status: string }) => p.status === 'draft').length;
 	await expect(page.getByText('Draft', { exact: true })).toHaveCount(drafts);
-	await expect(page.getByText('Stub', { exact: true })).toHaveCount(2);
-	const lands = cards.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Maine Lands', exact: true }) });
-	await lands.getByText("What's missing?").click();
-	await expect(lands.getByText(/trails/i).first()).toBeVisible();
+	await expect(page.getByText('Stub', { exact: true })).toHaveCount(1); // the Analysis Sandbox, until results are added
+	// Nothing is missing on any map in progress, so no "What's missing" toggles are shown.
+	await expect(page.getByText("What's missing")).toHaveCount(0);
 	await shot(page, '1-hub');
 });
 
 test('hub and viewer fall back to the static manifests when core-api is unreachable', async ({ page }) => {
 	await page.route('**/api/projects**', (route) => route.abort());
 	await page.goto('/maps');
-	await expect(page.getByRole('list', { name: 'Projects' }).getByRole('link', { name: 'Maine Overview', exact: true })).toBeVisible();
+	await expect(page.getByRole('list', { name: 'Published maps' }).getByRole('link', { name: /^Maine Census Demographics/ })).toBeVisible();
 	await page.goto('/p/maine-overview');
 	await mapIdle(page);
-	expect(await rendered(page, 'towns')).toBeGreaterThan(400);
+	expect(await rendered(page, 'towns-65')).toBeGreaterThan(400);
+});
+
+test('basemap roads lifted above the map layers, so labels never float over a hidden road; US routes in the shield', async ({ page }) => {
+	await page.goto('/p/maine-terrain?map=10/44.10/-70.22');
+	await mapIdle(page);
+	const order = () => page.evaluate(() => window.__spatial!.map!.getStyle().layers.map((l) => ({ id: l.id, road: (l as { 'source-layer'?: string })['source-layer'] === 'transportation' && l.type === 'line' })));
+	let layers = await order();
+	const lastProject = layers.findLastIndex((l) => l.id.startsWith('p:'));
+	// Every basemap road line is drawn above the hillshade and elevation (and below the labels).
+	expect(layers.filter((l) => l.road).length).toBeGreaterThan(5);
+	expect(layers.findIndex((l) => l.road)).toBeGreaterThan(lastProject);
+	expect(await page.evaluate(() => window.__spatial!.map!.hasImage('badge-us-3'))).toBe(true); // US 202
+	// A map that draws its own roads keeps the basemap's roads underneath.
+	await page.goto('/p/maine-transportation?map=10/44.10/-70.22');
+	await mapIdle(page);
+	layers = await order();
+	expect(layers.findLastIndex((l) => l.road)).toBeLessThan(layers.findIndex((l) => l.id.startsWith('p:')));
 });
 
 test('route badges on every map: interstate, US and state routes near Bangor', async ({ page }) => {
@@ -106,13 +124,21 @@ test('facility icons and settlement outlines: pictograms instead of dots, built-
 	await shot(page, '14-settlements');
 });
 
-test('maine-overview (made with mapgen): towns shaded by ACS median household income', async ({ page }) => {
+test('maine-overview (census demographics): towns shaded by share 65 and over; themed groups; income one click away', async ({ page }) => {
 	await page.goto('/p/maine-overview');
+	await mapIdle(page);
+	expect(await rendered(page, 'towns-65')).toBeGreaterThan(400);
+	await expect(page.getByText('Share of residents 65 and over (town quintiles)')).toBeVisible();
+	await expect(page.getByText('suppressed (very small places)').first()).toBeVisible();
+	for (const group of ['Population and age', 'Income and poverty', 'Education', 'Race and ethnicity', 'Housing']) {
+		await expect(page.getByText(group, { exact: true }).first()).toBeVisible();
+	}
+	await page.getByRole('checkbox', { name: 'People 65 and over by town' }).uncheck();
+	await page.getByRole('checkbox', { name: 'Median household income by town' }).check();
 	await mapIdle(page);
 	expect(await rendered(page, 'towns')).toBeGreaterThan(400);
 	await expect(page.getByText('Median household income (quintiles)')).toBeVisible();
-	await expect(page.getByText('suppressed (very small places)')).toBeVisible();
-	// Click Augusta (its TIGER interior point): the inspector shows the town and its income. (Hover popups are off.)
+	// Click Augusta (its TIGER interior point): the inspector shows the town, its income and its age profile. (Hover popups are off.)
 	const xy = await page.evaluate(() => window.__spatial!.map!.project([-69.7342, 44.3349]));
 	const box = (await page.locator('.maplibregl-canvas').boundingBox())!;
 	await page.mouse.move(box.x + xy.x, box.y + xy.y);
@@ -121,6 +147,7 @@ test('maine-overview (made with mapgen): towns shaded by ACS median household in
 	const details = page.getByRole('complementary', { name: 'Feature details' });
 	await expect(details).toContainText('Augusta city');
 	await expect(details.getByRole('row', { name: /median_hh_income/ }).first()).toContainText(/\d/);
+	await expect(details.getByRole('row', { name: /pct_65_plus/ }).first()).toContainText(/\d/);
 	await shot(page, '7-maine-overview');
 });
 
@@ -147,7 +174,7 @@ test('maine-terrain: elevation, hillshade and slope COGs; Katahdin elevation on 
 	await shot(page, '11-maine-terrain-katahdin');
 });
 
-test('maine-overview: county outlines over the town choropleth', async ({ page }) => {
+test('maine-overview: county outlines over the town choropleth; block groups and blocks', async ({ page }) => {
 	await page.goto('/p/maine-overview');
 	await mapIdle(page);
 	expect(await rendered(page, 'counties')).toBeGreaterThanOrEqual(16);
@@ -170,13 +197,16 @@ test('maine-places: Overture buildings and places over downtown Portland', async
 	await shot(page, '12-maine-places');
 });
 
-test('main nav: Work, Maps, About & contact, Admin, then Data API at the far right', async ({ page }) => {
+test('main nav: Maps, About & contact, Admin, then Data API at the far right', async ({ page }) => {
 	await page.goto('/');
+	// The app draws the header after loading (static SPA): wait for it before reading the links.
+	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' })).toBeVisible();
 	const links = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents();
-	expect(links.map((t) => t.trim())).toEqual(['Work', 'Maps', 'About & contact', 'Admin', 'Data API']);
+	expect(links.map((t) => t.trim())).toEqual(['Maps', 'About & contact', 'Admin', 'Data API']);
 	await page.goto('/tiles/');
+	await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' })).toBeVisible();
 	const api = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents();
-	expect(api.map((t) => t.trim())).toEqual(['Work', 'Maps', 'About & contact', 'Admin', 'Data API']);
+	expect(api.map((t) => t.trim())).toEqual(['Maps', 'About & contact', 'Admin', 'Data API']);
 });
 
 test('maine-energy and maine-facilities: EIA plants and grid, HIFLD facilities', async ({ page }) => {
@@ -268,7 +298,11 @@ test('layer toggle, opacity and feature inspector', async ({ page }) => {
 	await page.getByRole('checkbox', { name: 'Populated places' }).check();
 	await expect.poll(() => rendered(page, 'places')).toBeGreaterThan(50);
 
+	await page.getByRole('button', { name: 'Adjust Countries by population' }).click();
 	await page.getByRole('slider', { name: 'Countries by population opacity' }).fill('0.4');
+	await expect(page.getByRole('button', { name: 'Adjust Countries by population' })).toHaveText('40%');
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('slider', { name: 'Countries by population opacity' })).toBeHidden();
 	await expect(page.getByText('40%')).toBeVisible();
 
 	// Click Brazil and inspect its attributes.
@@ -323,7 +357,9 @@ test('aerial basemap: imagery loads, data stays on top, labels above data', asyn
 	expect(state.ids.indexOf('imagery')).toBeLessThan(state.ids.indexOf('p:countries:0'));
 	expect(state.ids.indexOf('p:places:0')).toBeLessThan(state.ids.indexOf('labels'));
 	expect(await rendered(page, 'countries')).toBeGreaterThan(100);
+	await page.getByRole('button', { name: 'Adjust Countries by population' }).click();
 	await page.getByRole('slider', { name: 'Countries by population opacity' }).fill('0.35');
+	await page.keyboard.press('Escape');
 	await mapIdle(page);
 	await shot(page, '7-aerial');
 	// Survives a reload (basemap is part of the shareable URL).
@@ -388,8 +424,9 @@ test('maine-lands: COG through titiler draws, and a click reads the pixel value'
 test('analysis-sandbox (empty placeholder) opens cleanly', async ({ page }) => {
 	await page.goto('/p/analysis-sandbox');
 	await mapIdle(page);
-	await expect(page.getByText('Phase 5: job results will appear here as layers.')).toBeVisible();
-	await expect(page.getByRole('checkbox', { name: 'Hot spots (vector)' })).toBeDisabled();
+	// No layers until an analysis result is added from Admin -> Analysis; the description says how.
+	await expect(page.getByText(/Add to the Analysis Sandbox/).first()).toBeVisible();
+	await expect(page.getByText('This project has no layers yet.')).toBeVisible();
 	await shot(page, '5-analysis-sandbox');
 });
 

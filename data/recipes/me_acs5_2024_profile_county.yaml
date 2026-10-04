@@ -1,0 +1,56 @@
+name: me_acs5_2024_profile_county
+title: Demographic profile by county (ACS 2020-2024)
+description: American Community Survey 5-year estimates for Maine countys, from the Census Data API. Age, poverty, education, race and ethnicity, and housing (including seasonal homes) as counts; the maine-overview views turn them into shares. Suppressed estimates load as NULL.
+agency: U.S. Census Bureau (American Community Survey)
+kind: table
+group: maine
+vintage: { label: "ACS 2020-2024 5-year", year: 2024 }
+coverage: { extent: Maine }
+requires_keys: [CENSUS_API_KEY]
+source:
+  census_api:
+    dataset: 2024/acs/acs5
+    get:
+      B01002_001E: median_age
+      B25077_001E: median_home_value
+      B17001_001E: poverty_universe
+      B17001_002E: poverty_count
+      B01003_001E: pop
+      B09001_001E: under_18
+      B01001_020E: m65_66
+      B01001_021E: m67_69
+      B01001_022E: m70_74
+      B01001_023E: m75_79
+      B01001_024E: m80_84
+      B01001_025E: m85_plus
+      B01001_044E: f65_66
+      B01001_045E: f67_69
+      B01001_046E: f70_74
+      B01001_047E: f75_79
+      B01001_048E: f80_84
+      B01001_049E: f85_plus
+      B15003_001E: edu_universe
+      B15003_022E: bachelors
+      B15003_023E: masters
+      B15003_024E: professional
+      B15003_025E: doctorate
+      B03002_001E: race_universe
+      B03002_003E: white_nh
+      B03002_004E: black_nh
+      B03002_005E: aian_nh
+      B03002_006E: asian_nh
+      B03002_010E: multiracial_nh
+      B03002_012E: hispanic
+      B25002_001E: housing_units
+      B25002_003E: vacant_units
+      B25004_006E: seasonal_units
+      B25003_001E: occupied_units
+      B25003_002E: owner_occupied
+    for: "county:*"
+    in: "state:23"
+    geoid: [state, county]
+target: src_census.acs5_2024_profile_county
+freshness: { method: none }
+license: Public domain (U.S. Census Bureau)
+attribution: "U.S. Census Bureau, American Community Survey 2020-2024 5-year estimates (B01001, B01002, B01003, B03002, B09001, B15003, B17001, B25002, B25003, B25004, B25077)"
+enabled: true

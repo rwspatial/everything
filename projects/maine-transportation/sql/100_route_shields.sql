@@ -5,11 +5,13 @@
 DROP MATERIALIZED VIEW IF EXISTS pub.maine_transportation__route_shields;
 CREATE MATERIALIZED VIEW pub.maine_transportation__route_shields AS
 WITH routes AS (
-  SELECT CASE WHEN route ~ '^INT ' THEN 'interstate' WHEN route ~ '^US ' THEN 'us' ELSE 'state' END AS kind,
-         substring(route FROM '^(?:INT|US|ST RTE) (\d+[A-Z]?)') AS ref,
+  -- From the source table, not pub.maine_transportation__public_roads: a materialized view on that view would stop
+  -- 005_public_roads.sql from dropping and recreating it (make seed).
+  SELECT CASE WHEN prirtename ~ '^INT ' THEN 'interstate' WHEN prirtename ~ '^US ' THEN 'us' ELSE 'state' END AS kind,
+         substring(prirtename FROM '^(?:INT|US|ST RTE) (\d+[A-Z]?)') AS ref,
          geom
-  FROM pub.maine_transportation__public_roads
-  WHERE route ~ '^(INT|US|ST RTE) \d'
+  FROM src_mdot.public_roads
+  WHERE prirtename ~ '^(INT|US|ST RTE) \d'
 ), merged AS (
   -- Merge each route into continuous lines, then cut long ones so tiles clip small pieces.
   SELECT kind, ref, (ST_Dump(ST_LineMerge(ST_Union(geom)))).geom AS geom

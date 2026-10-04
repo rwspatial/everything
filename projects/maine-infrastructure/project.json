@@ -3,7 +3,7 @@
   "slug": "maine-infrastructure",
   "status": "draft",
   "title": "Maine Infrastructure",
-  "description": "E911 road centerlines and address points, and wind turbines (US Wind Turbine Database).",
+  "description": "E911 road centerlines and address points, and wind turbines (US Wind Turbine Database). Local roads appear from zoom 12 and address points from zoom 14 (798,422 points).",
   "tags": [
     "maine",
     "roads",
@@ -24,9 +24,6 @@
     ],
     "basemap": "positron"
   },
-  "notes": [
-    "Local roads appear from zoom 12 and address points from zoom 14 (798,422 points)."
-  ],
   "layers": [
     {
       "id": "roads-local",

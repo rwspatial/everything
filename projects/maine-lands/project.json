@@ -23,9 +23,6 @@
     ],
     "basemap": "positron"
   },
-  "notes": [
-    "BPL trails are pending a source decision."
-  ],
   "layers": [
     {
       "id": "conserved-lands",
@@ -389,17 +386,6 @@
         }
       },
       "attribution": "Maine Bureau of Parks and Lands"
-    },
-    {
-      "id": "trails",
-      "title": "Trails",
-      "group": "Lands",
-      "status": "todo",
-      "todo": "No statewide BPL trails service found; choose a source (DACF/BPL data, Maine Trail Finder, or OSM via Overture).",
-      "source": {
-        "type": "tipg-vector",
-        "collection": "pub.maine_lands__trails"
-      }
     },
     {
       "id": "ntd-trails",

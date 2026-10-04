@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { site, title } from '$lib/site';
 
 	let { data } = $props();
@@ -27,7 +26,7 @@
 			{/if}
 			<p class="tagline">{site.tagline}</p>
 			<div class="cta">
-				<a class="btn primary" href="#work">See the work</a>
+				<a class="btn primary" href="/maps">Explore the maps</a>
 				<a class="btn" href="/about#contact">Get in touch</a>
 			</div>
 		</div>
@@ -39,10 +38,10 @@
 	</section>
 
 	<section id="work" class="wrap block" aria-labelledby="work-title">
-		<h2 id="work-title">Selected work</h2>
+		<h2 id="work-title">Featured maps</h2>
 		<p class="lede">Live maps of Maine, served from PostGIS on this site. Open one and click anything.</p>
 		{#if data.featured.length}
-			<ul class="work" aria-label="Selected work">
+			<ul class="work" aria-label="Featured maps">
 				{#each data.featured as p (p.slug)}
 					<li>
 						<a class="case" href="/p/{p.slug}">
@@ -59,7 +58,7 @@
 		{:else}
 			<p class="lede">Project maps are loading or unavailable right now.</p>
 		{/if}
-		<p><a href="/maps">{page.data.config?.publicMode ? `All ${data.total || ''} maps →` : `All ${data.total || ''} map projects, including experiments →`}</a></p>
+		<p><a class="all" href="/maps">All maps{data.total ? ` (${data.total} published)` : ''} →</a></p>
 	</section>
 
 	<section class="band" aria-label="About, services and contact">

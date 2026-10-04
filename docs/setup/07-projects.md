@@ -95,7 +95,7 @@ there; remove them from `projects/index.json` instead.
 | `./mapgen sync [--check]` | Register every project in `projects/index.json` (also run by `make bootstrap` and `make reset-db`); `--check` only reports drift |
 | `./mapgen export <slug> [--stdout]` | Registry → file (for wizard projects) |
 | `./mapgen list` | What is registered, its version, and whether it is valid |
-| `./mapgen check-templates` | The placeholder projects must be reproducible from their templates |
+| `./mapgen check-templates` | Every template in `templates/projects/` renders a valid manifest |
 | `./mapgen import …` | Alias for `scripts/geoimport.py` |
 | `make contracts` / `make contracts-check` | Regenerate / check the frontend types after editing the schema |
 | `make validate-styles [p=<slug>]`, `make projects-sync`, `make projects-check` | The same checks as make targets |

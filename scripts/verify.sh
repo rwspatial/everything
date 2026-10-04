@@ -211,7 +211,7 @@ check "generated frontend types match the schema" ${PIPESTATUS[0]}
 docker compose run --rm -T node node scripts/validate-styles.mjs 2>&1 >/dev/null | grep -E "PASS|FAIL" | sed 's/^/      /'
 check "every project's styles pass the MapLibre style spec" ${PIPESTATUS[0]}
 docker compose run --rm -T geotools python scripts/mapgen.py check-templates 2>/dev/null | sed 's/^/      /'
-check "placeholder projects are reproducible from their templates" ${PIPESTATUS[0]}
+check "every project template renders a valid manifest" ${PIPESTATUS[0]}
 docker compose run --rm -T geotools python scripts/mapgen.py sync --check 2>/dev/null | tail -1 | sed 's/^/      /'
 check "projects/ and the registry agree" ${PIPESTATUS[0]}
 # Every project file is registered and valid (projects saved only in the /admin/new wizard may exist besides).

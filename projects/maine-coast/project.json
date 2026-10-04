@@ -3,7 +3,7 @@
   "slug": "maine-coast",
   "status": "draft",
   "title": "Maine Coast",
-  "description": "Shellfish growing areas and NSSP classifications, aquaculture leases and LPA sites, and boat launches.",
+  "description": "Shellfish growing areas and NSSP classifications, aquaculture leases and LPA sites, and boat launches. Shellfish classifications are the 2022 NSSP edition, NOT real-time open/closed status. Check Maine DMR closure notices before harvesting.",
   "tags": [
     "maine",
     "coast",
@@ -24,9 +24,6 @@
     ],
     "basemap": "positron"
   },
-  "notes": [
-    "Shellfish classifications are the 2022 NSSP edition, NOT real-time open/closed status. Check Maine DMR closure notices before harvesting."
-  ],
   "layers": [
     {
       "id": "growing-areas",

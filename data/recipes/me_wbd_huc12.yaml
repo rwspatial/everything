@@ -1,0 +1,28 @@
+name: me_wbd_huc12
+title: Sub-watersheds (HUC-12), USGS Watershed Boundary Dataset (Maine)
+description: USGS Watershed Boundary Dataset (WBD) hydrologic units at the 12-digit level that touch Maine, with name and
+  area. Read from The National Map WBD service.
+agency: U.S. Geological Survey (National Hydrography)
+source:
+  arcgis:
+    url: https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/6
+    where: states LIKE '%ME%'
+    page_size: 500
+    order_by: objectid
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer/6
+target: src_hydro.wbd_huc12
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 90d
+license: Public domain (USGS)
+attribution: U.S. Geological Survey, Watershed Boundary Dataset
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -3,7 +3,7 @@
   "slug": "world-overview",
   "title": "World Overview",
   "status": "draft",
-  "description": "Countries shaded by population, with the world's major populated places. Natural Earth 1:110m.",
+  "description": "Countries of the world by population, with states and provinces and populated places (Natural Earth). A small reference map showing how the stack handles global data.",
   "tags": [
     "global",
     "demographics",
@@ -200,8 +200,5 @@
         "inspect": true
       }
     }
-  ],
-  "notes": [
-    "Add a thumbnail and a final description."
   ]
 }

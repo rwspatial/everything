@@ -5,7 +5,7 @@
 	import type { GeoJSONSource, MapGeoJSONFeature, PointLike, StyleSpecification, VectorTileSource } from 'maplibre-gl';
 	import '$lib/maplibre';
 	import { fragmentsFor, isProjectId, opacityPaint, sourceIdFor, toMapLibre } from '$lib/adapters';
-	import { addOverlays, provideBadge } from '$lib/overlays';
+	import { addOverlays, hasOwnRoads, isRoadLayer, provideBadge } from '$lib/overlays';
 	import ChartsPanel from '$lib/charts/ChartsPanel.svelte';
 	import { loadIcons, providePoiIcon } from '$lib/icons';
 	import type { AdapterContext } from '$lib/adapters';
@@ -106,10 +106,11 @@
 	const active = () => layers.filter((l) => l.spec.status !== 'todo');
 
 	// ---- map lifecycle ----------------------------------------------------------------------
-	/** Basemap label layers (vector symbols, or raster overlays tagged via LABELS_METADATA). */
+	/** Basemap label layers (vector symbols, or raster overlays tagged via LABELS_METADATA), and the roads above the project layers. */
 	const isLabelLayer = (l: { id: string; type: string; metadata?: unknown }) =>
-		!isProjectId(l.id) && (l.type === 'symbol' || (l.metadata as Record<string, unknown> | undefined)?.['spatial:labels'] === true);
-	/** First basemap label layer: project layers go below it so place names stay readable. */
+		(map !== undefined && isRoadLayer(map, l.id)) ||
+		(!isProjectId(l.id) && (l.type === 'symbol' || (l.metadata as Record<string, unknown> | undefined)?.['spatial:labels'] === true));
+	/** First lifted road or basemap label layer: project layers go below it so roads and place names stay readable. */
 	const labelAnchor = () => map?.getStyle().layers.find(isLabelLayer)?.id;
 
 	function addProjectLayers() {
@@ -181,8 +182,8 @@
 			const hover = SHOW_HOVER_POPUPS
 				? new Popup({ closeButton: false, closeOnClick: false, maxWidth: '280px', className: 'hover-popup' })
 				: null;
-			// Global overlays (route badges) go on top of every style, including after a basemap switch.
-			map.on('style.load', () => addOverlays(map!, config.tilesBase));
+			// Global overlays (route lines and badges) go on every style, including after a basemap switch.
+			map.on('style.load', () => addOverlays(map!, config.tilesBase, { roads: !hasOwnRoads(manifest) }));
 			// Route badges and POI icons are drawn on demand (MapLibre awaits the resolver before calling them missing).
 			map.setMissingStyleImageResolver(async (id) => {
 				await iconsReady;
@@ -196,6 +197,7 @@
 				addProjectLayers();
 				hook.ready = true;
 				mapReady = true;
+				zoom = map!.getZoom(); // a view from the URL (?map=) does not fire moveend
 				window.__spatial = hook;
 			});
 			map.on('dataloading', () => {

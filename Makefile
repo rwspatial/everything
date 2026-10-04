@@ -70,6 +70,9 @@ backup-offsite: check-env ## make backup, then upload it to s3://$$BACKUP_S3_BUC
 aws-up: ## Start the AWS server (stopped by default; your IP only) and print its URLs
 	@bash scripts/aws.sh up
 
+aws-deploy: ## Start and update the AWS server (src=local: this working tree; data=1: also database + COGs), check it
+	@SRC=$(or $(src),git) DATA=$(if $(data),1,0) bash scripts/aws.sh deploy
+
 aws-down: ## Stop the AWS server (backup=1: upload a database backup first)
 	@BACKUP=$(if $(backup),1,0) bash scripts/aws.sh down
 
