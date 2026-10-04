@@ -106,7 +106,7 @@
 		<tbody>
 			{#each sort.apply(rows) as r (r.slug)}
 				<tr>
-					<td><a href="/p/{r.slug}">{r.title}</a> <span class="sub">{r.slug}</span>{#if !r.valid}<div class="err">has validation errors</div>{/if}</td>
+					<td><a href="/p/{r.slug}">{r.title}</a> <span class="sub">{r.slug} · <a href="/admin/projects/{r.slug}">workspace</a></span>{#if !r.valid}<div class="err">has validation errors</div>{/if}</td>
 					<td><Badge value={r.status} /></td>
 					<td class="num">{r.layers}</td>
 					<td>{#if r.origin === 'api'}New project wizard{:else}<code>projects/{r.slug}/</code>{/if}</td>

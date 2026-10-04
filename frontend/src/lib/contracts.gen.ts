@@ -77,6 +77,23 @@ export interface ProjectManifest {
 	description?: string;
 	tags?: string[];
 	view: ViewSpec;
+	/**
+	 * The one place a project is about (set by the quick-map builder), e.g. a parcel: the admin project workspace offers the analyses that run on this unit (process descriptors' `units`).
+	 */
+	place?: {
+		/**
+		 * Unit id (app.units), e.g. parcel, town
+		 */
+		unit: string;
+		/**
+		 * The place's unit_key in pub.units__<unit>
+		 */
+		key: string;
+		/**
+		 * Display name
+		 */
+		name?: string;
+	};
 	layers: LayerSpec[];
 	/**
 	 * Free-text to-do notes for placeholder projects, shown on the hub and in the viewer.

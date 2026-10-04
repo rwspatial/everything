@@ -1,0 +1,119 @@
+{
+  "id": "agricultural-potential",
+  "title": "Agricultural potential (parcels)",
+  "summary": "How suitable one parcel is for farming. Every soil map unit inside it is scored 0-100 on five soil and terrain factors, then reduced where it is wetland, floods, or is already built on or under water. Run per parcel from the project workspace; each run is an analysis job with its own map layer and report.",
+  "project": null,
+  "layer": null,
+  "process": "py.agricultural_potential",
+  "code": "workers/processes/py_agricultural_potential.py",
+  "outputs": [],
+  "inputs": [
+    {
+      "name": "pub.units__parcel",
+      "role": "The parcel (MEGIS tax parcels): its outline clips every other input."
+    },
+    {
+      "name": "src_ssurgo.mupolygon, src_ssurgo.mapunit",
+      "role": "USDA SSURGO soil map units: capability class (niccdcd), farmland class (farmlndcl), drainage class (drclassdcd), available water storage in the top 150 cm (aws0150wta), flooding frequency (flodfreqdcd), and a representative slope (slopegraddcp) as a fallback."
+    },
+    {
+      "name": "maine/slope_30m (COG)",
+      "role": "Slope in degrees from the USGS 3DEP 30 m DEM, averaged over each soil piece (titiler zonal statistics)."
+    },
+    {
+      "name": "src_nwi.wetlands",
+      "role": "National Wetlands Inventory polygons: the share of each soil piece that is mapped wetland."
+    },
+    {
+      "name": "maine/cdl_2025 (COG)",
+      "role": "USDA Cropland Data Layer 2025 (30 m): the share of each soil piece already built on (developed low, medium or high intensity) or open water, and the parcel's current land use."
+    },
+    {
+      "name": "src_fema.flood_zones, pub.maine_lands__hardiness_zones, maine/dem_10m (COG)",
+      "role": "Context for the report only (not scored): share of the parcel in a FEMA Special Flood Hazard Area, USDA hardiness zone, elevation range."
+    }
+  ],
+  "steps": [
+    {
+      "title": "Soil pieces",
+      "detail": "The parcel is intersected with the SSURGO soil polygons and the pieces dissolved by map unit, so each soil type on the parcel is one piece (slivers under 1 m² dropped). Each piece keeps its map unit's attributes and its area in acres."
+    },
+    {
+      "title": "Slope",
+      "detail": "The mean slope of each piece is read from the 30 m slope raster and converted from degrees to percent, the unit soil surveys use. When the parcel has more than 80 soil pieces, SSURGO's representative slope is used instead (fewer raster requests).",
+      "math": "s_{\\%} = 100 \\cdot \\tan(\\bar{s}_{\\circ})"
+    },
+    {
+      "title": "Factor scores",
+      "detail": "Each of five factors becomes a score from 0 to 100: soil capability class (I best, VIII worst), farmland class (prime, statewide importance, local importance, not prime), slope (piecewise linear: flat to 3 % is 100, 8 % is 85, 15 % is 55, 25 % is 15, 35 %+ is 0), drainage class (well and moderately well drained best, very poorly drained 0), and water storage (piecewise linear: 0 cm is 10, 10 cm is 55, 20 cm+ is 100)."
+    },
+    {
+      "title": "Weighted soil score",
+      "detail": "The factor scores are combined with fixed weights. A factor with no data (e.g. 'Water' or 'Pits' map units without a capability class) is left out and the remaining weights rescaled, so missing data neither rewards nor penalises.",
+      "math": "B = \\frac{\\sum_{f \\in F} w_f\\, x_f}{\\sum_{f \\in F} w_f},\\quad w = (0.30, 0.20, 0.20, 0.15, 0.15)"
+    },
+    {
+      "title": "Constraints",
+      "detail": "The soil score is reduced by what stops farming regardless of soil: the share of the piece in NWI wetlands (w), a flooding multiplier from SSURGO (frequent or very frequent 0.5, occasional 0.8, rare 0.95), and the share already built on or open water in the Cropland Data Layer (d).",
+      "math": "S = B\\,(1 - w)\\,m_{\\text{flood}}\\,(1 - d)"
+    },
+    {
+      "title": "Classes and limits",
+      "detail": "Each piece is classed High (70+), Good (55-70), Moderate (40-55), Limited (20-40) or Unsuitable (under 20), and its limits listed: the weakest factor when it scores under 60, wetland or built-up shares of 10 % or more, and any flooding."
+    },
+    {
+      "title": "Parcel score",
+      "detail": "The parcel's score is the area-weighted mean of its pieces; the report adds acres by class, the area-weighted factor scores, and the land today (current land cover, farmed and forest shares, wetlands, FEMA flood zone, hardiness zone, elevation).",
+      "math": "S_{\\text{parcel}} = \\frac{\\sum_i a_i S_i}{\\sum_i a_i}"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "Factor weights",
+      "value": "capability 30 %, farmland 20 %, slope 20 %, drainage 15 %, water storage 15 %",
+      "why": "Capability class already summarises the soil's limitations for cultivated crops (NRCS), so it leads; farmland class and slope are the next most decisive for field crops in Maine; drainage and water storage refine within otherwise similar soils."
+    },
+    {
+      "name": "Capability scores",
+      "value": "I 100, II 85, III 65, IV 45, V 25, VI 15, VII 5, VIII 0",
+      "why": "Classes I-IV are suited to cultivation with increasing limits; V-VII to pasture or woodland; VIII to neither. The steps fall faster beyond IV, where row crops stop being practical."
+    },
+    {
+      "name": "Farmland scores",
+      "value": "prime 100, statewide importance 75, local importance 55, not prime 20",
+      "why": "The USDA farmland classes ranked; 'not prime' keeps some value because hay, pasture and blueberries do well on many such soils in Maine."
+    },
+    {
+      "name": "Slope breakpoints",
+      "value": "≤3 % 100 · 8 % 85 · 15 % 55 · 25 % 15 · ≥35 % 0",
+      "why": "Follows the slope phases of Maine soil surveys (0-3, 3-8, 8-15, 15-25, 25+ %): machinery and erosion limits grow quickly above 8 %, and above 25 % cultivation is impractical."
+    },
+    {
+      "name": "Water storage breakpoints",
+      "value": "0 cm 10 · 5 cm 25 · 10 cm 55 · 15 cm 80 · ≥20 cm 100",
+      "why": "Available water in the top 150 cm: under about 10 cm (sandy, droughty soils) crops need irrigation; 20 cm or more carries crops through dry spells."
+    },
+    {
+      "name": "Flooding multipliers",
+      "value": "very frequent / frequent 0.5, occasional 0.8, rare 0.95",
+      "why": "Frequent flooding rules out most crops in some years but floodplain hay and pasture remain; rare flooding costs little."
+    },
+    {
+      "name": "Class breaks",
+      "value": "70 / 55 / 40 / 20",
+      "why": "Worked examples (before constraints): a prime, class II, well-drained soil on 4 % slopes with 15 cm of water storage scores 92 and a class III soil of statewide importance on 10 % slopes 77, both High; a class IV non-prime soil on 15 % slopes 56 (Good) and the same soil poorly drained on 5 % slopes 51 (Moderate); a class VI soil on 25 % slopes 33 (Limited). Wetland, frequently flooded or built-up land falls below 20."
+    },
+    {
+      "name": "Raster cut-off",
+      "value": "80 soil pieces",
+      "why": "Each piece costs two raster requests; above 80 (very large parcels) SSURGO's slope is used and land cover only parcel-wide, so a run stays under a minute."
+    }
+  ],
+  "caveats": [
+    "A screening score, not a field assessment: soil survey polygons are mapped at about 1:24,000, so a small parcel may sit inside one map unit that hides local variation (ledge, wet pockets, old fill).",
+    "Wetlands and built-up land are both read as shares of the same piece and multiplied, so where they overlap (e.g. a developed wetland edge) the reduction is slightly overstated.",
+    "The Cropland Data Layer is a 30 m classification with known confusion between hay, pasture and grassland; 'farmed now' is indicative.",
+    "Not scored: market access, field size and shape, conservation easements, zoning, irrigation water, and soil chemistry (pH, fertility). The hardiness zone and FEMA flood zone are reported for context only.",
+    "Parcels with no SSURGO data (rare; open water or unmapped areas) fail with a message rather than a score."
+  ]
+}

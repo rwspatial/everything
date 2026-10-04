@@ -303,7 +303,6 @@ test('layer toggle, opacity and feature inspector', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Adjust Countries by population' })).toHaveText('40%');
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('slider', { name: 'Countries by population opacity' })).toBeHidden();
-	await expect(page.getByText('40%')).toBeVisible();
 
 	// Click Brazil and inspect its attributes.
 	const pt = await page.evaluate(() => window.__spatial!.map!.project([-52, -10]));

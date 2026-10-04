@@ -4,6 +4,7 @@
 
 	let { data } = $props();
 	const m = $derived(data.m);
+	const when = (s: string | null) => (s ? new Date(s).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'never');
 </script>
 
 <svelte:head><title>{m.title} · Methods · Admin</title></svelte:head>
@@ -31,6 +32,41 @@
 			{/if}
 		{/each}
 	</section>
+{/if}
+
+{#if m.runs}
+	{@const r = m.runs}
+	<p class="sub">
+		Analysis process <code>{r.process}</code>{#if r.version}{' '}v{r.version}{/if} · {r.worker_online ? 'worker online' : 'no worker running'} · run it
+		from a parcel project's workspace (<a href="/admin/new?design=parcel-site">new parcel project</a>)
+	</p>
+	<section class="cards" aria-label="Usage">
+		<div class="card"><span class="big">{fmtNum(r.succeeded)}</span><span>successful runs{#if r.failed} ({r.failed} failed){/if}</span></div>
+		<div class="card"><span class="big">{fmtNum(r.places)}</span><span>parcels analysed</span></div>
+		<div class="card"><span class="big">{r.mean_score === null ? '–' : Math.round(r.mean_score)}</span><span>mean score</span></div>
+		<div class="card"><span class="big small">{when(r.last_run)}</span><span>last run</span></div>
+	</section>
+	{#if r.classes.length}
+		<p class="sub">Results by class: {r.classes.map((c) => `${c.class} ${c.n}`).join(' · ')}</p>
+	{/if}
+	{#if r.recent.length}
+		<h2>Recent runs</h2>
+		<div class="table-wrap">
+			<table>
+				<thead><tr><th>Job</th><th>Parcel</th><th>Result</th><th>Finished</th></tr></thead>
+				<tbody>
+					{#each r.recent as j (j.id)}
+						<tr>
+							<td class="val">{j.id}</td>
+							<td>{#if j.project}<a href="/admin/projects/{j.project}">{j.name ?? j.place}</a>{:else}{j.name ?? j.place}{/if}</td>
+							<td>{#if j.status === 'succeeded'}{j.score} · {j.class}{:else}{j.status}{#if j.error} <span class="sub">{j.error.split('\n')[0]}</span>{/if}{/if}</td>
+							<td>{when(j.finished_at)}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	{/if}
 {/if}
 
 <h2>Inputs</h2>
@@ -70,6 +106,13 @@
 	<ul class="caveats">{#each m.caveats as c (c)}<li>{c}</li>{/each}</ul>
 {/if}
 
+{#if m.code_text}
+	<details>
+		<summary>Code: <code>{m.code}</code></summary>
+		<pre><code>{m.code_text}</code></pre>
+	</details>
+{/if}
+
 {#if m.sql_text}
 	<details>
 		<summary>SQL: <code>{m.sql}</code></summary>
@@ -86,6 +129,7 @@
 	.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.8rem; margin: 1rem 0 0.4rem; }
 	.card { background: var(--surface); border: 1px solid var(--border); border-left-width: 4px; border-radius: 10px; padding: 0.7rem 0.9rem; display: grid; gap: 0.15rem; font-size: 0.85rem; color: var(--muted); }
 	.card.bad { border-left-color: #b42318; }
+	.big.small { font-size: 1rem; }
 	.big { font-size: 1.4rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 	.inputs, .caveats { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem; max-width: 85ch; font-size: 0.9rem; }
 	.steps { margin: 0; padding-left: 1.4rem; display: grid; gap: 0.7rem; max-width: 85ch; }

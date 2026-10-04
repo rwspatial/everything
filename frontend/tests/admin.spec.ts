@@ -335,8 +335,75 @@ test.describe('signed in', () => {
 		await shot(page, 'admin-methods-settlements');
 	});
 
+	test('parcel site: pick a parcel on the map, open its workspace, run agricultural potential, tracked on the methods page', async ({ page, request }) => {
+		test.setTimeout(240_000);
+		await page.goto('/admin/new?design=parcel-site');
+		await expect(page.getByRole('radio', { name: /Parcel site/ })).toHaveAttribute('aria-checked', 'true');
+		// Town first: the preview pane becomes a map of that town's parcels (and the address list is limited to it).
+		await expect(page.getByText('Choose a town first: its parcels appear here.')).toBeVisible();
+		await page.getByLabel('Town', { exact: true }).fill('Presque Isle');
+		await page.getByRole('list', { name: 'Towns' }).getByRole('button', { name: /Presque Isle/ }).first().click();
+		await expect(page.getByText('Town: Presque Isle')).toBeVisible();
+		await page.getByLabel('Parcels in Presque Isle').fill('360 State');
+		await expect(page.getByRole('list', { name: 'Places' }).getByRole('button', { name: /360 STATE ST/ })).toBeVisible();
+		await page.getByLabel('Parcels in Presque Isle').fill('');
+		await page.waitForFunction(() => !!(window as unknown as { __parcelPicker?: unknown }).__parcelPicker);
+		// Only the town's parcels are drawn (tiles filtered to its GEOID): at the town line, every parcel is Presque Isle's.
+		await page.evaluate(() => (window as unknown as { __parcelPicker: import('maplibre-gl').Map }).__parcelPicker.jumpTo({ center: [-68.06, 46.7], zoom: 14 }));
+		const towns = async () =>
+			page.evaluate(() => [
+				...new Set(
+					(window as unknown as { __parcelPicker: import('maplibre-gl').Map }).__parcelPicker
+						.queryRenderedFeatures({ layers: ['parcels-fill'] })
+						.map((f) => String(f.properties.name).split(', ').at(-1))
+				)
+			]);
+		await expect.poll(towns, { timeout: 30_000 }).toEqual(['Presque Isle']);
+		// Zoom to the parcel (360 State St) and click it.
+		const at: [number, number] = [-67.993032, 46.68137];
+		await page.evaluate((c) => (window as unknown as { __parcelPicker: import('maplibre-gl').Map }).__parcelPicker.jumpTo({ center: c, zoom: 16.5 }), at);
+		await expect
+			.poll(() => page.evaluate(() => (window as unknown as { __parcelPicker: import('maplibre-gl').Map }).__parcelPicker.queryRenderedFeatures({ layers: ['parcels-fill'] }).length), { timeout: 30_000 })
+			.toBeGreaterThan(0);
+		const xy = await page.evaluate((c) => (window as unknown as { __parcelPicker: import('maplibre-gl').Map }).__parcelPicker.project(c), at);
+		const box = (await page.locator('.picker .maplibregl-canvas').boundingBox())!;
+		await page.mouse.click(box.x + xy.x, box.y + xy.y);
+		await expect(page.getByText('360 STATE ST, map/lot 012-187-360, Presque Isle')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Save project' })).toBeEnabled({ timeout: 30_000 });
+		await shot(page, 'admin-parcel-1-picked');
+		await page.getByRole('button', { name: 'Save project' }).click();
+		// Saving a parcel project opens its workspace.
+		await expect(page).toHaveURL(/\/admin\/projects\/360-state-st-parcel-site/);
+		const slug = page.url().split('/').at(-1)!;
+		try {
+			const card = page.getByRole('article', { name: 'Agricultural potential' });
+			await expect(card.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/admin/methods/agricultural-potential');
+			await card.getByRole('button', { name: 'Run' }).click();
+			// When the new run finishes, its layer goes on the project's map (an earlier run of the same parcel may
+			// already show as the latest result, so wait for the layer, not the result card).
+			await expect
+				.poll(async () => ((await (await request.get(`/api/projects/${slug}`)).json()).layers as { group?: string }[]).filter((l) => l.group === 'Analysis results').length, { timeout: 180_000 })
+				.toBe(1);
+			const result = card.getByLabel('Latest result');
+			await expect(result).toContainText(/(High|Good|Moderate|Limited|Unsuitable) agricultural potential/);
+			await expect(result.getByRole('table')).toContainText(/loam|silt|sand|muck|peat/i);
+			await shot(page, 'admin-parcel-2-workspace');
+			// The analyses stay reachable from the map itself (admin, not the public site).
+			await page.goto(`/p/${slug}`);
+			await expect(page.getByRole('link', { name: 'Analyses' })).toHaveAttribute('href', `/admin/projects/${slug}`);
+			// The methods page counts the run and links back to the workspace.
+			await page.goto('/admin/methods/agricultural-potential');
+			await expect(page.getByText('parcels analysed')).toBeVisible();
+			await expect(page.getByRole('table').getByRole('link', { name: /360 STATE ST/ }).first()).toHaveAttribute('href', `/admin/projects/${slug}`);
+			await expect(page.getByText('Code: workers/processes/py_agricultural_potential.py')).toBeVisible();
+			await shot(page, 'admin-parcel-3-method');
+		} finally {
+			expect((await request.delete(`/api/admin/projects/${slug}`)).ok()).toBe(true);
+		}
+	});
+
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements']) {
+		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

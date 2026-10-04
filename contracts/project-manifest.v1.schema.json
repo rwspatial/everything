@@ -14,6 +14,17 @@
     "description": { "type": "string" },
     "tags": { "type": "array", "items": { "type": "string" } },
     "view": { "$ref": "#/definitions/ViewSpec" },
+    "place": {
+      "description": "The one place a project is about (set by the quick-map builder), e.g. a parcel: the admin project workspace offers the analyses that run on this unit (process descriptors' `units`).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "key"],
+      "properties": {
+        "unit": { "type": "string", "pattern": "^[a-z]+$", "description": "Unit id (app.units), e.g. parcel, town" },
+        "key": { "type": "string", "minLength": 1, "description": "The place's unit_key in pub.units__<unit>" },
+        "name": { "type": "string", "description": "Display name" }
+      }
+    },
     "layers": { "type": "array", "items": { "$ref": "#/definitions/LayerSpec" } },
     "notes": {
       "description": "Free-text to-do notes for placeholder projects, shown on the hub and in the viewer.",

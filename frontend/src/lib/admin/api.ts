@@ -322,6 +322,8 @@ export interface MethodSummary {
 	summary: string;
 	project: string | null;
 	layer: string | null;
+	/** Analysis methods: the process (app.processes id) that implements it. */
+	process?: string | null;
 }
 
 export interface Method extends MethodSummary {
@@ -333,4 +335,52 @@ export interface Method extends MethodSummary {
 	parameters: { name: string; value: string; why: string; math?: string }[];
 	caveats: string[];
 	live: { collection: string; rows?: number; sums?: Record<string, number | null>; error?: string }[];
+	/** Analysis methods: the process's source file and how the method has been used. */
+	code?: string;
+	code_text?: string;
+	runs?: MethodRuns;
+}
+
+export interface MethodRuns {
+	process: string;
+	version: string | null;
+	worker_online: boolean;
+	runs: number;
+	succeeded: number;
+	failed: number;
+	places: number;
+	mean_score: number | null;
+	last_run: string | null;
+	classes: { class: string; n: number }[];
+	recent: { id: number; status: string; finished_at: string | null; error: string | null; place: string; name: string | null; score: number | null; class: string | null; project: string | null }[];
+}
+
+/** One analysis that runs on a project's place (a process whose descriptor lists the place's unit). */
+export interface PlaceProcess {
+	id: string;
+	title: string;
+	description: string | null;
+	method: string | null;
+	version: string;
+	worker_online: boolean;
+}
+
+export interface AnalysisRun {
+	id: number;
+	process_id: string;
+	status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'cancel_requested';
+	progress: number | null;
+	progress_message: string | null;
+	error: string | null;
+	created_at: string;
+	finished_at: string | null;
+	report: Record<string, unknown> | null;
+	layer_id: string | null;
+	on_map: boolean;
+}
+
+export interface ProjectAnalyses {
+	place: { unit: string; key: string; name?: string };
+	processes: PlaceProcess[];
+	runs: AnalysisRun[];
 }

@@ -12,6 +12,11 @@
     "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
     "title": { "type": "string", "minLength": 1 },
     "description": { "type": "string" },
+    "units": {
+      "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z]+$" },
+      "description": "Place analyses: the units (e.g. parcel) this process analyses one place of. It then takes the inputs `unit` (enum of these) and `place` (string, the unit_key); the admin project workspace offers it for projects about such a place."
+    },
+    "method": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "Id of the method write-up in docs/methods/ (shown at /admin/methods/<id>)" },
     "inputs": { "type": "object", "additionalProperties": { "$ref": "#/definitions/Input" } },
     "outputs": {
       "type": "object",

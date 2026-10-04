@@ -145,3 +145,13 @@ export function summarize(m: ProjectManifest): ProjectSummary {
 		notes: m.notes ?? []
 	};
 }
+
+/** The one place a project is about: manifest `place` (quick-map builds since 2026-10-04), else the params of its focus
+ * layer (earlier builds). Such projects can run the analyses for that unit (/admin/projects/<slug>). */
+export function placeOf(m: ProjectManifest): { unit: string; key: string; name?: string } | null {
+	if (m.place) return m.place;
+	const params = m.layers.find((l) => l.id === 'focus' && l.source.type === 'tipg-vector')?.source as { params?: Record<string, unknown> } | undefined;
+	const unit = params?.params?.unit;
+	const key = params?.params?.place;
+	return typeof unit === 'string' && (typeof key === 'string' || typeof key === 'number') ? { unit, key: String(key) } : null;
+}

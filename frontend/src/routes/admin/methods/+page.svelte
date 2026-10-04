@@ -6,8 +6,8 @@
 
 <h1>Methods</h1>
 <p class="lead">
-	How the derived layers are calculated: inputs, steps, the parameters and why they were chosen, and known limits. Each
-	is a file in <code>docs/methods/</code>.
+	How the derived layers and analyses are calculated: inputs, steps, the parameters and why they were chosen, and known
+	limits, with how each is being used. Each is a file in <code>docs/methods/</code>.
 </p>
 
 {#if data.methods.length}
@@ -16,6 +16,7 @@
 			<li>
 				<a href="/admin/methods/{m.id}">{m.title}</a>
 				{#if m.project}<span class="sub">{m.project}{m.layer ? ` · ${m.layer}` : ''}</span>{/if}
+				{#if m.process}<span class="sub">analysis · <code>{m.process}</code></span>{/if}
 				<p>{m.summary}</p>
 			</li>
 		{/each}

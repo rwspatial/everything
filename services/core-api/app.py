@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import copy
 import hashlib
 import hmac
@@ -870,12 +871,13 @@ def list_units() -> list[dict]:
 
 
 @app.get("/api/admin/units/{unit}/places", dependencies=[Depends(require_admin)])
-def unit_places(unit: str, q: str = "", county: str | None = None, limit: int = 25) -> list[dict]:
-    """Search one unit by name (or exact key), for the place picker. Names starting with q come first."""
+def unit_places(unit: str, q: str = "", county: str | None = None, town: str | None = None, limit: int = 25) -> list[dict]:
+    """Search one unit by name (or exact key), for the place picker. Names starting with q come first.
+    `county` / `town` (GEOIDs) limit it to one county or town (e.g. the parcels of one town)."""
     q = q.strip()
     with projects_pool.connection() as conn:
         u = _unit(conn, unit)
-        if u["unit_count"] > 5000 and len(q) < 2 and not county:
+        if u["unit_count"] > 5000 and len(q) < 2 and not county and not town:
             raise HTTPException(400, f"{u['plural']}: type at least two letters, or choose a county")
         where, params = [sql.SQL("TRUE")], []
         if q:
@@ -884,6 +886,9 @@ def unit_places(unit: str, q: str = "", county: str | None = None, limit: int = 
         if county:
             where.append(sql.SQL("county_geoid = %s"))
             params.append(county)
+        if town:
+            where.append(sql.SQL("town_geoid = %s"))
+            params.append(town)
         query = sql.SQL("SELECT {cols} FROM {rel} WHERE {where} ORDER BY (short_name ILIKE %s) DESC, short_name, name LIMIT %s").format(
             cols=sql.SQL(PLACE_COLUMNS), rel=sql.Identifier("pub", u["collection"].split(".", 1)[1]),
             where=sql.SQL(" AND ").join(where))
@@ -981,6 +986,8 @@ async def design_manifest(design_id: str, request: Request) -> dict:
         "description": fill(d.get("projectDescription", "")),
         "tags": list(dict.fromkeys(fill(t).lower() for t in d.get("tags", []))),
         "view": _framing(place["bbox"], d.get("padding", 0.06), d.get("basemap", "positron")),
+        # The place this project is about: the admin workspace offers the analyses for this unit (process `units`).
+        "place": {"unit": unit, "key": place["key"], "name": place["name"]},
         "layers": layers,
     }
     # Design charts: `"within": "place"` -> this place; `"within": "county"` -> the place's county (for units such as
@@ -1079,6 +1086,16 @@ def check_inputs(conn, descriptor: dict, inputs: Any) -> tuple[dict, list[dict]]
                 values[name] = int(v) if t == "integer" else float(v)
         elif t == "string" and not isinstance(v, str):
             errors.append({"input": name, "message": "must be text"})
+    # Place analyses (descriptor `units`): `place` must be a row of pub.units__<unit>.
+    if descriptor.get("units") and not errors:
+        if values.get("unit") not in descriptor["units"]:
+            errors.append({"input": "unit", "message": f"must be one of {', '.join(descriptor['units'])}"})
+        else:
+            u = _unit(conn, values["unit"])
+            found = conn.execute(sql.SQL("SELECT 1 FROM {} WHERE unit_key = %s").format(
+                sql.Identifier("pub", u["collection"].split(".", 1)[1])), (str(values.get("place", "")),)).fetchone()
+            if not found:
+                errors.append({"input": "place", "message": f"no {u['title'].lower()} with key {values.get('place')!r}"})
     return values, errors
 
 
@@ -1143,6 +1160,11 @@ async def promote_job(job_id: int, request: Request) -> dict:
     """Add a finished job's layer to a project (default: analysis-sandbox), as a new registry version."""
     body = await request.json() if (await request.body()) else {}
     slug = (body or {}).get("project", "analysis-sandbox")
+    return _promote(job_id, slug, _admin_user(request), replace=bool((body or {}).get("replace")))
+
+
+def _promote(job_id: int, slug: str, who: str, *, replace: bool = False) -> dict:
+    """Add a finished job's layer to a project. replace=True drops earlier layers from the same process first."""
     with projects_pool.connection() as conn:
         j = conn.execute("SELECT status, result FROM app.jobs WHERE id = %s AND kind = 'process'", (job_id,)).fetchone()
         if not j or j["status"] != "succeeded":
@@ -1152,11 +1174,94 @@ async def promote_job(job_id: int, request: Request) -> dict:
             raise HTTPException(404, f"no project {slug}")
     m = json.loads(p["manifest"])
     layer = j["result"]["layerSpec"]
-    m["layers"] = [l for l in m["layers"] if l["id"] != layer["id"]] + [layer]
+    same = f"Analysis: {j['result']['process']['id']} " if replace else None
+    m["layers"] = [l for l in m["layers"] if l["id"] != layer["id"]
+                   and not (same and str(l.get("attribution", "")).startswith(same))] + [layer]
     rep = _validate(m, slug)
     if not rep["ok"]:
         raise HTTPException(422, rep)
-    return _save(m, rep, _admin_user(request), create=False)
+    return _save(m, rep, who, create=False)
+
+
+# ---- project workspace: analyses of the project's place (admin) ---------------------------------------------
+# A project built for one place (manifest `place`, e.g. a parcel) can run the processes whose descriptor lists that
+# unit. Results are ordinary analysis jobs on that place; adding one puts its layer on the project's map.
+
+def _project_place(conn, slug: str) -> tuple[dict, dict]:
+    p = conn.execute("SELECT manifest FROM app.projects WHERE slug = %s", (slug,)).fetchone()
+    if not p:
+        raise HTTPException(404, f"no project {slug}")
+    place = p["manifest"].get("place")
+    if not place:  # built before manifests recorded their place: the focus layer names it
+        focus = next((l for l in p["manifest"].get("layers", []) if l.get("id") == "focus"), None)
+        params = ((focus or {}).get("source") or {}).get("params") or {}
+        if params.get("unit") and params.get("place"):
+            place = {"unit": str(params["unit"]), "key": str(params["place"])}
+    if not place:
+        raise HTTPException(409, f"{slug} is not about one place (no manifest `place`): build it from a design")
+    if not place.get("name"):
+        with contextlib.suppress(HTTPException):
+            u = _unit(conn, place["unit"])
+            row = conn.execute(sql.SQL("SELECT name FROM {} WHERE unit_key = %s").format(
+                sql.Identifier("pub", u["collection"].split(".", 1)[1])), (place["key"],)).fetchone()
+            place = {**place, "name": row["name"]} if row else place
+    return p["manifest"], place
+
+
+@app.get("/api/admin/projects/{slug}/analyses", dependencies=[Depends(require_admin)])
+def project_analyses(slug: str) -> dict:
+    """The analyses offered for this project's place, and every run of them on that place (newest first)."""
+    with projects_pool.connection() as conn:
+        manifest, place = _project_place(conn, slug)
+        procs = conn.execute(
+            """SELECT id, title, description, descriptor->>'method' AS method, version,
+                      last_seen_at > now() - interval '2 minutes' AS worker_online
+               FROM app.processes WHERE descriptor::jsonb->'units' ? %s ORDER BY title""", (place["unit"],)).fetchall()
+        runs = conn.execute(
+            f"""SELECT id, process_id, status, progress::float8 AS progress, progress_message, error, created_at,
+                       finished_at, result->'report' AS report, result->'layerSpec'->>'id' AS layer_id
+                FROM app.jobs WHERE kind = 'process' AND process_id = ANY(%s)
+                  AND inputs->>'unit' = %s AND inputs->>'place' = %s
+                ORDER BY id DESC LIMIT 50""", ([p["id"] for p in procs], place["unit"], place["key"])).fetchall()
+    on_map = {l["id"] for l in manifest.get("layers", [])}
+    for r in runs:
+        r["on_map"] = r["layer_id"] in on_map
+    return {"place": place, "processes": procs, "runs": runs}
+
+
+@app.post("/api/admin/projects/{slug}/analyses", dependencies=[Depends(require_admin)], status_code=201)
+async def run_project_analysis(slug: str, request: Request) -> dict:
+    """{"process": id} -> queue it on the project's place (deduplicated while one is queued or running)."""
+    body = await request.json()
+    with projects_pool.connection() as conn:
+        _manifest, place = _project_place(conn, slug)
+        proc = _process(conn, str((body or {}).get("process", "")))
+        if place["unit"] not in (proc["descriptor"].get("units") or []):
+            raise HTTPException(422, f"{proc['title']} does not run on a {place['unit']}")
+        values, errors = check_inputs(conn, proc["descriptor"], {"unit": place["unit"], "place": place["key"]})
+        if errors:
+            raise HTTPException(422, {"errors": errors})
+        dedupe = hashlib.sha256(json.dumps([proc["id"], values], sort_keys=True).encode()).hexdigest()
+        row = conn.execute(
+            f"""INSERT INTO app.jobs (kind, action, process_id, inputs, concurrency_class, max_attempts, dedupe_key, created_by)
+                VALUES ('process', 'run', %s, %s, 'analysis', 2, %s, %s)
+                ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
+                RETURNING {JOB_COLUMNS}""", (proc["id"], json.dumps(values), dedupe, _admin_user(request))).fetchone()
+        if row is None:
+            row = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
+                               (dedupe,)).fetchone()
+    return row
+
+
+@app.post("/api/admin/projects/{slug}/analyses/{job_id}/add", dependencies=[Depends(require_admin)])
+def add_project_analysis(slug: str, job_id: int, request: Request) -> dict:
+    """Put a finished run on this project's map, replacing an earlier result of the same analysis."""
+    with projects_pool.connection() as conn:
+        _manifest, place = _project_place(conn, slug)
+        j = conn.execute("SELECT inputs FROM app.jobs WHERE id = %s AND kind = 'process'", (job_id,)).fetchone()
+    if not j or j["inputs"].get("place") != place["key"] or j["inputs"].get("unit") != place["unit"]:
+        raise HTTPException(409, f"job {job_id} is not an analysis of this project's place")
+    return _promote(job_id, slug, _admin_user(request), replace=True)
 
 
 # ---- dataset actions (admin plan Phase B) -----------------------------------------------------------------------
@@ -1229,6 +1334,7 @@ async def dataset_action(name: str, request: Request, response: Response) -> dic
 METHODS_DIR = Path(os.environ.get("METHODS_DIR", "/methods"))
 REPO_DIR = Path(os.environ.get("REPO_DIR", "/repo"))
 METHOD_SQL = re.compile(r"^projects/[a-z0-9-]+/sql/[A-Za-z0-9_.-]+\.sql$")
+METHOD_CODE = re.compile(r"^workers/processes/[a-z0-9_]+\.py$")
 FIELD = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
@@ -1256,7 +1362,7 @@ def _method_live(conn, output: dict) -> dict:
 
 @app.get("/api/admin/methods", dependencies=[Depends(require_admin)])
 def list_methods() -> list[dict]:
-    return [{k: m.get(k) for k in ("id", "title", "summary", "project", "layer")} for m in _methods().values()]
+    return [{k: m.get(k) for k in ("id", "title", "summary", "project", "layer", "process")} for m in _methods().values()]
 
 
 @app.get("/api/admin/methods/{method_id}", dependencies=[Depends(require_admin)])
@@ -1268,6 +1374,38 @@ def get_method(method_id: str) -> dict:
     path = m.get("sql")
     if path and METHOD_SQL.match(path) and (REPO_DIR / path).is_file():
         m["sql_text"] = (REPO_DIR / path).read_text()
+    path = m.get("code")
+    if path and METHOD_CODE.match(path) and (REPO_DIR / path).is_file():
+        m["code_text"] = (REPO_DIR / path).read_text()
     with projects_pool.connection() as conn:
         m["live"] = [_method_live(conn, o) for o in m.get("outputs", [])]
+        if m.get("process"):
+            m["runs"] = _method_runs(conn, m["process"])
     return m
+
+
+def _method_runs(conn, process_id: str) -> dict:
+    """How an analysis method has been used: runs by status, places analysed, score spread, the latest runs."""
+    totals = conn.execute(
+        """SELECT count(*) AS runs, count(*) FILTER (WHERE status = 'succeeded') AS succeeded,
+                  count(*) FILTER (WHERE status = 'failed') AS failed,
+                  count(DISTINCT inputs->>'place') FILTER (WHERE status = 'succeeded') AS places,
+                  avg((result->'report'->>'score')::float8) FILTER (WHERE status = 'succeeded') AS mean_score,
+                  max(finished_at) AS last_run
+           FROM app.jobs WHERE kind = 'process' AND process_id = %s""", (process_id,)).fetchone()
+    classes = conn.execute(
+        """SELECT result->'report'->>'class' AS class, count(*) AS n FROM app.jobs
+           WHERE kind = 'process' AND process_id = %s AND status = 'succeeded' GROUP BY 1 ORDER BY 2 DESC""",
+        (process_id,)).fetchall()
+    recent = conn.execute(
+        """SELECT j.id, j.status, j.finished_at, j.error, j.inputs->>'place' AS place,
+                  j.result->'report'->'parcel'->>'name' AS name, (j.result->'report'->>'score')::int AS score,
+                  j.result->'report'->>'class' AS class,
+                  (SELECT p.slug FROM app.projects p WHERE p.manifest->'place'->>'key' = j.inputs->>'place'
+                     AND p.manifest->'place'->>'unit' = j.inputs->>'unit' ORDER BY p.updated_at DESC LIMIT 1) AS project
+           FROM app.jobs j WHERE j.kind = 'process' AND j.process_id = %s ORDER BY j.id DESC LIMIT 12""",
+        (process_id,)).fetchall()
+    process = conn.execute("SELECT version, last_seen_at > now() - interval '2 minutes' AS online FROM app.processes "
+                           "WHERE id = %s", (process_id,)).fetchone()
+    return {"process": process_id, **totals, "classes": classes, "recent": recent,
+            "version": process["version"] if process else None, "worker_online": bool(process and process["online"])}

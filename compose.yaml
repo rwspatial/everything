@@ -136,6 +136,7 @@ services:
       - ./data/reports:/reports:ro        # PDF reports written by the reporter, served by /api/projects/{slug}/reports
       - ./docs/methods:/methods:ro        # how derived layers are calculated (/admin/methods)
       - ./projects:/repo/projects:ro      # the SQL each method shows
+      - ./workers/processes:/repo/workers/processes:ro   # the code of analysis methods (same page)
     networks: [api, data]
     depends_on:
       postgis:
@@ -267,6 +268,9 @@ services:
       TIPG_URL: http://tipg:8000
       TIPG_CATALOG_TTL: ${TIPG_CATALOG_TTL:-300}   # same value tipg uses (compose.dev.yaml: 30)
       TIPG_WAIT_SECONDS: ${TIPG_WAIT_SECONDS:-360}
+      # Raster statistics (zonal stats of COGs) come from titiler, so processes read local or S3 COGs alike.
+      TITILER_URL: http://titiler:8000
+      COG_ROOT: /data/cog
     networks: [data, api]
     read_only: true
     tmpfs: [/tmp]

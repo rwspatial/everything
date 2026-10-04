@@ -17,6 +17,9 @@ services:
   dataset-worker:
     environment:
       COG_ROOT: *cog_root
+  worker:
+    environment:
+      COG_ROOT: *cog_root
 
   titiler:
     environment:

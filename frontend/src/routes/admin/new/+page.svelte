@@ -2,6 +2,11 @@
 	// Quick map (plan: project-builder §1.7): pick a design, pick a place, get a finished project.
 	// core-api builds the manifest from the design (curated layers from the registered projects, a focus
 	// mask and outline, framing, titles); this page previews it and saves it like the single-view wizard.
+	// A design for parcels ("Parcel site") picks its parcel on a map (ParcelPicker), and saving opens the project
+	// workspace, where analyses of the parcel run.
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import ParcelPicker, { type PickedParcel, type PickerTown } from '$lib/admin/ParcelPicker.svelte';
 	import Viewer from '$lib/components/Viewer.svelte';
 	import { title as pageTitle } from '$lib/site';
 	import type { ProjectManifest } from '$lib/types';
@@ -46,6 +51,8 @@
 			.then(([d, u]: [Design[], Unit[]]) => {
 				designs = d;
 				units = Object.fromEntries(u.map((x) => [x.id, x]));
+				const wanted = page.url.searchParams.get('design');
+				if (wanted && !designId && d.some((x) => x.id === wanted)) pickDesign(wanted);
 			})
 			.catch((e) => (loadError = `Could not load designs: ${e.message}`));
 	});
@@ -68,12 +75,52 @@
 	let results: Place[] = $state([]);
 	let place: Place | null = $state(null);
 	let searchError = $state('');
+	// Parcels: the preview pane is a map to pick from until a parcel is chosen (and again on "Change parcel").
+	let picking = $state(true);
+	const pickOnMap = $derived(unit === 'parcel' && (picking || !place));
+	function pickParcel(p: PickedParcel) {
+		place = { key: p.key, name: p.name, short_name: p.short_name, county_name: p.county_name };
+		pickedAcres = p.acres;
+		picking = false;
+	}
+	let pickedAcres: number | null = $state(null);
+	// Parcels: the town comes first; the map and the address list then show only that town's parcels.
+	let parcelTown: PickerTown | null = $state(null);
+	let townQuery = $state('');
+	let townResults: (Place & { bbox: [number, number, number, number] })[] = $state([]);
+	$effect(() => {
+		const q = townQuery.trim();
+		if (unit !== 'parcel' || q.length < 2) {
+			townResults = [];
+			return;
+		}
+		const t = setTimeout(async () => {
+			const r = await fetch(`/api/admin/units/town/places?q=${encodeURIComponent(q)}&limit=8`);
+			townResults = r.ok ? await r.json() : [];
+		}, 200);
+		return () => clearTimeout(t);
+	});
+	function pickTown(t: Place & { bbox: [number, number, number, number] }) {
+		parcelTown = { key: t.key, name: t.short_name || t.name, bbox: t.bbox };
+		townQuery = '';
+		townResults = [];
+		place = null;
+		picking = true;
+		query = '';
+	}
 	$effect(() => {
 		const q = query;
 		const u = unit;
+		const town = parcelTown;
 		if (!u) return;
+		if (u === 'parcel' && !town) {
+			results = [];
+			searchError = '';
+			return;
+		}
 		const t = setTimeout(async () => {
-			const r = await fetch(`/api/admin/units/${u}/places?q=${encodeURIComponent(q)}&limit=12`);
+			const within = u === 'parcel' && town ? `&town=${encodeURIComponent(town.key)}` : '';
+			const r = await fetch(`/api/admin/units/${u}/places?q=${encodeURIComponent(q)}&limit=12${within}`);
 			const body = await r.json().catch(() => []);
 			searchError = r.ok ? '' : typeof body.detail === 'string' ? body.detail : `HTTP ${r.status}`;
 			results = r.ok ? body : [];
@@ -95,7 +142,7 @@
 		manifest = null;
 		report = null;
 		saved = null;
-		if (!d || !u || !p) return;
+		if (!d || !u || !p || (u === 'parcel' && picking)) return;
 		building = true;
 		buildError = '';
 		fetch(`/api/admin/designs/${d}/manifest`, {
@@ -131,7 +178,11 @@
 			const body = await r.json().catch(() => ({}));
 			if (r.status === 422) report = body.detail as Report;
 			else if (!r.ok) saveError = typeof body.detail === 'string' ? body.detail : `HTTP ${r.status}`;
-			else saved = { slug: body.slug, version: body.version };
+			else {
+				saved = { slug: body.slug, version: body.version };
+				// A parcel project goes straight to its workspace, where its analyses run.
+				if (unit === 'parcel') await goto(`/admin/projects/${body.slug}`);
+			}
 		} finally {
 			busy = false;
 		}
@@ -142,7 +193,8 @@
 
 <h1>New project</h1>
 <p class="lead">
-	Choose a map design and a place: you get a finished, framed map built from the curated layers, ready to save. For a
+	Choose a map design and a place: you get a finished, framed map built from the curated layers, ready to save. To
+	analyse one property, choose <a href="/admin/new?design=parcel-site">Parcel site</a> and click the parcel on the map. For a
 	map of one published view with your own style, use the <a href="/admin/new/view">single-view creator</a>.
 </p>
 {#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
@@ -171,18 +223,49 @@
 					{/each}
 				</div>
 			{/if}
-			<label for="place-search">Search {units[unit]?.plural.toLowerCase() ?? 'places'}</label>
-			<input id="place-search" type="search" bind:value={query} placeholder={unit === 'town' ? 'e.g. Bethel' : unit === 'county' ? 'e.g. Oxford' : 'name or GEOID'} autocomplete="off" />
+			{#if unit === 'parcel'}
+				{#if parcelTown}
+					<p class="picked">
+						Town: <strong>{parcelTown.name}</strong>
+						<button type="button" class="link" onclick={() => ((parcelTown = null), (place = null), (picking = true))}>Change town</button>
+					</p>
+				{:else}
+					<label for="town-search">Town</label>
+					<input id="town-search" type="search" bind:value={townQuery} placeholder="e.g. Presque Isle" autocomplete="off" />
+					<p class="hint">Choose the town first; the map then shows its parcels.</p>
+					<ul class="results" aria-label="Towns">
+						{#each townResults as t (t.key)}
+							<li>
+								<button type="button" onclick={() => pickTown(t)}>
+									{t.name}{#if t.county_name}<span class="hint">, {t.county_name} County</span>{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				{#if place && !picking}
+					<p class="picked">
+						<strong>{place.name}</strong>{#if pickedAcres !== null}<span class="hint">{pickedAcres.toFixed(1)} acres</span>{/if}
+						<button type="button" class="link" onclick={() => (picking = true)}>Change parcel</button>
+					</p>
+				{:else if parcelTown}
+					<p class="hint">Click a parcel on the map, or find it by address below.</p>
+				{/if}
+			{/if}
+			{#if unit !== 'parcel' || parcelTown}
+			<label for="place-search">{unit === 'parcel' && parcelTown ? `Parcels in ${parcelTown.name}` : `Search ${units[unit]?.plural.toLowerCase() ?? 'places'}`}</label>
+			<input id="place-search" type="search" bind:value={query} placeholder={unit === 'town' ? 'e.g. Bethel' : unit === 'county' ? 'e.g. Oxford' : unit === 'parcel' ? 'e.g. 95 Reach Rd' : 'name or GEOID'} autocomplete="off" />
 			{#if searchError}<p class="hint">{searchError}</p>{/if}
 			<ul class="results" aria-label="Places">
 				{#each results as p (p.key)}
 					<li>
-						<button type="button" class:on={place?.key === p.key} aria-pressed={place?.key === p.key} onclick={() => (place = p)}>
-							{p.name}{#if p.county_name && unit !== 'county'}<span class="hint">, {p.county_name} County</span>{/if}
+						<button type="button" class:on={place?.key === p.key} aria-pressed={place?.key === p.key} onclick={() => ((place = p), (picking = false), (pickedAcres = null))}>
+							{p.name}{#if p.county_name && unit !== 'county' && unit !== 'parcel'}<span class="hint">, {p.county_name} County</span>{/if}
 						</button>
 					</li>
 				{/each}
 			</ul>
+			{/if}
 		</fieldset>
 
 		<fieldset disabled={!manifest}>
@@ -208,7 +291,9 @@
 	</div>
 
 	<div class="preview" aria-label="Preview">
-		{#if final}
+		{#if pickOnMap}
+			<ParcelPicker tilesBase={config.tilesBase} town={parcelTown} selected={place?.key ?? null} onpick={pickParcel} />
+		{:else if final}
 			{#key manifest}
 				<Viewer manifest={final} {config} embedded />
 			{/key}
@@ -248,6 +333,9 @@
 	.hint { font-size: 0.78rem; color: var(--muted); margin: 0.2rem 0 0; }
 	.error { color: #b42318; }
 	.issues { margin: 0.3rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; color: #b42318; }
+	.picked { margin: 0.2rem 0; font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; align-items: baseline; }
+	.link { all: unset; cursor: pointer; color: var(--accent-strong); text-decoration: underline; font-size: 0.82rem; }
+	.link:focus-visible { outline: 2px solid var(--accent); }
 	.saved { background: #e8f4ea; border: 1px solid #3c8a4a; border-radius: 8px; padding: 0.6rem 0.8rem; margin-top: 0.4rem; }
 	.preview { height: 80vh; min-height: 520px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: sticky; top: 1rem; }
 	.placeholder { display: grid; place-items: center; height: 100%; margin: 0; color: var(--muted); }

@@ -11,6 +11,7 @@
 	import type { AdapterContext } from '$lib/adapters';
 	import { basemaps, DEFAULT_BASEMAP, resolveBasemap } from '$lib/basemaps';
 	import type { AppConfig } from '$lib/config';
+	import { placeOf } from '$lib/projects';
 	import { fillTemplate, formatValue, PALETTE } from '$lib/format';
 	import type { InspectedFeature, LayerState, ProjectManifest, SourceSpec } from '$lib/types';
 	import Inspector from './Inspector.svelte';
@@ -85,6 +86,8 @@
 	});
 	let moveTick = $state(0);
 	const hasCharts = $derived(!embedded && (manifest.charts?.length ?? 0) > 0);
+	// A project about one place (e.g. a parcel) can run analyses at any time: admin only, never on the public site.
+	const analysable = $derived(!embedded && config.publicMode !== true && placeOf(manifest) !== null);
 	let layers = $state<LayerState[]>(initialLayers());
 	let selected = $state<InspectedFeature[]>([]);
 	let cursor = $state<[number, number] | null>(null);
@@ -426,6 +429,7 @@
 		<button onclick={resetView}>Reset view</button>
 		{#if !embedded}<button onclick={copyLink} aria-live="polite">{copied ? 'Link copied' : 'Copy link'}</button>{/if}
 		{#if hasCharts}<button aria-expanded={chartsOpen} onclick={() => (chartsOpen = !chartsOpen)}>Charts</button>{/if}
+		{#if analysable}<a class="report-link" href="/admin/projects/{manifest.slug}" title="Run analyses of this place (admin)">Analyses</a>{/if}
 		{#if reportUrl}<a class="report-link" href={reportUrl} target="_blank" rel="noopener">Report (PDF)</a>{/if}
 		<button class="panel-toggle" aria-expanded={panelOpen} aria-controls="layer-panel" onclick={() => (panelOpen = !panelOpen)}>
 			Layers
