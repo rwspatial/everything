@@ -9,34 +9,54 @@ export const site = {
 	/** Practice / studio name, used in the header and page titles. */
 	studio: 'Downeast Geospatial',
 	location: 'Maine, USA',
-	tagline: 'From raw public data to maps people can use: pipelines, spatial databases, tile services and web maps.',
+	/** One line under the name: what the practice and this platform do. */
+	headline: 'Geospatial modeling, cartography & reporting',
+	tagline:
+		'A platform for building geospatial models, maps and reports fast: from raw public data to live analyses, polished cartography and print-ready reports, in R, Python, PostGIS, Svelte, MapLibre and D3.',
+
+	/** Three things the platform does, shown on the landing page. */
+	pillars: [
+		{
+			title: 'Model',
+			body: 'Suitability, risk and change models in R and Python, run against PostGIS and cloud rasters: agricultural potential and wildfire fuel hazard for any parcel, hot spots and clusters, settlement outlines. Every method is documented and every run tracked.'
+		},
+		{
+			title: 'Map',
+			body: 'Interactive maps in MapLibre and Svelte, styled to cartographic standards and served live from PostGIS: vector tiles, cloud-optimized rasters, and map designs that turn a town or parcel into a finished map in minutes.'
+		},
+		{
+			title: 'Report',
+			body: 'Custom reporting on the same data: D3 charts computed on the fly for any area, analysis reports for a parcel or town, and PDF reports printed straight from the map.'
+		}
+	],
 
 	/** Draft copy; rewrite in your own voice. */
 	about: [
-		"I build the whole path from raw geospatial data to a map someone can act on: repeatable imports from state and federal sources, PostGIS databases, vector and raster tile services, and fast web viewers.",
-		'Everything on this site runs on that stack. The maps are served live from PostGIS, not screenshots.'
+		'This site is a working geospatial platform: one stack that takes public data from dozens of state and federal sources, models it, maps it and reports on it. New analyses, map designs and reports are built on what is already there, so an idea becomes a live map or a parcel report in days, not months.',
+		'It is built to stay open and adaptable: R and Python for analysis, PostGIS for data, Svelte, MapLibre and D3 for the web, and cloud storage for rasters. The same pieces fit environmental screening, planning, real estate, utilities, conservation or research.',
+		'Everything here runs live. The maps are served from PostGIS, not screenshots, and every model has a methods page showing exactly how it is calculated.'
 	],
 
 	services: [
 		{
-			title: 'Data pipelines',
-			body: 'Repeatable imports from sources like the Maine GeoLibrary, USGS, Census, USDA, FEMA, NOAA and Overture Maps into PostGIS, with provenance, health checks and freshness tracking.'
+			title: 'Geospatial modeling and analysis',
+			body: 'Suitability and risk models, spatial statistics and derived features in R and Python: land suitability, wildfire fuel hazard, clusters and hot spots, terrain, soils, habitat and census analysis. Documented methods, delivered as layers you can map, query and report on.'
 		},
 		{
-			title: 'Web maps and tile services',
-			body: 'Vector tiles straight from PostGIS, Cloud-Optimized GeoTIFFs through TiTiler, MapLibre viewers built for the people who use them, and printable PDF reports.'
+			title: 'Cartography and interactive maps',
+			body: 'Web maps that follow cartographic conventions (standard wetland colours, hatched easements, flood-zone symbology) and stay fast at statewide scale: MapLibre and Svelte, vector tiles from PostGIS, cloud-optimized rasters, reusable map designs.'
 		},
 		{
-			title: 'Spatial databases',
-			body: 'PostGIS schema design, published views, least-privilege roles, migrations and query performance.'
+			title: 'Custom reporting',
+			body: 'Reports and dashboards from the same data: D3 charts for any area on the fly, per-parcel and per-town analysis reports, printable PDF reports, and methods pages that explain every number.'
 		},
 		{
-			title: 'Spatial analysis',
-			body: 'Hot spots and clusters, derived features like settlement outlines, and terrain, soils, habitat and census analysis in R and Python, with documented methods, delivered as layers you can map and query.'
+			title: 'Data engineering and spatial databases',
+			body: 'Repeatable pipelines from the Maine GeoLibrary, USGS, Census, USDA, FEMA, LANDFIRE, NOAA and Overture Maps into PostGIS, with provenance and health checks; schema design, published views, least-privilege roles, and cloud deployment on AWS.'
 		}
 	],
 
-	stack: ['PostGIS', 'tipg (OGC API)', 'TiTiler', 'GDAL / ogr2ogr', 'SvelteKit', 'MapLibre', 'R + Python', 'FastAPI', 'Playwright', 'Docker', 'Caddy'],
+	stack: ['R', 'Python', 'PostGIS', 'SvelteKit', 'MapLibre', 'D3', 'tipg (OGC API)', 'TiTiler', 'GDAL', 'FastAPI', 'Docker', 'AWS (EC2, S3)', 'Playwright'],
 
 	/** Landing banner photo (frontend/static/) and its credit. Empty image = the plain dark banner. */
 	hero: {
@@ -47,8 +67,8 @@ export const site = {
 		creditUrl: 'https://newildernesstrust.org/conservation-collaboration-bold-coast/'
 	},
 
-	/** Projects with this tag are featured on the landing page as selected work. */
-	featuredTag: 'maine',
+	/** Published projects with this tag are featured on the landing page (up to three, in catalogue order). */
+	featuredTag: 'featured',
 
 	contact: {
 		email: 'rwspatial@gmail.com',

@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-energy",
   "title": "Maine Energy",
-  "status": "draft",
+  "status": "ready",
   "description": "Maine's power plants by energy source and capacity, the high-voltage transmission grid and fuel pipelines, from the EIA U.S. Energy Atlas (EIA-860 plant data).",
   "tags": [
     "maine",

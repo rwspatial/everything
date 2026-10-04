@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>{site.person ? title(`${site.person}, ${site.role}`) : title('Geospatial engineering & web mapping')}</title>
+	<title>{site.person ? title(`${site.person}, ${site.role}`) : title(site.headline)}</title>
 </svelte:head>
 
 <main class="landing">
@@ -22,7 +22,7 @@
 				<p class="role">{site.role} · <span>{site.studio}</span> · {site.location}</p>
 			{:else}
 				<h1 id="hero-title">{site.studio}</h1>
-				<p class="role">Geospatial engineering &amp; web mapping · {site.location}</p>
+				<p class="role">{site.headline} · {site.location}</p>
 			{/if}
 			<p class="tagline">{site.tagline}</p>
 			<div class="cta">
@@ -37,9 +37,18 @@
 		{/if}
 	</section>
 
+	<section class="wrap block pillars-block" aria-labelledby="pillars-title">
+		<h2 id="pillars-title" class="visually-hidden">What the platform does</h2>
+		<ul class="pillars">
+			{#each site.pillars as p (p.title)}
+				<li><h3>{p.title}</h3><p>{p.body}</p></li>
+			{/each}
+		</ul>
+	</section>
+
 	<section id="work" class="wrap block" aria-labelledby="work-title">
 		<h2 id="work-title">Featured maps</h2>
-		<p class="lede">Live maps of Maine, served from PostGIS on this site. Open one and click anything.</p>
+		<p class="lede">Maps of Maine built on the platform, each served live from PostGIS with the data, charts and reports behind it. Open one and click anything.</p>
 		{#if data.featured.length}
 			<ul class="work" aria-label="Featured maps">
 				{#each data.featured as p (p.slug)}
@@ -63,7 +72,7 @@
 
 	<section class="band" aria-label="About, services and contact">
 		<div class="wrap teaser">
-			<p>Pipelines, spatial databases, tile services and web maps for Maine and beyond.</p>
+			<p>Models, maps and custom reports, built quickly on an open, reproducible stack, for Maine and beyond.</p>
 			<a class="btn primary" href="/about">About, services and contact →</a>
 		</div>
 	</section>
@@ -73,6 +82,11 @@
 	.wrap { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
 	.block { padding-top: 3.5rem; padding-bottom: 3.5rem; }
 	h2 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+	.pillars-block { padding-bottom: 0; }
+	.pillars { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+	.pillars li { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 10px; padding: 0.9rem 1.1rem 1rem; }
+	.pillars h3 { margin: 0 0 0.35rem; font-size: 1.15rem; }
+	.pillars p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
 	.lede { color: var(--muted); margin: 0 0 1.5rem; max-width: 62ch; }
 
 	.hero { position: relative; overflow: hidden; background: #13202c; color: #fff; }

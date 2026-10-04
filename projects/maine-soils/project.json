@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-soils",
   "title": "Maine Soils",
-  "status": "draft",
+  "status": "ready",
   "description": "SSURGO soil survey for all of Maine from USDA-NRCS: hydrologic soil group (runoff potential) statewide, and from town scale (zoom 11) the individual soil map units with drainage class and farmland classification.",
   "tags": [
     "maine",

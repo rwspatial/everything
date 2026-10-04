@@ -18,7 +18,7 @@
 <main class="hub">
 	<header class="intro">
 		<h1>Maps</h1>
-		<p>Live maps of Maine, served from PostGIS on this site. Open one and click anything.</p>
+		<p>Maps of Maine built on the platform, each served live from PostGIS. Open one and click anything: every feature shows its data.</p>
 	</header>
 
 	{#if data.error}

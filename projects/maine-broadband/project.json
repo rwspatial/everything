@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-broadband",
   "title": "Maine Broadband",
-  "status": "draft",
+  "status": "ready",
   "description": "Where Maine homes and businesses can get 100/20 Mbps broadband: share of broadband serviceable locations that are unserved (under 25/3) or underserved (under 100/20), and fiber availability, from the FCC Broadband Data Collection (December 2025). Block groups statewide, census blocks from zoom 11.",
   "tags": [
     "maine",

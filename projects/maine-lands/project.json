@@ -1,13 +1,14 @@
 {
   "manifestVersion": 1,
   "slug": "maine-lands",
-  "status": "draft",
+  "status": "ready",
   "title": "Maine Lands",
-  "description": "Lands in which the Bureau of Parks and Lands holds an interest, USDA plant hardiness zones (2023), and the underlying extreme-minimum-temperature grid served as a Cloud-Optimized GeoTIFF.",
+  "description": "Maine's conserved lands from every holder (state, federal, municipal and land trusts; owned outright or held as easements), the Bureau of Parks and Lands' public lands, trails from the USGS National Digital Trails, tax parcels and town lines, with USDA plant hardiness zones (2023) and the extreme-minimum-temperature grid behind them.",
   "tags": [
     "maine",
     "public lands",
-    "climate"
+    "climate",
+    "featured"
   ],
   "view": {
     "center": [

@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "slug": "maine-landcover",
   "title": "Maine Land Cover, Crops & Wildfire Fuels",
-  "status": "draft",
+  "status": "ready",
   "description": "Maine at 30 m: Annual NLCD 2025 land cover, the USDA Cropland Data Layer 2025 (potatoes, blueberries, hay ...), LANDFIRE 2024 existing vegetation type (105 ecological systems, grouped by structure) and Scott & Burgan fire behavior fuel models. Click the map for the exact class.",
   "tags": [
     "maine",

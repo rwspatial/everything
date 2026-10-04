@@ -27,7 +27,7 @@
 	>
 		<div class="wrap">
 			<h1 id="about-title">About {site.person || site.studio}</h1>
-			<p class="role">{site.person ? `${site.role} · ${site.studio}` : 'Geospatial engineering & web mapping'} · {site.location}</p>
+			<p class="role">{site.person ? `${site.role} · ${site.studio}` : site.headline} · {site.location}</p>
 			<nav class="jump" aria-label="On this page">
 				<a href="#services">What I do</a>
 				<a href="#stack">How this site is built</a>
@@ -62,11 +62,14 @@
 			{#each site.stack as t (t)}<li>{t}</li>{/each}
 		</ul>
 		<p class="small">
-			Vector layers come from PostGIS views through an OGC API{#if !page.data.config?.publicMode}
-				(<a href="/tiles/" rel="external">browse the Data API</a>){/if},
-			rasters are Cloud-Optimized GeoTIFFs rendered on the fly, and a small API runs the imports, analysis jobs and PDF
-			reports behind them. Maps are defined as validated JSON manifests, browser tests check every page, and the whole stack
-			runs in Docker.
+			Vector layers come from PostGIS views through an OGC API{#if !page.data.config?.publicMode}{' '}(<a
+					href="/tiles/"
+					rel="external">browse the Data API</a
+				>){/if},
+			rasters are Cloud-Optimized GeoTIFFs rendered on the fly (locally or from S3), analyses run as R and Python jobs, and
+			charts are drawn with D3 from live queries. Maps are validated JSON manifests, so a new map, design or report is
+			configuration rather than code; browser tests check every page, and the whole stack runs in Docker, on a laptop or
+			on AWS.
 			<a href="/maps">See the live maps →</a>
 		</p>
 	</section>

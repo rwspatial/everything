@@ -28,13 +28,18 @@ test('landing page (identity, live selected work) and the About page (services, 
 	await expect(page.getByRole('link', { name: /New England Wilderness Trust/ })).toBeVisible();
 	// Three published maps up front; the Maps page is the full catalogue.
 	const work = page.getByRole('list', { name: 'Featured maps' });
+	// The featured maps are the published ones tagged "featured"; drafts are never featured.
 	await expect(work.getByRole('link')).toHaveCount(3);
-	await expect(work.getByRole('link', { name: /^Maine Water/ })).toBeVisible();
-	await expect(work.getByRole('link', { name: /Maine Lands|World Overview/ })).toHaveCount(0); // drafts are never featured
+	for (const name of ['Maine Census Demographics', 'Maine Terrain', 'Maine Lands']) {
+		await expect(work.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
+	}
+	await expect(work.getByRole('link', { name: /World Overview|Hydrology Sketch/ })).toHaveCount(0);
+	// What the platform does: model, map, report.
+	for (const name of ['Model', 'Map', 'Report']) await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'What I do' })).toHaveCount(0); // moved to /about
 	await shot(page, '0-landing');
-	await work.getByRole('link', { name: /^Maine Water/ }).click();
-	await expect(page).toHaveURL(/\/p\/maine-water/);
+	await work.getByRole('link', { name: /^Maine Terrain/ }).click();
+	await expect(page).toHaveURL(/\/p\/maine-terrain/);
 	await page.getByRole('link', { name: '← All maps' }).click();
 	await expect(page).toHaveURL(/\/maps$/);
 
@@ -56,11 +61,12 @@ test('maps page: published maps, maps in progress with what is missing, and crea
 	await page.goto('/maps');
 	await api; // the hub reads the project registry (core-api), not the static files
 	const published = page.getByRole('list', { name: 'Published maps' });
-	for (const name of ['Maine Water', 'Maine Census Demographics', 'Maine Terrain']) {
+	// Every Maine theme map is published; the in-progress list keeps the examples and the sandbox.
+	for (const name of ['Maine Water', 'Maine Census Demographics', 'Maine Terrain', 'Maine Lands', 'Maine Habitat', 'Maine Soils', 'Maine Coast', 'Maine Broadband']) {
 		await expect(published.getByRole('link', { name: new RegExp(`^${name}`) })).toBeVisible();
 	}
 	const cards = page.getByRole('list', { name: 'Maps in progress' });
-	for (const name of ['World Overview', 'Hydrology Sketch', 'Analysis Sandbox', 'Maine Coast', 'Maine Lands', 'Maine Infrastructure']) {
+	for (const name of ['World Overview', 'Hydrology Sketch', 'Analysis Sandbox']) {
 		await expect(cards.getByRole('link', { name, exact: true })).toBeVisible();
 	}
 	await expect(page.getByRole('complementary', { name: 'Create a map' }).getByRole('link', { name: 'New map →' })).toHaveAttribute('href', '/admin/new');
