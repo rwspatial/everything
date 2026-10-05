@@ -150,7 +150,8 @@ FROM src_cad.parcels;
 - For now, put placeholder-project views in `db/seed/*.sql` and run `make seed`. Phase 3 moves project views to
   `projects/<slug>/sql/` with `mapgen apply`.
 - Run `make refresh`, then check http://localhost:8080/tiles/collections.
-- Parametrized layers use SQL functions. See `pub.hydrology_sketch__rivers_by_rank` in `db/seed/020_hydrology_sketch.sql`.
+- Parametrized layers use SQL functions `pub.<slug>__<name>(z int, x int, y int, <params>)` returning the tile's
+  features (no project uses one at the moment; the Hydrology Sketch example was removed on 2026-10-05, see git history).
   They must be `SECURITY DEFINER` with a fixed `search_path`, because tiPG's role can't read `src_*`.
 
 ## Rasters

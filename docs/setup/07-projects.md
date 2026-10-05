@@ -89,7 +89,7 @@ there; remove them from `projects/index.json` instead.
 
 | Command | What it does |
 |---|---|
-| `./mapgen new <slug> [--template T] [--title …] [--layer id] [--from src_x.table]` | Scaffold from a template (`blank`, `vector-basic`, `hydro`, `analysis`; see `templates/projects/README.md`) |
+| `./mapgen new <slug> [--template T] [--title …] [--layer id] [--from src_x.table]` | Scaffold from a template (`blank`, `vector-basic`, `analysis`; see `templates/projects/README.md`) |
 | `./mapgen validate <slug> [--offline] [--json]` | All checks, plus the MapLibre style spec |
 | `./mapgen apply <slug>` | Validate, run the SQL, refresh tiPG, register |
 | `./mapgen sync [--check]` | Register every project in `projects/index.json` (also run by `make bootstrap` and `make reset-db`); `--check` only reports drift |
@@ -107,7 +107,7 @@ Errors (`E_*`) block `apply` and saving; warnings (`W_*`) don't.
 | Code | Meaning | Fix |
 |---|---|---|
 | `E_SCHEMA` | The manifest breaks `contracts/project-manifest.v1.schema.json` (the path says where) | Edit the manifest |
-| `E_SOURCE_TYPE` | Unknown `source.type` | Use one of `tipg-vector`, `tipg-geojson`, `geojson-url`, `raster-xyz`, `raster-cog` |
+| `E_SOURCE_TYPE` | Unknown `source.type` | Use one of `tipg-vector`, `geojson-url`, `raster-xyz`, `raster-cog` |
 | `E_SLUG_MISMATCH` | The `slug` differs from the folder or URL | Make them match |
 | `E_DUP_LAYER` | Two layers share an id | Rename one |
 | `E_READY_TODO` | A `ready` project still has to-do layers | Finish them or set the status to `draft` |
@@ -124,7 +124,6 @@ Errors (`E_*`) block `apply` and saving; warnings (`W_*`) don't.
 | `E_COG_MISSING` | `data/cog/<name>.tif` is missing, or TiTiler can't open it | Build it (`make import-recipe r=…`) |
 | `E_STYLE` | A style fragment breaks the MapLibre style spec | Edit the style (the message names the property) |
 | `W_NO_GIST` | The table behind the view has no GiST index | `CREATE INDEX ON src_x.t USING gist (geom)` |
-| `W_GEOJSON_ROWS` | A `tipg-geojson` layer has more than 5,000 rows | Use `tipg-vector` |
 | `W_TEMPLATE_FIELD`, `W_STYLE_FIELD` | A popup or style reads a column the view doesn't have | Fix the field name |
 | `W_PROPERTY_FILTERED` | The popup or style uses a column missing from `source.properties`, so tiles omit it | Add it to `properties` |
 | `W_TODO_REASON`, `W_NO_STYLE`, `W_CONTROL_RANGE` | A to-do layer without a reason; a vector layer without a style; a slider default outside its range | Edit the layer |

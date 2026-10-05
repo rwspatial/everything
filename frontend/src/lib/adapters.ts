@@ -94,19 +94,6 @@ const tipgVector: Adapter<'tipg-vector'> = (spec, ctx) => {
 	};
 };
 
-const tipgGeojson: Adapter<'tipg-geojson'> = (spec, ctx) => {
-	const sourceId = sourceIdFor(spec.id);
-	const url = `${ctx.tilesBase}/collections/${spec.source.collection}/items${query(spec.source, ctx, {
-		f: 'geojson',
-		limit: String(spec.source.limit ?? 10000)
-	})}`;
-	return {
-		sourceId,
-		source: { type: 'geojson', data: url, ...(spec.attribution ? { attribution: spec.attribution } : {}) },
-		layers: layersFor(spec, ctx, sourceId)
-	};
-};
-
 const geojsonUrl: Adapter<'geojson-url'> = (spec, ctx) => {
 	const sourceId = sourceIdFor(spec.id);
 	return {
@@ -155,7 +142,6 @@ const rasterCog: Adapter<'raster-cog'> = (spec, ctx) => {
 
 const registry: { [T in SourceType]: Adapter<T> } = {
 	'tipg-vector': tipgVector,
-	'tipg-geojson': tipgGeojson,
 	'geojson-url': geojsonUrl,
 	'raster-xyz': rasterXyz,
 	'raster-cog': rasterCog

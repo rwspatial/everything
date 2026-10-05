@@ -1,0 +1,26 @@
+name: me_dep_at_risk_lake_watersheds
+title: Watersheds of lakes most at risk (DEP)
+description: Watersheds of lakes most at risk from new development.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/Impaired_Watersheds/MapServer/1
+    page_size: 250
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/Impaired_Watersheds/MapServer/1
+target: src_dep.at_risk_lake_watersheds
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

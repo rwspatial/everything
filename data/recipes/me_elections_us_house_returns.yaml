@@ -1,0 +1,36 @@
+name: me_elections_us_house_returns
+kind: table
+title: U.S. House returns 1976-2024 (Maine)
+description: 'Votes by candidate and party in Maine''s U.S. House elections, 1976-2024 (MIT Election Data and Science Lab).
+  The file sits behind a Dataverse guestbook: download 1976-2024-house.tab by hand from doi:10.7910/DVN/IG0UN2 into data/manual/,
+  then enable.'
+agency: MIT Election Data and Science Lab
+source:
+  csv:
+    path: data/manual/1976-2024-house.tab
+    delimiter: "\t"
+    where:
+      state_po: ME
+    label: MIT Election Lab, U.S. House 1976-2024
+    text_columns:
+    - district
+    - party
+    - candidate
+    - special
+    - writein
+    - stage
+    - runoff
+    - fusion_ticket
+    - mode
+    - state_po
+    - state
+    - office
+target: src_elections.us_house_returns
+license: CC0 (MIT Election Data and Science Lab)
+attribution: MIT Election Data and Science Lab, U.S. House 1976-2024 (Harvard Dataverse)
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: false
+todo: download the file by hand (Dataverse guestbook) into data/manual/

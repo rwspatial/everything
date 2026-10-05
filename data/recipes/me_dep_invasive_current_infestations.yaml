@@ -1,0 +1,25 @@
+name: me_dep_invasive_current_infestations
+title: 'Invasive aquatic plants: current infestations (DEP)'
+description: Known infestations of invasive aquatic plants (milfoil, hydrilla, curly-leaf pondweed ...).
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/Lake_Vulnerability_Analysis_AGOL/MapServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/Lake_Vulnerability_Analysis_AGOL/MapServer/0
+target: src_dep.invasive_current_infestations
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

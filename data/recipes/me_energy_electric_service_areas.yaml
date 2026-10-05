@@ -1,0 +1,25 @@
+name: me_energy_electric_service_areas
+title: Electric utility service areas (Maine)
+description: Territories of Maine's electric utilities (CMP, Versant and consumer-owned utilities). Last updated 2016.
+agency: Maine Public Utilities Commission
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Electric_Service_Area/FeatureServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Electric_Service_Area/FeatureServer/0
+target: src_energy.electric_service_areas
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Public Utilities Commission
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

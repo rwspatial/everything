@@ -1,0 +1,26 @@
+name: me_history_nrhp_points
+title: National Register of Historic Places, points (Maine)
+description: Properties listed in the National Register of Historic Places.
+agency: National Park Service
+source:
+  arcgis:
+    url: https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+    where: STATE='MAINE'
+upstream:
+  arcgis: https://mapservices.nps.gov/arcgis/rest/services/cultural_resources/nrhp_locations/MapServer/0
+target: src_history.nrhp_points
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: National Park Service, National Register of Historic Places
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

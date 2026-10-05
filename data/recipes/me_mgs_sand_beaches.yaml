@@ -1,0 +1,25 @@
+name: me_mgs_sand_beaches
+title: Sand beaches (MGS)
+description: Maine's sand beaches.
+agency: Maine Geological Survey
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Beaches_and_Dunes/FeatureServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Beaches_and_Dunes/FeatureServer/0
+target: src_mgs.sand_beaches
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Geological Survey
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

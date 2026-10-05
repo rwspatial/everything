@@ -155,7 +155,6 @@
       "title": "SourceSpec",
       "oneOf": [
         { "$ref": "#/definitions/TipgVectorSource" },
-        { "$ref": "#/definitions/TipgGeojsonSource" },
         { "$ref": "#/definitions/GeojsonUrlSource" },
         { "$ref": "#/definitions/RasterXyzSource" },
         { "$ref": "#/definitions/RasterCogSource" }
@@ -184,19 +183,6 @@
         "params": { "$ref": "#/definitions/FunctionParams" },
         "properties": { "type": "array", "items": { "type": "string" } },
         "maxzoom": { "type": "number", "minimum": 0, "maximum": 24 }
-      }
-    },
-    "TipgGeojsonSource": {
-      "title": "TipgGeojsonSource",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "collection"],
-      "properties": {
-        "type": { "const": "tipg-geojson" },
-        "collection": { "$ref": "#/definitions/Collection" },
-        "params": { "$ref": "#/definitions/FunctionParams" },
-        "properties": { "type": "array", "items": { "type": "string" } },
-        "limit": { "type": "integer", "minimum": 1 }
       }
     },
     "GeojsonUrlSource": {

@@ -1,0 +1,25 @@
+name: me_dep_pfas_soil_sample_areas
+title: PFAS soil sample areas (DEP)
+description: Areas sampled for PFAS in soil.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_PFAS_Investigation/MapServer/3
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_PFAS_Investigation/MapServer/3
+target: src_dep.pfas_soil_sample_areas
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

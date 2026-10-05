@@ -1,0 +1,25 @@
+name: me_dep_infested_waterbodies
+title: Waterbodies infested with invasive aquatic plants (DEP)
+description: Lakes, ponds and streams with a confirmed invasive aquatic plant infestation.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_DEP_Aquatic_Invasives/FeatureServer/1
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_DEP_Aquatic_Invasives/FeatureServer/1
+target: src_dep.infested_waterbodies
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

@@ -1,0 +1,31 @@
+name: me_elections_county_president_returns
+kind: table
+title: Presidential returns by county 2000-2024 (Maine)
+description: 'Presidential votes by county and candidate in Maine, 2000-2024 (MIT Election Data and Science Lab). Behind a
+  Dataverse guestbook: download countypres_2000-2024.csv by hand from doi:10.7910/DVN/VOQCHQ into data/manual/, then enable.'
+agency: MIT Election Data and Science Lab
+source:
+  csv:
+    path: data/manual/countypres_2000-2024.csv
+    where:
+      state_po: ME
+    label: MIT Election Lab, county presidential returns 2000-2024
+    text_columns:
+    - county_fips
+    - county_name
+    - party
+    - candidate
+    - mode
+    - state_po
+    - state
+    - office
+    - version
+target: src_elections.county_president_returns
+license: CC0 (MIT Election Data and Science Lab)
+attribution: MIT Election Data and Science Lab, County Presidential Returns 2000-2024 (Harvard Dataverse)
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: false
+todo: download the file by hand (Dataverse guestbook) into data/manual/

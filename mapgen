@@ -13,7 +13,7 @@ usage() {
   cat <<'EOF'
 usage: ./mapgen <command> ...
 
-  new <slug> [--template vector-basic|blank|hydro|analysis] [--title T] [--layer ID] [--from src_x.table]
+  new <slug> [--template vector-basic|blank|analysis] [--title T] [--layer ID] [--from src_x.table]
                            scaffold projects/<slug>/ (manifest + sql/) and list it in projects/index.json
   validate <slug> [--offline] [--json]
                            schema, rules, live database and COG checks, and the MapLibre style spec

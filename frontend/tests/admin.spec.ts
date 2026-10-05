@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 const shot = (page: Page, name: string) => page.screenshot({ path: `test-results/screens/${name}.png`, fullPage: true });
 
 test('admin pages and API require a login', async ({ request }) => {
-	for (const path of ['/admin', '/admin/datasets/ne_lakes', '/api/admin/datasets']) {
+	for (const path of ['/admin', '/admin/datasets/me_boat_launches', '/api/admin/datasets']) {
 		const res = await request.get(path);
 		expect(res.status(), path).toBe(401);
 		expect(res.headers()['www-authenticate'], path).toContain('Basic');
@@ -20,13 +20,13 @@ test.describe('signed in', () => {
 	test('dataset table lists every recipe with status', async ({ page }) => {
 		await page.goto('/admin');
 		const table = page.getByRole('table');
-		for (const title of ['Countries (1:110m)', 'Lakes (1:10m)', 'Populated places (1:110m)', 'Rivers and lake centerlines (1:10m)', 'States and provinces (1:50m)']) {
+		for (const title of ['Countries (1:110m)', 'Populated places (1:110m)', 'States and provinces (1:50m)', 'Boat launches (Maine)']) {
 			await expect(table.getByRole('link', { name: title })).toBeVisible();
 		}
 		const admin1 = table.getByRole('row', { name: /States and provinces/ });
 		await expect(admin1.getByText('ok', { exact: true })).toBeVisible();
-		await expect(table.getByRole('row', { name: /Lakes \(1:10m\)/ }).getByText('ok', { exact: true })).toBeVisible();
-		await page.getByLabel('Search').fill('ne_lakes');
+		await expect(table.getByRole('row', { name: /Boat launches \(Maine\)/ }).getByText('ok', { exact: true })).toBeVisible();
+		await page.getByLabel('Search').fill('me_boat_launches');
 		await expect(table.getByRole('row')).toHaveCount(2); // header + 1
 		await page.getByLabel('Search').fill('');
 		await shot(page, 'admin-1-datasets');
@@ -56,8 +56,8 @@ test.describe('signed in', () => {
 	});
 
 	test('dataset detail: footprint map, healthy outputs, run history', async ({ page }) => {
-		await page.goto('/admin/datasets/ne_lakes');
-		await expect(page.getByRole('heading', { name: 'Lakes (1:10m)' })).toBeVisible();
+		await page.goto('/admin/datasets/me_boat_launches');
+		await expect(page.getByRole('heading', { name: 'Boat launches (Maine)' })).toBeVisible();
 		await page.waitForFunction(() => window.__adminMap?.ready === true, undefined, { timeout: 30_000 });
 		expect(await page.evaluate(() => window.__adminMap!.features)).toBeGreaterThan(0);
 		await page.waitForFunction(() => window.__adminMap!.map.loaded(), undefined, { timeout: 30_000 });
@@ -71,7 +71,7 @@ test.describe('signed in', () => {
 		const outputs = page.getByRole('region', { name: 'Outputs & health' });
 		await expect(outputs.getByRole('row')).toHaveCount(4); // header + table, view, collection
 		await expect(outputs.getByText('ok', { exact: true })).toHaveCount(3);
-		await expect(outputs.getByRole('link', { name: 'hydrology-sketch' }).first()).toBeVisible();
+		await expect(outputs.getByRole('link', { name: 'maine-coast' }).first()).toBeVisible();
 		await expect(page.getByText('No key needed')).toBeVisible();
 
 		const runs = page.getByRole('region', { name: 'Run history' });
@@ -373,6 +373,16 @@ test.describe('signed in', () => {
 
 	test('methods: settlements method shows steps, LaTeX, live counts and its SQL', async ({ page }) => {
 		await page.goto('/admin/methods');
+		await expect(page.getByRole('heading', { name: 'Methods & sources', level: 1 })).toBeVisible();
+		// Sources: every loaded dataset with its attribution, grouped by publisher, filterable.
+		const sources = page.getByRole('region', { name: 'Sources' });
+		await expect(sources.getByRole('heading', { name: /U\.S\. Census Bureau/ })).toBeVisible();
+		await expect(sources.getByText('© OpenStreetMap contributors, Overture Maps Foundation').first()).toBeVisible();
+		await page.getByLabel('Filter sources').fill('hardiness');
+		await expect(sources.getByRole('link', { name: /hardiness/i }).first()).toBeVisible();
+		await expect(sources.getByRole('heading', { name: /U\.S\. Census Bureau/ })).toHaveCount(0);
+		await shot(page, 'admin-methods-sources');
+		await page.getByLabel('Filter sources').fill('');
 		await page.getByRole('link', { name: 'Settlements (built-up areas)' }).click();
 		await expect(page.getByRole('heading', { name: 'Settlements (built-up areas)' })).toBeVisible();
 		await expect(page.getByText('rows in pub.maine_places__settlements')).toBeVisible();
@@ -510,7 +520,7 @@ test.describe('signed in', () => {
 	});
 
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/ne_lakes', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential', '/admin/methods/fire-risk']) {
+		for (const path of ['/admin', '/admin/datasets/me_boat_launches', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential', '/admin/methods/fire-risk']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

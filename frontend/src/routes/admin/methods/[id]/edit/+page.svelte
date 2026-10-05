@@ -243,9 +243,9 @@
 	});
 </script>
 
-<svelte:head><title>Edit settlements · Methods · Admin</title></svelte:head>
+<svelte:head><title>Edit settlements · Methods &amp; sources · Admin</title></svelte:head>
 
-<p class="crumb"><a href="/admin/methods">Methods</a> › <a href="/admin/methods/settlements">Settlements</a></p>
+<p class="crumb"><a href="/admin/methods">Methods &amp; sources</a> › <a href="/admin/methods/settlements">Settlements</a></p>
 {#if !isSettlements}
 	<h1>Not editable</h1>
 	<p class="hint">Only the settlements method has manual edits.</p>

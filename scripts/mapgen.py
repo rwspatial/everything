@@ -223,8 +223,8 @@ def cmd_new(a) -> None:
 
 
 def cmd_check_templates(_a) -> None:
-    """Every template renders into a valid manifest (schema + rules). The hub's example projects (hydrology-sketch,
-    analysis-sandbox) started from templates but are free to grow: they are not compared with them any more."""
+    """Every template renders into a valid manifest (schema + rules). The hub's example project (analysis-sandbox)
+    started from a template but is free to grow: it is not compared with it any more."""
     failed = 0
     for tdir in sorted(p for p in TEMPLATES.iterdir() if (p / "project.json").is_file()):
         args = argparse.Namespace(slug=f"template-check-{tdir.name}", template=tdir.name, title=f"Template check {tdir.name}",

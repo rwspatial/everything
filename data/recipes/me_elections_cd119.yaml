@@ -1,0 +1,16 @@
+name: me_elections_cd119
+title: Congressional districts, 119th Congress (Maine)
+description: Maine's two U.S. House districts as drawn for 2023 onward (TIGER/Line 2024).
+agency: U.S. Census Bureau (TIGER/Line)
+source:
+  url: https://www2.census.gov/geo/tiger/TIGER2024/CD/tl_2024_23_cd119.zip
+target: src_elections.congressional_districts_cd119
+srs: EPSG:4326
+fix_invalid: true
+license: Public domain (U.S. Census Bureau)
+attribution: U.S. Census Bureau, TIGER/Line Shapefiles 2024
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

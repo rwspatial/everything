@@ -1,0 +1,26 @@
+name: me_dhhs_childcare
+title: Licensed child care providers (Maine, 2024)
+description: Licensed child care providers with Rising Stars quality ratings (May 2024).
+agency: Maine Department of Health and Human Services
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Rising_Stars_Childcare_Database_Maine_2024/FeatureServer/0
+    page_size: 100
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Rising_Stars_Childcare_Database_Maine_2024/FeatureServer/0
+target: src_dhhs.childcare_providers
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DHHS, Office of Child and Family Services
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

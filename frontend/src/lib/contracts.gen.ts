@@ -35,7 +35,7 @@ export type LayerStatus = 'ready' | 'todo';
  * This interface was referenced by `ProjectManifest`'s JSON-Schema
  * via the `definition` "SourceSpec".
  */
-export type SourceSpec = TipgVectorSource | TipgGeojsonSource | GeojsonUrlSource | RasterXyzSource | RasterCogSource;
+export type SourceSpec = TipgVectorSource | GeojsonUrlSource | RasterXyzSource | RasterCogSource;
 /**
  * A tiPG collection id: a view or function in the pub schema.
  *
@@ -158,17 +158,6 @@ export interface TipgVectorSource {
  */
 export interface FunctionParams {
 	[k: string]: string | number;
-}
-/**
- * This interface was referenced by `ProjectManifest`'s JSON-Schema
- * via the `definition` "TipgGeojsonSource".
- */
-export interface TipgGeojsonSource {
-	type: 'tipg-geojson';
-	collection: Collection;
-	params?: FunctionParams;
-	properties?: string[];
-	limit?: number;
 }
 /**
  * This interface was referenced by `ProjectManifest`'s JSON-Schema

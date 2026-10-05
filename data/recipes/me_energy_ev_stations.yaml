@@ -1,0 +1,27 @@
+name: me_energy_ev_stations
+title: Alternative fuel and EV charging stations (Maine)
+description: Stations from the DOE Alternative Fuels Data Center (Level 1, Level 2 and DC fast ports by network), via Esri's
+  live feed.
+agency: U.S. Department of Energy, Alternative Fuels Data Center (via Esri Living Atlas)
+source:
+  arcgis:
+    url: https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Alternate_Fuel/FeatureServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+    where: State='ME'
+upstream:
+  arcgis: https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Alternate_Fuel/FeatureServer/0
+target: src_energy.ev_stations
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: U.S. DOE Alternative Fuels Data Center
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

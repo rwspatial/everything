@@ -1,0 +1,26 @@
+name: me_dep_lake_sample_stations
+title: Lake sample stations (DEP)
+description: Lake water-quality monitoring stations.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_Lakes_Data/MapServer/1
+    page_size: 250
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_Lakes_Data/MapServer/1
+target: src_dep.lake_sample_stations
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

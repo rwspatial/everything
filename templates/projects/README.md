@@ -14,10 +14,9 @@ placeholders, writes `projects/<slug>/`, and adds the slug to `projects/index.js
 |---|---|---|
 | `blank` | stub | no layers, a to-do note |
 | `vector-basic` | draft | one `tipg-vector` layer on `pub.<slug_>__<layer_>` and the SQL for that view |
-| `hydro` | stub | the hydrology-sketch layout: GeoJSON lakes, rivers, a parametrized function layer, to-do layers |
 | `analysis` | stub | the analysis-sandbox layout: an empty landing project for Phase 5 job outputs |
 
-`hydro` and `analysis` are the hand-built placeholder projects turned into templates. `./mapgen check-templates`
+`analysis` is the hand-built placeholder project turned into a template. `./mapgen check-templates`
 (run by `make verify`) regenerates both placeholders from them and fails if the result differs from the files.
 
 New projects default to a Maine view.

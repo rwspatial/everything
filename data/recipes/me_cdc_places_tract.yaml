@@ -1,0 +1,18 @@
+name: me_cdc_places_tract
+title: Health by census tract (CDC PLACES 2025, Maine)
+description: CDC PLACES model-based estimates for about 40 measures (chronic disease, risk behaviours, prevention, disability,
+  social needs) per census tract, one row per tract and measure (2025 release, 2023 data). Points are tract centroids; join
+  to tracts on locationid.
+agency: Centers for Disease Control and Prevention
+source:
+  url: https://data.cdc.gov/resource/cwsq-ngmh.geojson?stateabbr=ME&$limit=50000
+  filename: cdc_places_tract_me.geojson
+target: src_health.places_tract
+srs: EPSG:4326
+license: Public domain (CDC)
+attribution: 'CDC PLACES: Local Data for Better Health, 2025 release'
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

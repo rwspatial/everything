@@ -620,7 +620,7 @@ def cmd_import(args) -> None:
 
 # --------------------------------------------------------------------------- recipes
 
-SOURCE_KINDS = ("url", "path", "arcgis", "census_api", "sda", "tiles", "derive", "overture", "landfire", "ssurgo", "rasterize", "geoparquet", "cdl")
+SOURCE_KINDS = ("url", "path", "arcgis", "census_api", "sda", "csv", "tiles", "derive", "overture", "landfire", "ssurgo", "rasterize", "geoparquet", "cdl")
 SSURGO_AREAS = re.compile(r"[A-Z]{2}[0-9]{0,3}%?")
 
 
@@ -640,7 +640,7 @@ def load_recipe(name: str) -> dict:
     for k in ("tiles", "rasterize", "cdl"):
         if src.get(k) and r.get("kind") != "raster":
             raise ImportError_(f"{path.name}: source.{k} needs kind: raster")
-    for k in ("census_api", "sda"):
+    for k in ("census_api", "sda", "csv"):
         if src.get(k) and r.get("kind") != "table":
             raise ImportError_(f"{path.name}: source.{k} needs kind: table")
     if src.get("ssurgo") and not SSURGO_AREAS.fullmatch(src["ssurgo"].get("areas", "")):
@@ -1045,6 +1045,37 @@ def sda_rows(r: dict) -> tuple[list[str], list[list], dict]:
                          "text": set(q.get("text_columns") or []), "note": ""}
 
 
+def csv_rows(r: dict) -> tuple[list[str], list[list], dict]:
+    """source.csv: {url, delimiter: "," (or "\\t"), where: {column: value, ...}, columns: [...] (default: all),
+    key: column, text_columns: [...]} -> a delimited text file (e.g. MIT Election Lab returns on Dataverse), rows kept
+    when every `where` column equals its value. Column names are lowercased; empty cells and NA become NULL."""
+    import csv
+    import io
+    global DOWNLOADED_BYTES
+    c = r["source"]["csv"]
+    if c.get("path"):  # a file downloaded by hand (e.g. behind a sign-up form), relative to the repository
+        body = resolve(c["path"]).read_bytes()
+        c = {**c, "url": c["path"]}
+    else:
+        print(f"downloading {c['url']}", flush=True)
+        req = urllib.request.Request(c["url"], headers={"User-Agent": "spatial-geoimport/1"})
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            body = resp.read()
+        DOWNLOADED_BYTES += len(body)
+    reader = csv.reader(io.StringIO(body.decode("utf-8-sig")), delimiter=c.get("delimiter", ","))
+    header = [h.strip().lower() for h in next(reader)]
+    keep = c.get("columns") or header
+    missing = [x for x in [*keep, *(c.get("where") or {})] if x not in header]
+    if missing:
+        raise ImportError_(f"{r['name']}: columns {missing} not in the file ({header})")
+    idx = [header.index(x) for x in keep]
+    where = [(header.index(k), str(v)) for k, v in (c.get("where") or {}).items()]
+    rows = [[None if row[i].strip() in ("", "NA") else row[i].strip() for i in idx]
+            for row in reader if row and all(row[i] == v for i, v in where)]
+    return keep, rows, {"source": c["url"], "label": c.get("label", "CSV"), "body": body, "key": c.get("key"),
+                        "text": set(c.get("text_columns") or []), "note": f"{len(rows)} rows kept by {c.get('where') or 'no filter'}"}
+
+
 def run_table_recipe(r: dict) -> dict:
     """kind: table -> a non-spatial src_* table (source.census_api or source.sda), replaced in one transaction.
 
@@ -1054,7 +1085,8 @@ def run_table_recipe(r: dict) -> dict:
     target = r["target"]
     schema, table = target.split(".", 1)
     print(f"\n=== recipe {r['name']} -> {target}")
-    names, records, prov = (census_rows if r["source"].get("census_api") else sda_rows)(r)
+    names, records, prov = (census_rows if r["source"].get("census_api")
+                            else csv_rows if r["source"].get("csv") else sda_rows)(r)
     if not all(IDENT.match(x) for x in [schema, table, *names]):
         raise ImportError_(f"{r['name']}: target and column names must be lowercase identifiers")
     key = prov["key"]

@@ -1,0 +1,26 @@
+name: me_dep_onrw_class_aa_streams
+title: 'Outstanding National Resource Waters: Class AA streams (DEP)'
+description: Class AA streams and rivers (lines).
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/Maine_DEP_Outstanding_National_Resource_Waters/MapServer/0
+    page_size: 250
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/Maine_DEP_Outstanding_National_Resource_Waters/MapServer/0
+target: src_dep.onrw_class_aa_streams
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

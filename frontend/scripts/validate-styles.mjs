@@ -15,7 +15,6 @@ function sourceFor(type) {
 	switch (type) {
 		case 'tipg-vector':
 			return { src: { type: 'vector', tiles: ['http://x/{z}/{x}/{y}'] }, sourceLayer: 'default' };
-		case 'tipg-geojson':
 		case 'geojson-url':
 			return { src: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } };
 		default:

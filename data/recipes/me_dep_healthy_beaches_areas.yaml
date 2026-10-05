@@ -1,0 +1,25 @@
+name: me_dep_healthy_beaches_areas
+title: Healthy Beaches beach management areas
+description: Beach management areas monitored by Maine Healthy Beaches.
+agency: Maine Healthy Beaches (UMaine Cooperative Extension / DEP)
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Healthy_Beaches/FeatureServer/2
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Healthy_Beaches/FeatureServer/2
+target: src_dep.healthy_beaches_areas
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Healthy Beaches
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

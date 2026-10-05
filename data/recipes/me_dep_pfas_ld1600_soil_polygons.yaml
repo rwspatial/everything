@@ -1,0 +1,25 @@
+name: me_dep_pfas_ld1600_soil_polygons
+title: PFAS LD 1600 soil sample polygons (DEP)
+description: Soil sample areas under LD 1600.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_PFAS_Investigation/MapServer/6
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_PFAS_Investigation/MapServer/6
+target: src_dep.pfas_ld1600_soil_polygons
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

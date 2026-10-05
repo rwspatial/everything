@@ -405,22 +405,6 @@ test('layer order can be changed and is kept in the URL', async ({ page }) => {
 	expect(titles.indexOf('Populated places')).toBeGreaterThan(titles.indexOf('States and provinces'));
 });
 
-test('hydrology-sketch: GeoJSON lakes and the parametrized PostGIS function layer', async ({ page }) => {
-	await page.goto('/p/hydrology-sketch');
-	await mapIdle(page);
-	expect(await rendered(page, 'lakes')).toBeGreaterThan(10);
-	const before = await rendered(page, 'rivers-by-rank');
-	expect(before).toBeGreaterThan(0);
-
-	const slider = page.getByRole('slider', { name: 'Rivers by rank (PostGIS function): Max rank' });
-	await slider.fill('1');
-	await slider.dispatchEvent('change');
-	await expect(page).toHaveURL(/pa\.rivers-by-rank\.max_scalerank=1/);
-	await mapIdle(page);
-	await expect.poll(() => rendered(page, 'rivers-by-rank')).toBeLessThan(before);
-	await shot(page, '4-hydrology');
-});
-
 test('maine-lands: COG through titiler draws, and a click reads the pixel value', async ({ page }) => {
 	const tiles: number[] = [];
 	page.on('response', (r) => {

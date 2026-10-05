@@ -104,7 +104,6 @@ def attempt(service: str, sql: str) -> str:
 def privileges() -> None:
     cases = [
         ("tipg", "SELECT 1 FROM pub.world_overview__countries LIMIT 1", "allowed"),
-        ("tipg", "SELECT 1 FROM pub.hydrology_sketch__rivers_by_rank(0, 0, 0) LIMIT 1", "allowed"),
         ("tipg", "SELECT 1 FROM src_ne.countries LIMIT 1", "denied"),
         ("tipg", "SELECT 1 FROM app.datasets LIMIT 1", "denied"),
         ("loader", "CREATE TABLE pub._verify_x (id int)", "denied"),

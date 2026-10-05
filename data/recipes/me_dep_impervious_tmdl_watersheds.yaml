@@ -1,0 +1,25 @@
+name: me_dep_impervious_tmdl_watersheds
+title: Impervious cover TMDL watersheds (DEP)
+description: Watersheds with an impervious-cover TMDL.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/Impaired_Watersheds/MapServer/3
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/Impaired_Watersheds/MapServer/3
+target: src_dep.impervious_tmdl_watersheds
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

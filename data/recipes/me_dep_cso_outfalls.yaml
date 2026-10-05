@@ -1,0 +1,25 @@
+name: me_dep_cso_outfalls
+title: Combined sewer overflow outfalls (DEP)
+description: Combined sewer overflow (CSO) outfalls.
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/MainePollutantDischargeEliminationSystem/MapServer/2
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/MainePollutantDischargeEliminationSystem/MapServer/2
+target: src_dep.cso_outfalls
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

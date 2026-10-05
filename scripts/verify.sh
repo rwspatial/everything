@@ -82,8 +82,6 @@ import json, sys
 ids = sorted(c["id"] for c in json.load(open(sys.argv[1]))["collections"])
 expected = {
     "pub.world_overview__countries", "pub.world_overview__places",
-    "pub.hydrology_sketch__rivers", "pub.hydrology_sketch__lakes",
-    "pub.hydrology_sketch__rivers_by_rank",
 }
 outside = [i for i in ids if not i.startswith("pub.")]
 missing = sorted(expected - set(ids))
@@ -97,10 +95,6 @@ EOF
 T=/tiles/collections
 fetch tiles/countries/0/0/0.pbf "$T/pub.world_overview__countries/tiles/WebMercatorQuad/0/0/0"
 check "GET vector tile (view)" $?
-fetch tiles/rivers2/0/0/0.pbf "$T/pub.hydrology_sketch__rivers_by_rank/tiles/WebMercatorQuad/0/0/0?max_scalerank=2"
-check "GET vector tile (function, max_scalerank=2)" $?
-fetch tiles/rivers10/0/0/0.pbf "$T/pub.hydrology_sketch__rivers_by_rank/tiles/WebMercatorQuad/0/0/0?max_scalerank=10"
-check "GET vector tile (function, max_scalerank=10)" $?
 
 fetch tilejson.json "$T/pub.world_overview__countries/tiles/WebMercatorQuad/tilejson.json"
 check "GET tilejson" $?
@@ -158,8 +152,8 @@ code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -u "${ADMIN_USER:-ad
 [[ $code == 401 ]]; check "/api/admin rejects a wrong password" $? "HTTP $code"
 before=$(curl -s --max-time 10 -u "${ADMIN_USER:-admin}:${ADMIN_PASSWORD:-}" "$BASE/api/admin/runs?limit=1" \
   | python3 -c 'import sys, json; r = json.load(sys.stdin); print(r[0]["id"] if r else 0)' 2>/dev/null || echo 0)
-docker compose run --rm -T geotools python scripts/geoimport.py recipe ne_lakes > "$OUT/cli-run.log" 2>&1
-check "CLI recipe run (make import-recipe r=ne_lakes) succeeds" $? "log: $OUT/cli-run.log"
+docker compose run --rm -T geotools python scripts/geoimport.py recipe me_boat_launches > "$OUT/cli-run.log" 2>&1
+check "CLI recipe run (make import-recipe r=me_boat_launches) succeeds" $? "log: $OUT/cli-run.log"
 python3 - "$BASE" "$before" <<'EOF'
 import base64, json, os, sys, urllib.request
 from pathlib import Path
@@ -196,7 +190,7 @@ if stale:
     print(f"  --    newer upstream data for: {', '.join(stale)} (Re-download and import on its dataset page)")
 disabled = [d["name"] for d in data["datasets"] if not d["enabled"]]
 check("disabled recipes are shown as disabled", all(d["status"] == "disabled" for d in data["datasets"] if not d["enabled"]), ", ".join(disabled) or "none")
-runs = get("/api/admin/datasets/ne_lakes")["runs"]
+runs = get("/api/admin/datasets/me_boat_launches")["runs"]
 latest = runs[0] if runs else {}
 check("the CLI run is recorded and visible in the admin API",
       latest.get("id", 0) > before and latest.get("status") == "succeeded" and latest.get("triggered_by", "").startswith("cli:"),

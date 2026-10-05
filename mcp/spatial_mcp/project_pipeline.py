@@ -291,7 +291,7 @@ def preview_urls(slug: str) -> dict:
     layers = []
     for l in m["layers"]:
         src = l.get("source", {})
-        if l.get("status") == "todo" or src.get("type") not in ("tipg-vector", "tipg-geojson"):
+        if l.get("status") == "todo" or src.get("type") != "tipg-vector":
             continue
         tile = f"/collections/{src['collection']}/tiles/WebMercatorQuad/{z}/{x}/{y}"
         try:

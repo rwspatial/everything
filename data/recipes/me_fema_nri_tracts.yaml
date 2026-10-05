@@ -1,0 +1,27 @@
+name: me_fema_nri_tracts
+title: National Risk Index by census tract (FEMA, Maine)
+description: 'FEMA National Risk Index: expected annual loss, social vulnerability, community resilience and risk scores for
+  18 natural hazards, per census tract.'
+agency: Federal Emergency Management Agency
+source:
+  arcgis:
+    url: https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Census_Tracts/FeatureServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+    where: STATEABBRV='ME'
+upstream:
+  arcgis: https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Census_Tracts/FeatureServer/0
+target: src_fema.nri_tracts
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: FEMA National Risk Index
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

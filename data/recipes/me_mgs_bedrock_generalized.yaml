@@ -1,0 +1,25 @@
+name: me_mgs_bedrock_generalized
+title: Bedrock geology, generalized (MGS)
+description: Generalized bedrock geology (rock families).
+agency: Maine Geological Survey
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Bedrock_500K_Simplified_Map_Data/FeatureServer/1
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Bedrock_500K_Simplified_Map_Data/FeatureServer/1
+target: src_mgs.bedrock_generalized
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Geological Survey
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

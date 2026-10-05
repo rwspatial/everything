@@ -261,9 +261,6 @@ def validate_db(m: dict, conn) -> list[Issue]:
                 issues.append(Issue("E_NO_ID", at, f"{coll} has no `id` column (tiPG uses it as the feature id)"))
             if geoms and not rel["gist"]:
                 issues.append(Issue("W_NO_GIST", at, f"no GiST index on the table behind {coll}; tiles will be slow"))
-            if src.get("type") == "tipg-geojson" and rel["est_rows"] > (src.get("limit") or 5000):
-                issues.append(Issue("W_GEOJSON_ROWS", at, f"about {rel['est_rows']:,} rows behind {coll}; GeoJSON loads "
-                                    "them all at once, use tipg-vector (tiles) instead"))
         else:
             fn = _row(conn, _FN_SQL, name)
             if not fn:

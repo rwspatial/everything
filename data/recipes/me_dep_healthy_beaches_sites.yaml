@@ -1,0 +1,25 @@
+name: me_dep_healthy_beaches_sites
+title: Healthy Beaches monitoring sites
+description: Coastal beach water-quality monitoring sites (Maine Healthy Beaches program).
+agency: Maine Healthy Beaches (UMaine Cooperative Extension / DEP)
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Healthy_Beaches/FeatureServer/4
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Healthy_Beaches/FeatureServer/4
+target: src_dep.healthy_beaches_sites
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Healthy Beaches
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

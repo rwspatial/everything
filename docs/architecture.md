@@ -120,8 +120,7 @@ Layer adapters (`frontend/src/lib/adapters.ts`), one per `source.type`:
 
 | Adapter | Fetches from | Used today by |
 |---|---|---|
-| `tipg-vector` | `/tiles/collections/<pub view>/tiles/…` (MVT) | world-overview, hydrology-sketch, analysis-sandbox, maine-coast, maine-water, maine-lands, maine-infrastructure, maine-overview, maine-terrain, maine-places, maine-soils, maine-facilities, maine-energy, maine-transportation, maine-habitat, maine-broadband |
-| `tipg-geojson` | `/tiles/collections/<pub view>/items?f=geojson` | hydrology-sketch |
+| `tipg-vector` | `/tiles/collections/<pub view>/tiles/…` (MVT) | world-overview, analysis-sandbox, maine-coast, maine-water, maine-lands, maine-infrastructure, maine-overview, maine-terrain, maine-places, maine-soils, maine-facilities, maine-energy, maine-transportation, maine-habitat, maine-broadband |
 | `geojson-url` | any GeoJSON URL | nothing yet |
 | `raster-xyz` | any XYZ raster tile URL | analysis-sandbox (stub) |
 | `raster-cog` | `/raster/<name>/{z}/{x}/{y}.png` (titiler) | maine-lands (hardiness temperature grid), maine-terrain (elevation, hillshade, slope), maine-soils (hydrologic soil group grid), maine-landcover (NLCD 2025, Cropland Data Layer 2025, LANDFIRE vegetation and fuels; categorical) |

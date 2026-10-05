@@ -1,0 +1,25 @@
+name: me_mgs_dune_erosion_hazard
+title: Sand dune erosion hazard areas (MGS)
+description: Dune areas mapped as erosion hazard areas.
+agency: Maine Geological Survey
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Beaches_and_Dunes/FeatureServer/2
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Beaches_and_Dunes/FeatureServer/2
+target: src_mgs.dune_erosion_hazard
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Geological Survey
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

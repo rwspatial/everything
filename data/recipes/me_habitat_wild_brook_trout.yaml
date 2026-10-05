@@ -1,0 +1,25 @@
+name: me_habitat_wild_brook_trout
+title: Wild brook trout presence (IFW)
+description: Waters where wild brook trout are present.
+agency: Maine Department of Inland Fisheries and Wildlife
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Wild_Brook_Trout_Habitat/FeatureServer/0
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Wild_Brook_Trout_Habitat/FeatureServer/0
+target: src_habitat.wild_brook_trout
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine IFW
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

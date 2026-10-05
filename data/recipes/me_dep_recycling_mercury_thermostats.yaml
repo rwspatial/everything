@@ -1,0 +1,25 @@
+name: me_dep_recycling_mercury_thermostats
+title: Mercury thermostat collection sites (DEP)
+description: 'Universal waste collection: mercury thermostats.'
+agency: Maine Department of Environmental Protection
+source:
+  arcgis:
+    url: https://gis.maine.gov/mapservices/rest/services/dep/Recycling_Map/MapServer/4
+    page_size: 1000
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://gis.maine.gov/mapservices/rest/services/dep/Recycling_Map/MapServer/4
+target: src_dep.recycling_mercury_thermostats
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine DEP
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

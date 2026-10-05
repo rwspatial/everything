@@ -1,0 +1,26 @@
+name: me_history_districts
+title: Historic districts (Maine)
+description: National Register historic districts in Maine.
+agency: Maine Historic Preservation Commission
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Historic_Districts/FeatureServer/0
+    page_size: 100
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Historic_Districts/FeatureServer/0
+target: src_history.historic_districts
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 30d
+license: Public data; see the publisher's terms
+attribution: Maine Historic Preservation Commission
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

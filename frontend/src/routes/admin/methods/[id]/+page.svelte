@@ -16,9 +16,9 @@
 	const when = (s: string | null) => (s ? new Date(s).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'never');
 </script>
 
-<svelte:head><title>{m.title} · Methods · Admin</title></svelte:head>
+<svelte:head><title>{m.title} · Methods &amp; sources · Admin</title></svelte:head>
 
-<p class="crumb"><a href="/admin/methods">Methods</a></p>
+<p class="crumb"><a href="/admin/methods">Methods &amp; sources</a></p>
 <h1>{m.title}</h1>
 <p class="lead">{m.summary}</p>
 {#if m.project}

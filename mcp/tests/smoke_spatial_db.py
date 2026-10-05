@@ -53,7 +53,7 @@ async def main() -> None:
         tables = {t["name"]: t for t in payload(await s.call_tool("list_tables", {"schema": "pub"}))}
         towns = tables.get("maine_overview__towns", {})
         check("list_tables(pub) has the Maine views with geometry", towns.get("geometry_type") == "MultiPolygon"
-              and towns.get("srid") == 4326 and "hydrology_sketch__rivers_by_rank" in tables,
+              and towns.get("srid") == 4326 and "maine_places__settlements" in tables,
               f"{len(tables)} objects; towns {towns.get('geometry_type')} {towns.get('srid')}")
 
         d = payload(await s.call_tool("describe_table", {"name": "pub.maine_overview__towns"}))

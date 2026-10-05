@@ -3,9 +3,9 @@
 Run by the dataset worker, JOB_ID is set: the run is recorded against that queued job, and the worker (not this
 recorder) moves the job through its states (retries, cancel).
 
-    with RunRecorder("import", recipe="ne_lakes") as run:
+    with RunRecorder("import", recipe="me_boat_launches") as run:
         ...                        # anything printed (and child-process output via run_cmd) is captured
-        run.rows = 1355
+        run.rows = 578
 
 On exit the run is marked succeeded/failed/cancelled with a redacted log tail and error.
 """

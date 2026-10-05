@@ -1,0 +1,17 @@
+name: me_elections_cd116
+title: Congressional districts, 2013-2022 plan (Maine, 116th Congress)
+description: Maine's two U.S. House districts as drawn for 2013-2022 (TIGER/Line 2020, 116th Congress).
+agency: U.S. Census Bureau (TIGER/Line)
+source:
+  url: https://www2.census.gov/geo/tiger/TIGER2020/CD/tl_2020_us_cd116.zip
+target: src_elections.congressional_districts_cd116
+srs: EPSG:4326
+fix_invalid: true
+license: Public domain (U.S. Census Bureau)
+attribution: U.S. Census Bureau, TIGER/Line Shapefiles 2020
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true
+where: STATEFP = '23'

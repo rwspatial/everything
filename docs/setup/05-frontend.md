@@ -52,7 +52,6 @@ Layer `source.type` picks the adapter:
 | `source.type` | For | Required fields |
 |---|---|---|
 | `tipg-vector` | Most layers. Vector tiles from a `pub` view or function | `collection: "pub.<slug>__<layer>"`; optional `properties`, `params` |
-| `tipg-geojson` | Small layers (< ~5,000 features) fetched whole | `collection`; optional `limit` |
 | `geojson-url` | A GeoJSON file anywhere | `url` |
 | `raster-xyz` | Raster tiles (`{z}/{x}/{y}`) | `tiles: [...]` |
 | `raster-cog` | A COG in `data/cog/` served by titiler | `cog: "maine/dem_10m"` (path without `.tif`); optional `rescale: [min, max]`, `colormap` (e.g. `terrain`, `viridis`, `rdylbu_r`), `bidx`, `units` (clicking the map shows the pixel value, e.g. `-11.4 °F`, in the Inspector) |
