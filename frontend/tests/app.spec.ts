@@ -118,7 +118,7 @@ test('route badges on every map: interstate, US and state routes near Bangor', a
 	await shot(page, '12-route-badges');
 });
 
-test('facility icons and settlement outlines: pictograms instead of dots, built-up areas in one colour', async ({ page }) => {
+test('facility icons and settlement outlines: pictograms instead of dots, settlements by Degree of Urbanisation class', async ({ page }) => {
 	await page.goto('/p/maine-facilities?map=12.5/43.665/-70.27');
 	await mapIdle(page);
 	expect(await rendered(page, 'schools')).toBeGreaterThan(0);
@@ -127,6 +127,7 @@ test('facility icons and settlement outlines: pictograms instead of dots, built-
 	await page.goto('/p/maine-places?map=10/43.75/-70.3');
 	await mapIdle(page);
 	expect(await rendered(page, 'settlements')).toBeGreaterThan(20);
+	for (const c of ['City', 'Suburb', 'Hamlet', 'Roadside strip']) await expect(page.getByText(c, { exact: true }).first()).toBeVisible();
 	await shot(page, '14-settlements');
 });
 

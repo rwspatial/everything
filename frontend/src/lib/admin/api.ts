@@ -334,6 +334,8 @@ export interface Method extends MethodSummary {
 	steps: { title: string; detail: string; math?: string }[];
 	parameters: { name: string; value: string; why: string; math?: string }[];
 	caveats: string[];
+	/** Published sources the method follows or adapts. */
+	references?: { title: string; url?: string; note?: string }[];
 	live: { collection: string; rows?: number; sums?: Record<string, number | null>; error?: string }[];
 	/** Analysis methods: the process's source file and how the method has been used. */
 	code?: string;

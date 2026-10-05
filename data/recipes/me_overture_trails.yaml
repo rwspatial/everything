@@ -1,0 +1,32 @@
+name: me_overture_trails
+title: Trails and paths (OpenStreetMap via Overture Maps, Maine)
+description: Footpaths, hiking and multi-use paths, cycleways and bridleways in Maine from OpenStreetMap, through the
+  Overture Maps transportation theme. Sidewalks, crosswalks, cycle crossings, steps, pedestrian plazas and tracks
+  (mostly logging and woods roads in Maine, about 27,000 miles) are left out.
+agency: Overture Maps Foundation (OpenStreetMap contributors)
+group: maine
+vintage: { label: "Overture Maps (latest release at import)" }
+coverage: { extent: Maine }
+requires_keys: []
+source:
+  overture:
+    release: latest
+    theme: transportation
+    type: segment
+    columns:
+      name: names.primary
+      class: class
+      subclass: subclass
+      surface: road_surface[1].value
+      routes: "array_to_string(list_transform(routes, r -> r.name), '; ')"
+    where: >-
+      subtype = 'road' AND class IN ('path', 'footway', 'cycleway', 'bridleway')
+      AND coalesce(subclass, '') NOT IN ('sidewalk', 'crosswalk', 'cycle_crossing')
+    clip_sql: "SELECT ST_AsText(ST_SimplifyPreserveTopology(ST_Union(geom), 0.001)) FROM src_census.county"
+target: src_overture.trails
+srs: EPSG:4326
+depends_on: [me_counties]
+freshness: { method: none }
+license: ODbL 1.0 (OpenStreetMap data); share-alike applies to derived databases
+attribution: "© OpenStreetMap contributors, Overture Maps Foundation"
+enabled: true

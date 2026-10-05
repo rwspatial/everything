@@ -377,7 +377,9 @@ test.describe('signed in', () => {
 		await expect(page.getByRole('heading', { name: 'Settlements (built-up areas)' })).toBeVisible();
 		await expect(page.getByText('rows in pub.maine_places__settlements')).toBeVisible();
 		await expect(page.locator('.katex').first()).toBeVisible();
-		await expect(page.getByRole('row', { name: /Neighbour distance/ })).toContainText('45 m');
+		await expect(page.getByRole('row', { name: /Dense cell/ })).toContainText('6 buildings/ha');
+		await expect(page.getByRole('heading', { name: 'References' })).toBeVisible();
+		await expect(page.getByRole('link', { name: /Degree of Urbanisation/ }).first()).toBeVisible();
 		await page.getByText('SQL:').click();
 		await expect(page.locator('pre')).toContainText('ST_ClusterDBSCAN');
 		await shot(page, 'admin-methods-settlements');
@@ -396,18 +398,24 @@ test.describe('signed in', () => {
 		expect((await request.post('/api/admin/settlement-edits', { data: { type: 'Feature', geometry: { type: 'Point', coordinates: [-69, 45] }, properties: { action: 'remove' } } })).status()).toBe(422);
 
 		// A computed hamlet, and a remove edit just around it.
-		const items = await (await request.get('/tiles/collections/pub.maine_places__settlements/items?size_class=Hamlet&source=computed&limit=1&f=geojson')).json();
+		const items = await (await request.get('/tiles/collections/pub.maine_places__settlements/items?settlement_class=Hamlet&source=computed&limit=1&f=geojson')).json();
 		const hamlet = items.features[0];
 		const pts = (hamlet.geometry.coordinates as number[][][][]).flat(2);
 		const [x, y] = [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+		// Inside the drawn square, no computed settlement is left afterwards (neighbours it cuts through count as edited pieces,
+		// so the total can go either way).
+		const inner = `${x - 0.002},${y - 0.002},${x + 0.002},${y + 0.002}`;
+		const computedInside = async () =>
+			(await (await request.get(`/tiles/collections/pub.maine_places__settlements/items?bbox=${inner}&source=computed&limit=50&f=geojson`)).json()).features.length;
+		expect(await computedInside()).toBeGreaterThan(0);
 		const created = await request.post('/api/admin/settlement-edits', {
 			data: { type: 'Feature', geometry: square(x, y, 0.004), properties: { action: 'remove', note: 'e2e test: not a settlement' } }
 		});
 		expect(created.status()).toBe(201);
 		const { edit, stats } = await created.json();
 		try {
-			expect(stats.settlements).toBeLessThan(before.settlements);
 			expect(stats.edits.remove).toBe((before.edits.remove ?? 0) + 1);
+			expect(await computedInside()).toBe(0);
 
 			await page.goto('/admin/methods/settlements');
 			await expect(page.getByRole('link', { name: 'Edit settlements' })).toHaveAttribute('href', '/admin/methods/settlements/edit');

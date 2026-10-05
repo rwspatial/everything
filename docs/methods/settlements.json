@@ -1,7 +1,7 @@
 {
   "id": "settlements",
   "title": "Settlements (built-up areas)",
-  "summary": "Outlines of every village, town centre and city in Maine, drawn by clustering building footprints wall to wall. Used at zooms 7-12, where the 925k footprints are too dense to draw.",
+  "summary": "Every city, town, suburb, village, hamlet and roadside strip in Maine, classified with the Degree of Urbanisation (the UN-endorsed method for delineating cities, towns and rural areas) adapted to building footprints: building density on a 100 m grid decides what is a settlement and where it ends; the buildings themselves draw the outline. Used at zooms 5-12, where the 925k footprints are too dense to draw.",
   "project": "maine-places",
   "layer": "settlements",
   "sql": "projects/maine-places/sql/030_settlements.sql",
@@ -13,112 +13,154 @@
         "acres",
         "footprint_acres"
       ]
+    },
+    {
+      "collection": "pub.maine_places__density_grid",
+      "sums": [
+        "buildings"
+      ]
     }
   ],
   "inputs": [
     {
       "name": "src_overture.buildings",
-      "role": "Building footprints (Overture Maps), clustered by their outlines."
+      "role": "Building footprints (Overture Maps): counted on the grid, and their outlines drawn around."
     },
     {
       "name": "src_census.cousub",
-      "role": "Towns (county subdivisions): each settlement is named after the town holding most of it."
+      "role": "Towns (county subdivisions): each settlement is named after a town (for cities, towns and suburbs the one holding most of it)."
     },
     {
       "name": "src_census.county",
       "role": "County name, joined through the town GEOID."
+    },
+    {
+      "name": "app.settlement_edits",
+      "role": "Manual edits drawn in the settlement editor, applied last."
     }
   ],
   "steps": [
     {
-      "title": "Footprints in metres",
-      "detail": "Each building footprint, projected to UTM 19N (EPSG:26919) so distances are in metres. Its area is kept for the footprint_acres total."
+      "title": "Why the Degree of Urbanisation",
+      "detail": "The Degree of Urbanisation (DEGURBA) was endorsed by the UN Statistical Commission in 2020 to delineate cities, towns and rural areas the same way everywhere. It classifies a grid by population density and then groups contiguous dense cells. Maine has no population grid fine enough for villages (the official grid is 1 km and needs 300+ people per km²), so buildings stand in for people: footprints are complete, current and 30 cm-accurate. v3 clustered buildings one by one, so a town's outline kept following houses along every road out of town (32 of 45 cities were long, thin shapes); a density grid stops where the density drops."
     },
     {
-      "title": "Cluster the footprints (DBSCAN)",
-      "detail": "Statewide ST_ClusterDBSCAN on the footprints themselves, so distance is measured wall to wall: a building joins a cluster when at least 4 buildings lie within 45 m of it. A school or mill counts by its walls, not its centre, so it no longer splits a neighbourhood. Buildings with no such neighbours are not part of any settlement.",
-      "math": "p \\text{ is a core building} \\iff \\bigl|\\{\\, q : d(p, q) \\le \\varepsilon \\,\\}\\bigr| \\ge k, \\quad d(p,q) = \\min_{x \\in p,\\, y \\in q} \\lVert x - y \\rVert,\\ \\varepsilon = 45\\ \\text{m},\\ k = 4"
+      "title": "Count buildings on a 100 m grid",
+      "detail": "Each footprint is projected to UTM 19N (EPSG:26919) and counted in the 100 m cell (1 hectare) holding a point on its surface. Its area is added to the cell's footprint cover.",
+      "math": "(i,j) = \\left(\\left\\lfloor \\tfrac{x}{100} \\right\\rfloor, \\left\\lfloor \\tfrac{y}{100} \\right\\rfloor\\right)"
     },
     {
-      "title": "Close each cluster into a shape",
-      "detail": "Buffer the cluster's footprints out 45 m, then back in 35 m. The outward buffer fills the gaps between buildings; the inward one pulls the edge back to about 10 m beyond the outermost walls.",
-      "math": "S_c = \\bigl(\\textstyle\\bigcup_{p \\in c} p \\oplus B(45\\ \\text{m})\\bigr) \\ominus B(35\\ \\text{m})"
+      "title": "Density over 300 m",
+      "detail": "Each cell's density is measured over its 3×3 neighbourhood (9 ha), so one house or one empty lot does not decide a cell: buildings per hectare, and the share of ground covered by buildings. Cover lets a downtown or mill district of a few large buildings count as dense. DEGURBA uses population per km² on 1 km cells; 300 m windows suit Maine's small towns.",
+      "math": "d_{ij} = \\frac{1}{9}\\sum_{|a|,|b| \\le 1} n_{i+a,\\,j+b} \\ \\ [\\text{buildings/ha}], \\qquad c_{ij} = \\frac{1}{9 \\cdot 10^4}\\sum_{|a|,|b| \\le 1} A_{i+a,\\,j+b}"
     },
     {
-      "title": "Dissolve touching shapes",
-      "detail": "Shapes that touch or overlap are merged into one settlement (a second DBSCAN with distance 0). This joins a city split by parking lots and highways wider than the cluster distance. Settlements with fewer than 10 buildings are dropped."
+      "title": "Classify cells",
+      "detail": "Dense (the analogue of DEGURBA's urban-centre cells), semi-dense (its urban-cluster cells), low density and very low density. Statewide: 15,179 dense cells, 42,295 semi-dense, 132,009 low density; the rest of the cells with buildings are very low density. The grid is published as its own layer (Building density grid, hidden by default).",
+      "math": "\\text{cell} = \\begin{cases} \\text{Dense} & d \\ge 6 \\ \\lor\\ c \\ge 15\\% \\\\ \\text{Semi-dense} & d \\ge 2.5 \\ \\lor\\ c \\ge 6\\% \\\\ \\text{Low density} & d \\ge 1 \\\\ \\text{Very low density} & \\text{otherwise} \\end{cases}"
     },
     {
-      "title": "Attach large buildings at the edge",
-      "detail": "A building of 2,000 m² or more that is still outside every settlement but within 100 m of one is joined to the nearest: a local closing (60 m) around the building and the nearby part of the settlement, plus a 30 m-wide bridge along the shortest line between them, so the settlement stays in one piece. Large buildings further out (a lone mill, warehouse or farm complex) stay outside by design.",
-      "math": "S' = S \\cup P \\cup \\Bigl(\\bigl(P \\cup (S \\cap P \\oplus B(150\\ \\text{m}))\\bigr) \\bullet B(60\\ \\text{m})\\Bigr) \\cup \\overline{PS} \\oplus B(15\\ \\text{m})"
+      "title": "Group contiguous cells into settlements",
+      "detail": "Dense and semi-dense cells connect to their 8 neighbours, and across a one-cell gap (a river, a highway, a park), as DEGURBA fills gaps. A group of 50 or more buildings is a settlement, classed by its size and how much of it is dense. A suburb is a weak-core settlement near a city; the same weak core far from a city is a rural service town (Ellsworth, Dover-Foxcroft, Fort Kent), so it stays a Town.",
+      "math": "\\text{class} = \\begin{cases} \\text{City} & n \\ge 2500 \\\\ \\text{Suburb} & 500 \\le n < 2500,\\ \\text{core} < 25\\%,\\ \\le 15\\ \\text{km from a City} \\\\ \\text{Town} & 500 \\le n < 2500 \\ \\text{otherwise} \\\\ \\text{Village} & 50 \\le n < 500 \\end{cases} \\qquad \\text{core} = \\frac{n_{\\text{dense cells}}}{n}"
     },
     {
-      "title": "Fill small holes",
-      "detail": "Gaps between building clusters (parking lots, school fields, a block of lawns) leave holes inside a settlement, which made larger towns look like swiss cheese. Every hole smaller than 10 acres, or 3 % of the settlement's area if that is larger, is filled; bigger holes (large parks, ponds, river corridors) stay.",
-      "math": "\\text{fill hole } h \\text{ of } S \\iff A(h) < \\max\\bigl(10\\ \\text{acres},\\ 0.03\\, A(S)\\bigr)"
+      "title": "Draw the outline from the buildings",
+      "detail": "A settlement's own footprints (those in its cells) are closed into one shape: buffered out 45 m to bridge the gaps between buildings, then back in 35 m, so the edge sits about 10 m beyond the outermost walls rather than on grid squares. Low-density ribbons along roads are not in the settlement's cells, so they no longer stretch its outline."
     },
     {
-      "title": "Simplify, name and classify",
-      "detail": "Simplified to 5 m (topology preserved). Town = the town containing a point on the settlement's surface. Size class from the building count.",
-      "math": "\\text{class}(n) = \\begin{cases} \\text{City or large town} & n \\ge 1000 \\\\ \\text{Town centre} & 250 \\le n < 1000 \\\\ \\text{Village} & 50 \\le n < 250 \\\\ \\text{Hamlet} & 10 \\le n < 50 \\end{cases}"
+      "title": "Hamlets and roadside strips",
+      "detail": "Buildings outside every settlement are clustered wall to wall as in v3 (a building joins when at least 4 others are within 45 m), keeping groups of 10 or more, cut away where they overlap a settlement. Long, thin groups are roadside strips (houses lined along a road, DEGURBA's low-density rural ribbons); compact ones are hamlets, or villages from 50 buildings. Scattered houses are in no settlement.",
+      "math": "\\text{Roadside strip} \\iff \\frac{L}{W} \\ge 4 \\ \\lor\\ \\frac{4\\pi A}{P^2} < 0.12"
+    },
+    {
+      "title": "Fill holes, simplify, name",
+      "detail": "Holes smaller than 10 acres or 3 % of the settlement (parking lots, school fields) are filled; bigger ones (parks, ponds, rivers) stay. Simplified to 5 m. Named after the town containing a point on the settlement; a city, town or suburb spanning two towns is named after the one holding most of it (Lewiston-Auburn is Lewiston)."
+    },
+    {
+      "title": "Worked examples",
+      "detail": "Portland: 24,095 buildings, 74 % of them in dense cells, so a City; it takes in Westbrook and the Portland peninsula but not South Portland (10,963 buildings, its own City across the Fore River). Ellsworth: 1,326 buildings on 650 acres with only 20 % in dense cells, the profile of a suburb, but no city is within 15 km, so it is a Town: the service centre of Hancock County. The rest of Ellsworth's built-up land is 24 hamlets and a roadside strip, kept apart from the town instead of stretching its outline along the roads."
     },
     {
       "title": "Manual edits",
-      "detail": "Polygons drawn by hand in the settlement editor are applied last, on top of the computed outlines, so they survive rebuilds and method changes. Remove: computed settlements are cut away inside the polygon. Replace: cut away likewise, then the drawn outline, exactly as drawn, becomes the settlement. Add: the drawn outline and every computed settlement it overlaps become one settlement. A partly cut settlement keeps its remaining parts of 1 acre or more. Edited settlements get their buildings and footprint recounted, and may carry a name (instead of their town's) and a size class (instead of the class from the building count). Applying takes seconds, so the map updates as soon as an edit is saved."
+      "detail": "Polygons drawn by hand in the settlement editor are applied last, on top of the computed outlines, so they survive rebuilds and method changes. Remove: computed settlements are cut away inside the polygon. Replace: cut away likewise, then the drawn outline, exactly as drawn, becomes the settlement. Add: the drawn outline and every computed settlement it overlaps become one settlement. A partly cut settlement keeps its remaining parts of 1 acre or more and its class. Edited settlements get their buildings and footprint recounted, and may carry a name (instead of their town's) and a class (instead of the computed one, or for a drawn settlement the class from its building count). Applying takes seconds, so the map updates as soon as an edit is saved."
     }
   ],
   "parameters": [
     {
-      "name": "Neighbour distance (DBSCAN eps)",
-      "value": "45 m, wall to wall",
-      "why": "The old centre-to-centre 58 m less the median house width (11 m), so ordinary neighbourhoods cluster as before while large buildings are measured by their walls. Tested on Androscoggin County: about the same settlements (302 vs 305) and area (+3 %).",
-      "math": "58\\ \\text{m} - \\tilde{w}_{\\text{house}} \\approx 58 - 11 \\approx 45\\ \\text{m}"
+      "name": "Grid cell",
+      "value": "100 m (1 ha)",
+      "why": "Fine enough for a village of a few streets; DEGURBA's 1 km cells would merge a Maine village into its surroundings or miss it."
     },
     {
-      "name": "Minimum neighbours (DBSCAN minpoints)",
-      "value": "4 buildings",
-      "why": "Keeps a farmhouse with a barn and two sheds from seeding a cluster."
+      "name": "Density window",
+      "value": "3 × 3 cells (300 m)",
+      "why": "Smooths single houses and empty lots; about the size of a village centre."
     },
     {
-      "name": "Buffer out / in",
+      "name": "Dense cell",
+      "value": "6 buildings/ha or 15 % cover",
+      "why": "About the top 3.5 % of cells: downtown and older in-town neighbourhoods on small lots (roughly 1/4-acre lots with outbuildings), or commercial blocks of large buildings."
+    },
+    {
+      "name": "Semi-dense cell",
+      "value": "2.5 buildings/ha or 6 % cover",
+      "why": "With the dense cells, about the top 13 % of cells: suburban subdivisions and village streets (roughly 1-acre lots); below it is rural roadside and farm country."
+    },
+    {
+      "name": "Low-density cell",
+      "value": "1 building/ha",
+      "why": "Rural residential; shown on the grid layer, not a settlement on its own."
+    },
+    {
+      "name": "Cell connectivity",
+      "value": "225 m (8 neighbours + a one-cell gap)",
+      "why": "Bridges a river, highway or park one cell wide, as DEGURBA's gap filling does, without chaining towns across open country."
+    },
+    {
+      "name": "Minimum settlement",
+      "value": "50 buildings",
+      "why": "Smaller dense groups are hamlets, drawn from the wall-to-wall clusters instead."
+    },
+    {
+      "name": "City / Town",
+      "value": "2,500 / 500 buildings",
+      "why": "Gives Maine's 19 urban areas as cities (Portland, Lewiston-Auburn, Biddeford-Saco, Bangor ...) and its service towns as towns."
+    },
+    {
+      "name": "Suburb",
+      "value": "core < 25 % dense, within 15 km of a city",
+      "why": "Separates commuter towns (Yarmouth, Windham, Kennebunk) from rural service towns with small cores."
+    },
+    {
+      "name": "Outline buffer out / in",
       "value": "45 m / 35 m",
-      "why": "Out must reach half the neighbour distance so neighbours' buffers join; the net 10 m beyond the walls keeps yards inside the outline."
+      "why": "As in v3: closes gaps between neighbouring buildings and leaves an edge about 10 m beyond the outermost walls."
     },
     {
-      "name": "Large building / attach distance",
-      "value": "2,000 m² / 100 m",
-      "why": "Schools, mills, plants and big-box stores at the edge of town; 100 m spans a parking lot or a road with its verges, but not open country."
+      "name": "Hamlet clustering",
+      "value": "45 m wall to wall, 4 neighbours, 10+ buildings",
+      "why": "v3's method, now used only outside settlements."
     },
     {
-      "name": "Closing radius / bridge width",
-      "value": "60 m / 30 m",
-      "why": "60 m closes any gap up to the 100 m attach distance with a smooth edge; the bridge guarantees one piece where the closing alone would not."
+      "name": "Roadside strip",
+      "value": "length/width ≥ 4 or compactness < 0.12",
+      "why": "Oriented-rectangle elongation catches straight ribbons; Polsby-Popper catches winding ones."
     },
     {
       "name": "Hole-filling threshold",
       "value": "max(10 acres, 3 % of the settlement)",
-      "why": "Before this step 90 % of the 1,236 holes were under 10 acres (median 1-2 acres): noise from the closing step. Scaling with the settlement lets a city absorb parking lots and fields up to about 45 acres while a large park or pond still shows."
+      "why": "Fills parking lots and school fields; keeps large parks, ponds and rivers."
     },
     {
       "name": "Simplify tolerance",
       "value": "5 m",
-      "why": "Below a pixel at zoom 12; cuts vertex count for tiles."
-    },
-    {
-      "name": "Minimum settlement size",
-      "value": "10 buildings",
-      "why": "Below this the shape is a cluster of outbuildings, not a place."
-    },
-    {
-      "name": "Size classes",
-      "value": "1000 / 250 / 50 buildings",
-      "why": "Separates cities, service towns, villages and hamlets."
+      "why": "Smaller tiles without visibly changing outlines at zooms 5-12."
     },
     {
       "name": "Edited remainder",
       "value": "1 acre",
-      "why": "What is left of a computed settlement after a remove or replace cuts through it stays a settlement if it is at least an acre (about a house lot or two); smaller slivers along the drawn edge are dropped."
+      "why": "What is left of a computed settlement after a remove or replace cuts through it stays a settlement if it is at least an acre; smaller slivers along the drawn edge are dropped."
     },
     {
       "name": "Drawn outlines",
@@ -127,14 +169,30 @@
     }
   ],
   "caveats": [
-    "Scattered rural houses are not in any settlement by design, so the buildings in settlements are well below the footprint count.",
-    "Large buildings more than 100 m from a settlement (a lone mill, warehouse or farm complex) stay outside.",
-    "A settlement spanning two towns is named after one of them only.",
-    "acres is the outline's area; footprint_acres is the area of the buildings themselves.",
-    "Rebuilt only when the number of building footprints or the method version (in the SQL) changes, about five minutes. An Overture update that keeps the same count is not picked up; to force a rebuild run TRUNCATE src_units.settlements_meta, then ./mapgen apply maine-places.",
-    "Method history: v1 clustered one point per building (58 m, buffer 60/-35 m); large buildings were measured from their centre, which split towns around schools and mills and left 91 % of buildings over 5,000 m² outside every settlement.",
-    "Small parks, cemeteries and fields inside a settlement are drawn as built-up (holes under the threshold are filled).",
+    "Buildings stand in for people: a block of seasonal camps counts like a year-round neighbourhood, and an apartment building counts as one building. Thresholds are calibrated to Maine and are not comparable with official DEGURBA population classes.",
+    "Scattered rural houses are in no settlement by design, so the buildings in settlements are well below the footprint count (about 341,000 of 925,000).",
+    "A lone large building far from others (a mill, warehouse or farm complex) is in no settlement unless its cover makes its cell dense or semi-dense.",
+    "Outlines follow buildings, so a settlement can have several parts where its cells connect across a gap the buildings do not bridge.",
+    "Rebuilt only when the number of building footprints or the method version (in the SQL) changes, about seven minutes. An Overture update that keeps the same count is not picked up; to force a rebuild run TRUNCATE src_units.settlements_meta, then ./mapgen apply maine-places.",
+    "Method history: v1 clustered one point per building (58 m); v2-v3 clustered footprints wall to wall (45 m), attaching large buildings and filling holes, which let towns stretch along roads. v4 (2026-10-05) classifies a density grid (Degree of Urbanisation) and keeps v3's clustering for hamlets.",
     "Manual edits are judgement calls recorded with a note; the map shows edited outlines with a darker, heavier line (the source column says computed or edited)."
   ],
-  "editor": "/admin/methods/settlements/edit"
+  "editor": "/admin/methods/settlements/edit",
+  "references": [
+    {
+      "title": "Eurostat et al. (2021), Applying the Degree of Urbanisation: a methodological manual to define cities, towns and rural areas for international comparisons",
+      "url": "https://ec.europa.eu/eurostat/web/products-manuals-and-guidelines/-/ks-02-20-499",
+      "note": "the method this adapts (grid classes, contiguity, gap filling)"
+    },
+    {
+      "title": "UN Statistical Commission (2020), A recommendation on the method to delineate cities, urban and rural areas for international statistical comparisons",
+      "url": "https://unstats.un.org/unsd/statcom/51st-session/documents/BG-Item3j-Recommendation-E.pdf",
+      "note": "endorsement of the Degree of Urbanisation for international comparisons (51st session, 2020)"
+    },
+    {
+      "title": "Overture Maps Foundation, Buildings theme",
+      "url": "https://docs.overturemaps.org/guides/buildings/",
+      "note": "the building footprints"
+    }
+  ]
 }

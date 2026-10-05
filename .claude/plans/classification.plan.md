@@ -10,6 +10,15 @@ Status: **§1 built (2026-10-04/05), uncommitted until reviewed.** What shipped 
   remaining parts of **1 acre or more**. Edits can also set a name and a size class (the classification override).
 - Map: `source` = computed | edited; edited outlines draw darker and heavier on Maine Places.
 - Open: §1.5 item 3 (the same pattern for other classification layers).
+
+**Method v4, Degree of Urbanisation (2026-10-05, the default).** Settlements are classified from a 100 m building
+density grid (3x3 window; dense >= 6 buildings/ha or 15 % cover, semi-dense >= 2.5/ha or 6 %), contiguous dense and
+semi-dense cells of 50+ buildings forming City / Town / Suburb / Village; the remaining buildings form Hamlets and
+Roadside strips (v3 wall-to-wall clustering). Outlines are still drawn from the footprints. Classes replace the old size
+classes everywhere (`settlement_class`; edits migration `20261005000200`). Grid published as
+`pub.maine_places__density_grid`. Write-up with formulas, parameters and references: `docs/methods/settlements.json`.
+Possible follow-ups: calibrate thresholds against Census places/urban areas; residential addresses instead of
+buildings as the population proxy.
 Covers derived classification layers (computed from source data by a documented method, e.g. settlements) and how
 people correct them. Related: `docs/methods/*.json` (method write-ups shown on /admin/methods),
 `project-builder.plan.md` (units, analyses).

@@ -15,7 +15,7 @@
 		id: number;
 		action: Action;
 		name: string | null;
-		size_class: string | null;
+		settlement_class: string | null;
 		note: string | null;
 		created_by: string;
 		updated_at: string;
@@ -38,7 +38,7 @@
 		{ id: 'add', label: 'Add settlement', help: 'A settlement the method missed; computed shapes it overlaps merge into it.', color: '#1baf7a' },
 		{ id: 'remove', label: 'Not a settlement', help: 'Computed settlements inside it are removed (campgrounds, industrial parks…).', color: '#e34948' }
 	];
-	const CLASSES = ['City or large town', 'Town centre', 'Village', 'Hamlet'];
+	const CLASSES = ['City', 'Town', 'Suburb', 'Village', 'Hamlet', 'Roadside strip'];
 	const actionOf = (a: Action) => ACTIONS.find((x) => x.id === a)!;
 
 	const config = $derived(page.data.config);
@@ -55,7 +55,7 @@
 
 	// What the form is working on: a new drawing (geometry, no id) or a saved edit (id), and its fields.
 	let drawing: Action | null = $state(null);
-	let form: { id: number | null; action: Action; name: string; size_class: string; note: string; geometry: GeoJSON.Polygon | null } | null =
+	let form: { id: number | null; action: Action; name: string; settlement_class: string; note: string; geometry: GeoJSON.Polygon | null } | null =
 		$state(null);
 
 	async function api(path: string, init?: RequestInit) {
@@ -79,7 +79,7 @@
 		src?.setTiles?.([settlementTiles()]);
 	}
 	const settlementTiles = () =>
-		`${config.tilesBase}/collections/pub.maine_places__settlements/tiles/WebMercatorQuad/{z}/{x}/{y}?properties=town,size_class,source,buildings&v=${tilesVersion}`;
+		`${config.tilesBase}/collections/pub.maine_places__settlements/tiles/WebMercatorQuad/{z}/{x}/{y}?properties=town,settlement_class,source,buildings&v=${tilesVersion}`;
 
 	function startDrawing(a: Action) {
 		error = '';
@@ -96,7 +96,7 @@
 
 	function edit(e: Edit) {
 		stopDrawing();
-		form = { id: e.id, action: e.properties.action, name: e.properties.name ?? '', size_class: e.properties.size_class ?? '', note: e.properties.note ?? '', geometry: null };
+		form = { id: e.id, action: e.properties.action, name: e.properties.name ?? '', settlement_class: e.properties.settlement_class ?? '', note: e.properties.note ?? '', geometry: null };
 		zoomTo(e);
 	}
 	function zoomTo(e: Edit) {
@@ -117,7 +117,7 @@
 		if (!form) return;
 		busy = true;
 		error = '';
-		const properties = { action: form.action, name: form.name || null, size_class: form.size_class || null, note: form.note || null };
+		const properties = { action: form.action, name: form.name || null, settlement_class: form.settlement_class || null, note: form.note || null };
 		try {
 			const body =
 				form.id === null
@@ -222,7 +222,7 @@
 					if (!f || f.geometry.type !== 'Polygon' || !drawing) return;
 					const geometry = f.geometry as GeoJSON.Polygon;
 					if (form && form.id !== null) form = { ...form, geometry };
-					else form = { id: null, action: drawing, name: '', size_class: '', note: '', geometry };
+					else form = { id: null, action: drawing, name: '', settlement_class: '', note: '', geometry };
 					drawing = null;
 					draw!.setMode('render');
 				});
@@ -310,8 +310,8 @@
 					{#if form.action !== 'remove'}
 						<label for="se-name">Name <span class="hint">(optional; default: the town)</span></label>
 						<input id="se-name" bind:value={form.name} maxlength="120" />
-						<label for="se-class">Size class <span class="hint">(optional; default: from the building count)</span></label>
-						<select id="se-class" bind:value={form.size_class}>
+						<label for="se-class">Class <span class="hint">(optional; default: kept, or from the building count)</span></label>
+						<select id="se-class" bind:value={form.settlement_class}>
 							<option value="">From the building count</option>
 							{#each CLASSES as c (c)}<option value={c}>{c}</option>{/each}
 						</select>
@@ -336,7 +336,7 @@
 							<button type="button" class="item" onclick={() => edit(e)}>
 								<span class="badge" style:--c={actionOf(e.properties.action).color}>{actionOf(e.properties.action).label}</span>
 								<strong>{e.properties.name ?? `#${e.id}`}</strong>
-								{#if e.properties.size_class}<span class="hint">{e.properties.size_class}</span>{/if}
+								{#if e.properties.settlement_class}<span class="hint">{e.properties.settlement_class}</span>{/if}
 								{#if e.properties.note}<span class="note">{e.properties.note}</span>{/if}
 							</button>
 							<button type="button" class="del" aria-label="Delete edit #{e.id}" onclick={() => remove(e.id)}>✕</button>

@@ -128,6 +128,13 @@
 	<ul class="caveats">{#each m.caveats as c (c)}<li>{c}</li>{/each}</ul>
 {/if}
 
+{#if m.references?.length}
+	<h2>References</h2>
+	<ul class="caveats">
+		{#each m.references as r (r.title)}<li>{#if r.url}<a href={r.url} rel="noopener noreferrer" target="_blank">{r.title}</a>{:else}{r.title}{/if}{#if r.note}: {r.note}{/if}</li>{/each}
+	</ul>
+{/if}
+
 {#if m.code_text}
 	<details>
 		<summary>Code: <code>{m.code}</code></summary>

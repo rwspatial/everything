@@ -1338,7 +1338,7 @@ async def dataset_action(name: str, request: Request, response: Response) -> dic
 # change re-applies all edits (src_units.apply_settlement_edits(), seconds) and returns the new counts.
 
 SETTLEMENT_ACTIONS = ("replace", "add", "remove")
-SETTLEMENT_CLASSES = ("City or large town", "Town centre", "Village", "Hamlet")
+SETTLEMENT_CLASSES = ("City", "Town", "Suburb", "Village", "Hamlet", "Roadside strip")
 MAINE_BBOX = (-71.2, 42.9, -66.8, 47.6)
 
 
@@ -1358,11 +1358,11 @@ def _settlement_edit_values(body: Any, partial: bool = False) -> dict:
             if v and len(v) > limit:
                 raise HTTPException(422, f"{key} is longer than {limit} characters")
             out[key] = v
-    if "size_class" in props:
-        v = props.get("size_class") or None
+    if "settlement_class" in props:
+        v = props.get("settlement_class") or None
         if v is not None and v not in SETTLEMENT_CLASSES:
-            raise HTTPException(422, f"size_class must be one of {', '.join(SETTLEMENT_CLASSES)} (or empty)")
-        out["size_class"] = v
+            raise HTTPException(422, f"settlement_class must be one of {', '.join(SETTLEMENT_CLASSES)} (or empty)")
+        out["settlement_class"] = v
     geom = body.get("geometry")
     if geom is not None or not partial:
         if not isinstance(geom, dict) or geom.get("type") not in ("Polygon", "MultiPolygon"):
@@ -1402,7 +1402,7 @@ def _settlement_feature(r: dict) -> dict:
                            if k not in ("geometry",)}}
 
 
-SETTLEMENT_COLUMNS = ("id, action, name, size_class, note, created_by, created_at, updated_at, "
+SETTLEMENT_COLUMNS = ("id, action, name, settlement_class, note, created_by, created_at, updated_at, "
                       "ST_AsGeoJSON(geom, 7)::json AS geometry")
 
 
@@ -1420,10 +1420,10 @@ async def create_settlement_edit(request: Request) -> dict:
     with projects_pool.connection() as conn:
         _check_settlement_geom(conn, v["geometry"])
         row = conn.execute(
-            f"""INSERT INTO app.settlement_edits (action, name, size_class, note, geom, created_by)
-                VALUES (%(action)s, %(name)s, %(size_class)s, %(note)s, {GEOM_IN}, %(who)s)
+            f"""INSERT INTO app.settlement_edits (action, name, settlement_class, note, geom, created_by)
+                VALUES (%(action)s, %(name)s, %(settlement_class)s, %(note)s, {GEOM_IN}, %(who)s)
                 RETURNING {SETTLEMENT_COLUMNS}""",
-            {"name": None, "size_class": None, "note": None, **v, "who": _admin_user(request)}).fetchone()
+            {"name": None, "settlement_class": None, "note": None, **v, "who": _admin_user(request)}).fetchone()
         stats = conn.execute("SELECT src_units.apply_settlement_edits() AS s").fetchone()["s"]
     return {"edit": _settlement_feature(row), "stats": stats}
 

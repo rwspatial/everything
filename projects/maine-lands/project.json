@@ -3,7 +3,7 @@
   "slug": "maine-lands",
   "status": "ready",
   "title": "Maine Lands",
-  "description": "Maine's conserved lands from every holder (state, federal, municipal and land trusts; owned outright or held as easements), the Bureau of Parks and Lands' public lands, trails from the USGS National Digital Trails, tax parcels and town lines, with USDA plant hardiness zones (2023) and the extreme-minimum-temperature grid behind them.",
+  "description": "Maine's conserved lands from every holder (state, federal, municipal and land trusts; owned outright or held as easements), the Bureau of Parks and Lands' public lands, trails and paths from OpenStreetMap (no sidewalks) and the USGS National Digital Trails, tax parcels and town lines, with USDA plant hardiness zones (2023) and the extreme-minimum-temperature grid behind them.",
   "tags": [
     "maine",
     "public lands",
@@ -777,6 +777,118 @@
       "visible": false
     },
     {
+      "id": "osm-trails",
+      "title": "Trails and paths (OpenStreetMap)",
+      "group": "Recreation",
+      "minzoom": 10,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__osm_trails",
+        "properties": [
+          "name",
+          "trail_class",
+          "surface",
+          "miles"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "line",
+            "layout": {
+              "line-cap": "round",
+              "line-join": "round"
+            },
+            "paint": {
+              "line-color": "#ffffff",
+              "line-opacity": 0.85,
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                10,
+                2.6,
+                15,
+                5
+              ]
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "trail_class"
+                ],
+                "Hiking / multi-use path",
+                "#6b3a0a",
+                "Footpath",
+                "#7a6a58",
+                "Bike path",
+                "#1a9850",
+                "Bridle path",
+                "#762a83",
+                "#6b3a0a"
+              ],
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                10,
+                1,
+                15,
+                2.4
+              ],
+              "line-dasharray": [
+                3,
+                1.5
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Trails (OpenStreetMap, from zoom 10)",
+        "items": [
+          {
+            "label": "Hiking / multi-use path",
+            "color": "#6b3a0a"
+          },
+          {
+            "label": "Footpath",
+            "color": "#7a6a58"
+          },
+          {
+            "label": "Bike path",
+            "color": "#1a9850"
+          },
+          {
+            "label": "Bridle path",
+            "color": "#762a83"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: {trail_class}, {surface}, {miles} mi"
+        },
+        "inspect": true
+      },
+      "attribution": "Trails: © OpenStreetMap contributors (ODbL), via Overture Maps Foundation"
+    },
+    {
       "id": "parcels",
       "title": "Tax parcels",
       "group": "Boundaries",
@@ -976,6 +1088,20 @@
         "value": "acres",
         "agg": "sum",
         "limit": 10
+      }
+    },
+    {
+      "id": "trail-miles-by-type",
+      "title": "Trail miles by type (OpenStreetMap)",
+      "type": "bar",
+      "layer": "osm-trails",
+      "format": "number",
+      "description": "Miles of trails and paths mapped in OpenStreetMap, without sidewalks or logging roads.",
+      "data": {
+        "collection": "pub.maine_lands__osm_trails",
+        "category": "trail_class",
+        "value": "miles",
+        "agg": "sum"
       }
     }
   ]

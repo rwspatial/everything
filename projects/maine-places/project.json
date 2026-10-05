@@ -3,7 +3,7 @@
   "slug": "maine-places",
   "title": "Maine Places & Buildings",
   "status": "ready",
-  "description": "Points of interest and building footprints across Maine from Overture Maps (OpenStreetMap, Microsoft, Google, Meta and partner data). Zoom in for buildings.",
+  "description": "Points of interest and building footprints across Maine from Overture Maps (OpenStreetMap, Microsoft, Google, Meta and partner data), and settlements classified from building density with the Degree of Urbanisation: cities, towns, suburbs, villages, hamlets and roadside strips. Zoom in for buildings.",
   "tags": [
     "maine",
     "places",
@@ -26,8 +26,74 @@
   },
   "layers": [
     {
+      "id": "density-grid",
+      "title": "Building density grid (100 m)",
+      "group": "Built environment",
+      "minzoom": 9,
+      "maxzoom": 16,
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_places__density_grid",
+        "properties": [
+          "cell_class",
+          "buildings",
+          "buildings_per_ha",
+          "cover_pct"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "cell_class"
+                ],
+                "Dense",
+                "#7f2704",
+                "Semi-dense",
+                "#f08a3c",
+                "#fde0c5"
+              ],
+              "fill-opacity": 0.55
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Cell class (density over 300 m)",
+        "items": [
+          {
+            "label": "Dense: 6+ buildings/ha or 15 %+ cover",
+            "color": "#7f2704"
+          },
+          {
+            "label": "Semi-dense: 2.5+ buildings/ha or 6 %+ cover",
+            "color": "#f08a3c"
+          },
+          {
+            "label": "Low density: 1+ building/ha",
+            "color": "#fde0c5"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{cell_class}: {buildings_per_ha} buildings/ha, {cover_pct}% covered by buildings (300 m around); {buildings} in this cell"
+        },
+        "inspect": true
+      },
+      "attribution": "Density grid derived from Overture Maps buildings"
+    },
+    {
       "id": "settlements",
-      "title": "Settlements (built-up areas)",
+      "title": "Settlements (Degree of Urbanisation)",
       "group": "Built environment",
       "minzoom": 5,
       "maxzoom": 13,
@@ -37,9 +103,10 @@
         "properties": [
           "town",
           "county",
+          "settlement_class",
           "buildings",
           "acres",
-          "size_class",
+          "dense_core_pct",
           "source"
         ]
       },
@@ -48,8 +115,33 @@
         "layers": [
           {
             "type": "fill",
+            "filter": [
+              "!=",
+              [
+                "get",
+                "settlement_class"
+              ],
+              "Roadside strip"
+            ],
             "paint": {
-              "fill-color": "#f2a93b",
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "settlement_class"
+                ],
+                "City",
+                "#7f2704",
+                "Town",
+                "#c94a02",
+                "Suburb",
+                "#f08a3c",
+                "Village",
+                "#f2a93b",
+                "Hamlet",
+                "#f7cf86",
+                "#f7cf86"
+              ],
               "fill-opacity": [
                 "interpolate",
                 [
@@ -61,8 +153,23 @@
                 5,
                 0.85,
                 12,
-                0.5
+                0.55
               ]
+            }
+          },
+          {
+            "type": "fill",
+            "filter": [
+              "==",
+              [
+                "get",
+                "settlement_class"
+              ],
+              "Roadside strip"
+            ],
+            "paint": {
+              "fill-pattern": "pat:diag:a0522d",
+              "fill-opacity": 0.9
             }
           },
           {
@@ -115,17 +222,44 @@
         ]
       },
       "legend": {
-        "type": "single",
-        "color": "#f2a93b",
-        "label": "Built-up area (clustered buildings)"
+        "type": "categorical",
+        "title": "Settlement class",
+        "items": [
+          {
+            "label": "City",
+            "color": "#7f2704"
+          },
+          {
+            "label": "Town",
+            "color": "#c94a02"
+          },
+          {
+            "label": "Suburb",
+            "color": "#f08a3c"
+          },
+          {
+            "label": "Village",
+            "color": "#f2a93b"
+          },
+          {
+            "label": "Hamlet",
+            "color": "#f7cf86"
+          },
+          {
+            "label": "Roadside strip",
+            "color": "#a0522d",
+            "pattern": "pat:diag:a0522d",
+            "outline": "solid"
+          }
+        ]
       },
       "interaction": {
         "popup": {
-          "template": "{size_class}, {town}: {buildings} buildings on {acres} acres ({source} outline)"
+          "template": "{settlement_class}: {town}, {buildings} buildings on {acres} acres; {dense_core_pct}% in dense cells ({source} outline)"
         },
         "inspect": true
       },
-      "attribution": "Built-up areas derived from Overture Maps buildings (DBSCAN 45 m wall to wall; at least 10 buildings; small holes filled)",
+      "attribution": "Settlements: Degree of Urbanisation (UN Statistical Commission 2020) adapted to Overture Maps building footprints (100 m grid, density over 300 m)",
       "visible": true
     },
     {
@@ -444,19 +578,33 @@
       }
     },
     {
-      "id": "settlements-by-size",
-      "title": "Settlements by size",
+      "id": "settlements-by-class",
+      "title": "Settlements by class",
       "type": "donut",
       "layer": "settlements",
       "format": "count",
       "data": {
         "collection": "pub.maine_places__settlements",
-        "category": "size_class"
+        "category": "settlement_class"
+      }
+    },
+    {
+      "id": "buildings-by-class",
+      "title": "Buildings by settlement class",
+      "type": "bar",
+      "layer": "settlements",
+      "format": "count",
+      "description": "Buildings inside each class of settlement; the rest of Maine's buildings are scattered (outside every settlement).",
+      "data": {
+        "collection": "pub.maine_places__settlements",
+        "category": "settlement_class",
+        "value": "buildings",
+        "agg": "sum"
       }
     },
     {
       "id": "largest-settlements",
-      "title": "Buildings in built-up areas, by town",
+      "title": "Buildings in settlements, by town",
       "type": "bar",
       "layer": "settlements",
       "format": "count",
