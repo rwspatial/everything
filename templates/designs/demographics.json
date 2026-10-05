@@ -1,0 +1,188 @@
+{
+  "id": "demographics",
+  "title": "Demographics",
+  "description": "Median household income and poverty (ACS 2024 5-year) for a county, a census tract or a block group: a county's towns, or a tract or block group and its neighbours, with roads; county maps add conserved land and town lines.",
+  "geographies": [
+    "county",
+    "tract",
+    "blockgroup"
+  ],
+  "basemap": "positron",
+  "padding": {
+    "county": 0.04,
+    "tract": 0.6,
+    "blockgroup": 0.6
+  },
+  "projectTitle": {
+    "county": "{short_name} County: demographics",
+    "tract": "{short_name}, {county_name} County: demographics",
+    "blockgroup": "{short_name}, {county_name} County: demographics"
+  },
+  "projectDescription": {
+    "county": "{name}, Maine: towns by median household income and poverty rate (ACS 2024 5-year), conserved land, main roads and town lines.",
+    "tract": "{name} and its neighbours: median household income and poverty rate (ACS 2024 5-year estimates), with roads.",
+    "blockgroup": "{name} and its neighbours: median household income and poverty rate (ACS 2024 5-year estimates), with roads."
+  },
+  "tags": [
+    "maine",
+    "county",
+    "{short_name}",
+    "demographics",
+    "acs"
+  ],
+  "layers": [
+    {
+      "ref": {
+        "county": "maine-overview/towns-poverty",
+        "tract": "maine-overview/tracts-poverty",
+        "blockgroup": "maine-overview/bg-poverty"
+      },
+      "visible": false,
+      "opacity": 0.85
+    },
+    {
+      "ref": {
+        "county": "maine-overview/towns",
+        "tract": "maine-overview/tracts-income",
+        "blockgroup": "maine-overview/bg-income"
+      },
+      "visible": true,
+      "opacity": 0.85
+    },
+    {
+      "ref": "maine-lands/conserved-lands",
+      "visible": false,
+      "units": [
+        "county"
+      ]
+    },
+    {
+      "ref": "maine-lands/town-boundaries",
+      "visible": true,
+      "units": [
+        "county"
+      ]
+    },
+    {
+      "ref": "maine-infrastructure/roads-local",
+      "visible": true,
+      "units": [
+        "tract",
+        "blockgroup"
+      ]
+    },
+    {
+      "ref": "maine-infrastructure/roads-secondary",
+      "visible": true
+    },
+    {
+      "ref": "maine-infrastructure/roads-primary",
+      "visible": true
+    },
+    {
+      "focus": true
+    }
+  ],
+  "charts": [
+    {
+      "id": "glance",
+      "title": "{short_name} County at a glance",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_overview__towns",
+        "within": "place",
+        "stats": [
+          {
+            "label": "People",
+            "value": "pop",
+            "agg": "sum",
+            "format": "count"
+          },
+          {
+            "label": "Towns and townships",
+            "agg": "count",
+            "format": "count"
+          },
+          {
+            "label": "Median town household income",
+            "value": "median_hh_income",
+            "agg": "median",
+            "format": "currency"
+          }
+        ]
+      },
+      "units": [
+        "county"
+      ]
+    },
+    {
+      "id": "income",
+      "title": "Towns by median household income",
+      "type": "bar",
+      "layer": "towns",
+      "format": "currency",
+      "data": {
+        "collection": "pub.maine_overview__towns",
+        "category": "name",
+        "value": "median_hh_income",
+        "agg": "max",
+        "within": "place",
+        "limit": 15
+      },
+      "units": [
+        "county"
+      ]
+    },
+    {
+      "id": "population",
+      "title": "Largest towns by population",
+      "type": "bar",
+      "layer": "towns",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_overview__towns",
+        "category": "name",
+        "value": "pop",
+        "agg": "sum",
+        "within": "place",
+        "limit": 10
+      },
+      "units": [
+        "county"
+      ]
+    },
+    {
+      "id": "income-poverty",
+      "title": "{county_name} County tracts: income against poverty",
+      "type": "scatter",
+      "format": "currency",
+      "data": {
+        "collection": "pub.maine_overview__tracts",
+        "x": "median_hh_income",
+        "y": "poverty_pct",
+        "label": "name",
+        "within": "county"
+      },
+      "units": [
+        "tract",
+        "blockgroup"
+      ]
+    },
+    {
+      "id": "income-spread",
+      "title": "{county_name} County tracts by median household income",
+      "type": "histogram",
+      "format": "currency",
+      "data": {
+        "collection": "pub.maine_overview__tracts",
+        "value": "median_hh_income",
+        "bins": 10,
+        "within": "county"
+      },
+      "units": [
+        "tract",
+        "blockgroup"
+      ]
+    }
+  ]
+}

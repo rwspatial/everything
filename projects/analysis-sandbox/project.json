@@ -3,7 +3,7 @@
   "slug": "analysis-sandbox",
   "title": "Analysis Sandbox",
   "status": "stub",
-  "description": "Landing place for R and Python analysis results (hot spots, interpolated surfaces, model outputs). Results of R and Python analyses land here: run one in Admin → Analysis and choose \"Add to the Analysis Sandbox\".",
+  "description": "Landing place for R and Python analysis results (interpolated surfaces, model outputs). Results of R and Python analyses land here: run one in Admin → Analysis and choose \"Add to the Analysis Sandbox\".",
   "tags": [
     "analysis",
     "phase-5"

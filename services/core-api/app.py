@@ -974,6 +974,12 @@ async def design_manifest(design_id: str, request: Request) -> dict:
     unit, key = body.get("unit"), str(body.get("place") or "")
     if unit not in d["geographies"]:
         raise HTTPException(422, f"the {d['title']} design is for {', '.join(d['geographies'])}, not {unit!r}")
+    # A design can serve several units: a layer `ref` may be {unit: ref} (a unit not listed skips the layer), and a
+    # layer, chart or text may name the units it is for (`units`); projectTitle / projectDescription may be {unit: text}.
+    for_unit = lambda item: unit in (item.get("units") or [unit]) and (  # noqa: E731
+        not isinstance(item.get("ref"), dict) or unit in item["ref"])
+    d = {**d, "layers": [i for i in d["layers"] if for_unit(i)], "charts": [c for c in d.get("charts") or [] if for_unit(c)]}
+    by_unit = lambda v: v.get(unit, "") if isinstance(v, dict) else v  # noqa: E731
     refs = [i["ref"][unit] if isinstance(i["ref"], dict) else i["ref"] for i in d["layers"] if "ref" in i]
     with projects_pool.connection() as conn:
         u = _unit(conn, unit)
@@ -1013,10 +1019,10 @@ async def design_manifest(design_id: str, request: Request) -> dict:
         "manifestVersion": 1,
         "slug": slug,
         "status": "draft",
-        "title": (body.get("title") or fill(d["projectTitle"]))[:80],
-        "description": fill(d.get("projectDescription", "")),
+        "title": (body.get("title") or fill(by_unit(d["projectTitle"])))[:80],
+        "description": fill(by_unit(d.get("projectDescription", ""))),
         "tags": list(dict.fromkeys(fill(t).lower() for t in d.get("tags", []))),
-        "view": _framing(place["bbox"], d.get("padding", 0.06), d.get("basemap", "positron")),
+        "view": _framing(place["bbox"], by_unit(d.get("padding", 0.06)) or 0.06, d.get("basemap", "positron")),
         # The place this project is about: the admin workspace offers the analyses for this unit (process `units`).
         "place": {"unit": unit, "key": place["key"], "name": place["name"]},
         "layers": layers,
@@ -1025,6 +1031,7 @@ async def design_manifest(design_id: str, request: Request) -> dict:
     # tracts, where the interesting comparison is the county around them).
     charts = []
     for c in copy.deepcopy(d.get("charts") or []):
+        c.pop("units", None)
         w = c["data"].pop("within", None)
         if w == "place":
             c["data"]["within"] = {"unit": unit, "place": place["key"]}

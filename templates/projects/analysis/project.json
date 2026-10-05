@@ -3,7 +3,7 @@
   "slug": "{{slug}}",
   "title": "{{title}}",
   "status": "stub",
-  "description": "Landing place for R and Python analysis results (hot spots, interpolated surfaces, model outputs).",
+  "description": "Landing place for R and Python analysis results (interpolated surfaces, model outputs).",
   "tags": ["analysis", "phase-5"],
   "view": { "center": [0, 20], "zoom": 1.5, "basemap": "positron" },
   "layers": [
@@ -16,12 +16,12 @@
       "source": { "type": "raster-xyz", "tiles": ["/raster/tiles/{z}/{x}/{y}.png"] }
     },
     {
-      "id": "hotspots",
-      "title": "Hot spots (vector)",
+      "id": "results",
+      "title": "Model results (vector)",
       "group": "Model outputs",
       "status": "todo",
       "todo": "Phase 5: a job writes ml_out.job_<id> and publishes pub.{{slug_}}__job_<id>; the result appears here with no UI changes.",
-      "source": { "type": "tipg-vector", "collection": "pub.{{slug_}}__hotspots" }
+      "source": { "type": "tipg-vector", "collection": "pub.{{slug_}}__results" }
     }
   ],
   "notes": ["Phase 5: job results will appear here as layers."]

@@ -56,11 +56,11 @@
 	const shownTables = $derived(data ? data.tables.filter((t) => !issuesOnly || t.issues.length) : []);
 </script>
 
-<svelte:head><title>Database · Admin</title></svelte:head>
+<svelte:head><title>Database tables &amp; views · Admin</title></svelte:head>
 
 <div class="head">
 	<div>
-		<h1>Database</h1>
+		<h1>Database tables &amp; views</h1>
 		<p class="lead">
 			Spatial indexes, geometry types and scan statistics. The key check: can each published view's tile filter use a
 			spatial index? If not, every map tile scans the whole source table.

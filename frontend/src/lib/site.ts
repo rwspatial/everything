@@ -8,7 +8,7 @@ export const site = {
 	role: 'Geospatial engineer',
 	/** Practice / studio name, used in the header and page titles. */
 	studio: 'Downeast Geospatial',
-	location: 'Maine, USA',
+	location: 'Ellsworth, ME',
 	/** One line under the name: what the practice and this platform do. */
 	headline: 'Geospatial modeling, cartography & reporting',
 	tagline:
@@ -18,7 +18,7 @@ export const site = {
 	pillars: [
 		{
 			title: 'Model',
-			body: 'Suitability, risk and change models in R and Python, run against PostGIS and cloud rasters: agricultural potential and wildfire fuel hazard for any parcel, hot spots and clusters, settlement outlines. Every method is documented and every run tracked.'
+			body: 'Suitability, risk and change models in R and Python, run against PostGIS and cloud rasters: agricultural potential and wildfire fuel hazard for any parcel, town vulnerability assessments, settlement outlines. Every method is documented and every run tracked.'
 		},
 		{
 			title: 'Map',
@@ -32,7 +32,7 @@ export const site = {
 
 	/** Draft copy; rewrite in your own voice. */
 	about: [
-		'This site is a working geospatial platform: one stack that takes public data from dozens of state and federal sources, models it, maps it and reports on it. New analyses, map designs and reports are built on what is already there, so an idea becomes a live map or a parcel report in days, not months.',
+		'This site is a fully independent cloud GIS: its own spatial database, map and tile server, analysis workers and report printer, built entirely from open-source software, with no proprietary GIS platform or licences underneath. It takes public data from dozens of state and federal sources, models it, maps it and reports on it. New analyses, map designs and reports are built on what is already there, so an idea becomes a live map or a parcel report in days, not months.',
 		'It is built to stay open and adaptable: R and Python for analysis, PostGIS for data, Svelte, MapLibre and D3 for the web, and cloud storage for rasters. The same pieces fit environmental screening, planning, real estate, utilities, conservation or research.',
 		'Everything here runs live. The maps are served from PostGIS, not screenshots, and every model has a methods page showing exactly how it is calculated.'
 	],
@@ -40,7 +40,7 @@ export const site = {
 	services: [
 		{
 			title: 'Geospatial modeling and analysis',
-			body: 'Suitability and risk models, spatial statistics and derived features in R and Python: land suitability, wildfire fuel hazard, clusters and hot spots, terrain, soils, habitat and census analysis. Documented methods, delivered as layers you can map, query and report on.'
+			body: 'Suitability and risk models, spatial statistics and derived features in R and Python: land suitability, wildfire fuel hazard, flood and sea level rise exposure, terrain, soils, habitat and census analysis. Documented methods, delivered as layers you can map, query and report on.'
 		},
 		{
 			title: 'Cartography and interactive maps',

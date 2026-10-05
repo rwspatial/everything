@@ -76,8 +76,9 @@ itself, checks the published project, and removes everything it created.
 | `job_status(job_id)`, `job_result(job_id, wait_seconds)` | Progress; then the report and the LayerSpec of the output layer |
 | `cancel_job(job_id)` | Stops a queued or running job; its output is discarded |
 
-For example: "Where are the hot spots of median household income across Maine towns?" Results become layers on `pub.analysis_sandbox__job_<id>`. A person adds them to the Analysis Sandbox map
-in `/admin/analysis`, because the analysis token cannot promote layers. See docs/setup/09-ml-workers.md.
+For example: "Run the vulnerability assessment for Castine and tell me which bridges are in the 1% flood zone." Results become
+layers on `pub.analysis_sandbox__job_<id>`. A person adds them to a map in the project workspace, because the analysis
+token cannot promote layers. See docs/setup/09-ml-workers.md.
 
 ## Safety
 

@@ -44,6 +44,8 @@ test('landing page (identity, live selected work) and the About page (services, 
 	await expect(page).toHaveURL(/\/maps$/);
 
 	await page.goto('/');
+	// Get in touch opens the About page at the top (contact sits beside the summary), not an anchor further down.
+	await expect(page.getByRole('link', { name: 'Get in touch' })).toHaveAttribute('href', '/about');
 	await page.getByRole('link', { name: 'About, services and contact →' }).click();
 	await expect(page).toHaveURL(/\/about$/);
 	await expect(page.getByRole('heading', { name: /^About / , level: 1 })).toBeVisible();

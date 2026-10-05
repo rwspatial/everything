@@ -1,7 +1,7 @@
 # 09 · Analysis workers: R and Python processes (Phase 5)
 
-An **analysis process** is an R or Python program that takes a published layer, computes something (hot spots,
-clusters, a model) and writes a new layer. You run it from the browser (`/admin/analysis`), from Claude Code
+An **analysis process** is an R or Python program that takes a place (a parcel or a town) or a published layer, computes
+something (a vulnerability assessment, a suitability score, a model) and writes a new layer. You run it from the browser (`/admin/analysis`), from Claude Code
 (the `analysis` MCP server, docs/setup/08-mcp.md) or through the API. The result appears on a map without any
 frontend change: it is an ordinary `tipg-vector` layer.
 
@@ -30,16 +30,12 @@ reported in two minutes.
 
 | Process | Runtime | Inputs | Output fields |
 |---|---|---|---|
-| `py.getis_ord_hotspots`: hot spots (Getis-Ord Gi*) | Python, PySAL `esda` | layer (polygons or points), numeric field, label field, neighbours (`queen` or `knn` + `k`) | `value`, `gi_z`, `gi_p`, `cluster`: hot/cold spot at 90/95/99 % confidence |
 | `py.agricultural_potential`: agricultural potential of a parcel | Python, SSURGO + titiler zonal statistics | a parcel (place analysis, run from the project workspace) | each soil unit's `score`, `class`, `limits`; method: `/admin/methods/agricultural-potential` |
 | `py.fire_risk`: wildfire fuel hazard of a parcel | Python, LANDFIRE FBFM40 via titiler | a parcel (place analysis, run from the project workspace) | each fuel type's `hazard`, `class`; method: `/admin/methods/fire-risk` |
+| `py.town_vulnerability`: community vulnerability assessment of a town | Python, PostGIS | a town (place analysis; batch: `make vulnerability towns="…"`) | the hazard scenarios in the town (`scenario`, `horizon`, `connection`); report: exposure tables, relative risk, social vulnerability, draft actions; method: `/admin/methods/town-vulnerability` |
 
-Gi\* uses 999 permutations with a fixed seed, so a rerun gives the same answer. Features with a null value are
-skipped, and the report counts them. A polygon with no neighbours (an island) gets its nearest neighbour.
-
-On Maine town median household income (ACS 2020-2024), for example:
-- **Gi\*:** finds 99 % hot spots in Cumberland, York, Sagadahoc, Lincoln and Androscoggin (mean $96,000) and
-  cold spots across Aroostook, Washington, Piscataquis, Somerset, Franklin and Penobscot (mean $61,000).
+All three are place analyses. The layer analysis that ran on any published layer (Getis-Ord Gi* hot spots) was removed
+on 2026-10-05; /admin/analysis and the Analysis Sandbox stay for the next one (see git history for a worked example).
 
 ## In the browser: /admin/analysis
 
@@ -55,7 +51,7 @@ To keep that version in git, run `./mapgen export analysis-sandbox`.
 | Method | Path | |
 |---|---|---|
 | GET | `/api/admin/processes` | descriptors, `worker_online` |
-| POST | `/api/admin/jobs` | `{"process": "py.getis_ord_hotspots", "inputs": {...}}`. Returns 201 with the job, 422 with `{errors: [{input, message}]}`, or 200 with `deduplicated: true` when the same job is already queued or running |
+| POST | `/api/admin/jobs` | `{"process": "py.town_vulnerability", "inputs": {"unit": "town", "place": "<unit_key>"}}`. Returns 201 with the job, 422 with `{errors: [{input, message}]}`, or 200 with `deduplicated: true` when the same job is already queued or running |
 | GET | `/api/admin/jobs/{id}` | status, progress, `result` (`collection`, `layerSpec`, `report`) or `error` (`message`, `log_tail`) |
 | POST | `/api/admin/jobs/{id}/cancel` | a queued job is cancelled at once; a running one within seconds |
 | POST | `/api/admin/jobs/{id}/promote` | admin only: `{"project": "analysis-sandbox"}` adds the layer to that project |

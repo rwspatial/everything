@@ -65,10 +65,10 @@
 	}
 </script>
 
-<svelte:head><title>Datasets · Admin</title></svelte:head>
+<svelte:head><title>Sources &amp; imports · Admin</title></svelte:head>
 
 <header class="head">
-	<h1>Datasets</h1>
+	<h1>Sources &amp; imports</h1>
 	<p>
 		Every dataset defined in <code>data/recipes/</code>: what we hold, how fresh it is, where it is published and how
 		the last run went. <strong>{summary.total}</strong> datasets · <strong>{summary.ok}</strong> ok ·

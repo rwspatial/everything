@@ -34,12 +34,12 @@ server = MCPServer(
     name="analysis",
     title="Spatial analysis jobs (R and Python)",
     instructions=(
-        "Run spatial statistics on published map layers. list_processes shows what is available (e.g. "
-        "py.getis_ord_hotspots: Gi* hot spots); describe_process gives the "
-        "inputs (collection = a pub view such as pub.maine_overview__towns; field = one of its numeric columns, see "
-        "the spatial-db or project-pipeline servers). submit_job returns a job id; job_result(job_id, wait_seconds) "
-        "waits for it and returns the report and a ready-to-use LayerSpec. Results become layers on "
-        "pub.analysis_sandbox__job_<id>; a person adds them to a map in /admin/analysis."
+        "Run R and Python analyses of one place. list_processes shows what is available (e.g. "
+        "py.town_vulnerability: a town's community vulnerability assessment; py.agricultural_potential and "
+        "py.fire_risk: a parcel); describe_process gives the inputs (unit = town or parcel, place = its unit_key in "
+        "pub.units__town or pub.units__parcel, see the spatial-db server). submit_job returns a job id; "
+        "job_result(job_id, wait_seconds) waits for it and returns the report and a ready-to-use LayerSpec. Results "
+        "become layers on pub.analysis_sandbox__job_<id>; a person adds them to a map in the project workspace."
     ),
 )
 

@@ -194,13 +194,13 @@
 <h1>New project</h1>
 <p class="lead">
 	Choose a map design and a place: you get a finished, framed map built from the curated layers, ready to save. To
-	analyse one property, choose <a href="/admin/new?design=parcel-site">Parcel site</a> and click the parcel on the map. For a
+	analyse one property, choose <a href="/admin/new?design=parcel-site">Parcel site analysis</a> and click the parcel on the map. For a
 	map of one published view with your own style, use the <a href="/admin/new/view">single-view creator</a>.
 </p>
 {#if loadError}<p class="error" role="alert">{loadError}</p>{/if}
 
 <div class="builder">
-	<div class="steps">
+	<div class="steps col-design">
 		<fieldset>
 			<legend>1. Design</legend>
 			<div class="designs" role="radiogroup" aria-label="Map design">
@@ -213,7 +213,9 @@
 				{/each}
 			</div>
 		</fieldset>
+	</div>
 
+	<div class="steps col-place">
 		<fieldset disabled={!design}>
 			<legend>2. Place</legend>
 			{#if design && design.geographies.length > 1}
@@ -306,7 +308,9 @@
 <style>
 	h1 { margin: 0 0 0.3rem; font-size: 1.4rem; }
 	.lead { color: var(--muted); margin: 0 0 1rem; max-width: 75ch; }
-	.builder { display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 1.2rem; align-items: start; }
+	/* Three columns: 1. design, 2. place (and save), 3. the map. */
+	.builder { display: grid; grid-template-columns: minmax(250px, 310px) minmax(260px, 320px) 1fr; gap: 1rem; align-items: start; }
+	.col-design .designs { max-height: calc(80vh - 3rem); overflow: auto; padding-right: 0.2rem; }
 	.steps { display: grid; gap: 0.9rem; }
 	fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem 0.9rem; display: grid; gap: 0.35rem; background: var(--surface); }
 	fieldset:disabled { opacity: 0.6; }
@@ -339,8 +343,13 @@
 	.saved { background: #e8f4ea; border: 1px solid #3c8a4a; border-radius: 8px; padding: 0.6rem 0.8rem; margin-top: 0.4rem; }
 	.preview { height: 80vh; min-height: 520px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: sticky; top: 1rem; }
 	.placeholder { display: grid; place-items: center; height: 100%; margin: 0; color: var(--muted); }
-	@media (max-width: 900px) {
+	@media (max-width: 1200px) {
+		.builder { grid-template-columns: minmax(250px, 320px) 1fr; }
+		.preview { grid-column: 1 / -1; position: static; height: 70vh; }
+		.col-design .designs { max-height: none; }
+	}
+	@media (max-width: 760px) {
 		.builder { grid-template-columns: 1fr; }
-		.preview { position: static; height: 60vh; }
+		.preview { height: 60vh; }
 	}
 </style>

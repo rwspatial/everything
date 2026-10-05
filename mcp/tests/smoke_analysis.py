@@ -12,7 +12,7 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 fails = 0
-TOWNS = "pub.maine_overview__towns"
+CASTINE, BAR_HARBOR = "2300911265", "2300902865"  # pub.units__town unit_keys
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
@@ -44,33 +44,31 @@ async def main() -> None:
         check("tools listed", tools == ["cancel_job", "describe_process", "job_result", "job_status", "list_processes", "submit_job"],
               ", ".join(tools))
         procs = {p["id"]: p for p in payload(await s.call_tool("list_processes", {}))}
-        check("processes listed, a worker online", "py.getis_ord_hotspots" in procs
+        check("processes listed, a worker online", "py.town_vulnerability" in procs
               and all(p["worker_online"] for p in procs.values()), ", ".join(procs))
-        d = payload(await s.call_tool("describe_process", {"process_id": "py.getis_ord_hotspots"}))
-        check("describe_process keeps the input order", list(d.get("inputs", {})) == ["collection", "field", "label", "weights", "k"],
+        d = payload(await s.call_tool("describe_process", {"process_id": "py.town_vulnerability"}))
+        check("describe_process keeps the input order", list(d.get("inputs", {})) == ["unit", "place"],
               str(list(d.get("inputs", {}))))
 
-        res = await s.call_tool("submit_job", {"process_id": "py.getis_ord_hotspots",
-                                               "inputs": {"collection": "pub.maine_coast__boat_launches", "field": "nope"}})
-        check("bad inputs are refused with the reason", bool(res.is_error) and "field" in text(res), text(res)[:110])
+        res = await s.call_tool("submit_job", {"process_id": "py.town_vulnerability", "inputs": {"unit": "town", "place": "nope"}})
+        check("bad inputs are refused with the reason", bool(res.is_error) and "place" in text(res), text(res)[:110])
 
-        # Python through MCP: Gi* with 6 nearest neighbours (a different setup from the queen-contiguity runs).
-        j = payload(await s.call_tool("submit_job", {"process_id": "py.getis_ord_hotspots", "inputs": {
-            "collection": TOWNS, "field": "median_hh_income", "label": "namelsad", "weights": "knn", "k": 6}}))
+        # Python through MCP: the vulnerability assessment of Castine (a few seconds).
+        j = payload(await s.call_tool("submit_job", {"process_id": "py.town_vulnerability", "inputs": {"unit": "town", "place": CASTINE}}))
         jid = j.get("job_id") if isinstance(j, dict) else None
         check("submit_job queues a Python job", isinstance(jid, int), json.dumps(j)[:100])
         r = payload(await s.call_tool("job_result", {"job_id": jid, "wait_seconds": 300}))
-        mv = (r.get("report") or {}).get("mean_value", {})
-        check("job_result: succeeded, hot spots richer than cold spots", r.get("status") == "succeeded"
-              and (mv.get("hot_99") or 0) > (mv.get("all") or 1e12) > (mv.get("cold_99") or 1e12),
-              f"{r.get('status')}; mean income hot {mv.get('hot_99')}, all {mv.get('all')}, cold {mv.get('cold_99')}")
+        rep = r.get("report") or {}
+        bld = next((e for e in rep.get("exposure", []) if e.get("asset") == "Buildings"), {})
+        check("job_result: succeeded, Castine's buildings counted per scenario", r.get("status") == "succeeded"
+              and (rep.get("town") or {}).get("short_name") == "Castine" and bld.get("total", 0) > 0 and "fema_1pct" in bld.get("by", {}),
+              f"{r.get('status')}; buildings {bld.get('total')}, scenarios {sorted(bld.get('by', {}))}")
         spec = r.get("layerSpec") or {}
         check("job_result: a LayerSpec on the published view", spec.get("source", {}).get("collection") == f"pub.analysis_sandbox__job_{jid}",
               spec.get("source", {}).get("collection", ""))
 
         # Cancel: queue a job and cancel it straight away.
-        j = payload(await s.call_tool("submit_job", {"process_id": "py.getis_ord_hotspots", "inputs": {
-            "collection": TOWNS, "field": "pop", "label": "namelsad"}}))
+        j = payload(await s.call_tool("submit_job", {"process_id": "py.town_vulnerability", "inputs": {"unit": "town", "place": BAR_HARBOR}}))
         c = payload(await s.call_tool("cancel_job", {"job_id": j["job_id"]}))
         r = payload(await s.call_tool("job_result", {"job_id": j["job_id"], "wait_seconds": 60}))
         check("cancel_job stops a job", c.get("status") in ("cancelled", "cancel_requested") and r.get("status") == "cancelled",

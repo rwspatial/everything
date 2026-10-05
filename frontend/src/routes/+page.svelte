@@ -27,7 +27,7 @@
 			<p class="tagline">{site.tagline}</p>
 			<div class="cta">
 				<a class="btn primary" href="/maps">Explore the maps</a>
-				<a class="btn" href="/about#contact">Get in touch</a>
+				<a class="btn" href="/about">Get in touch</a>
 			</div>
 		</div>
 		{#if site.hero.image && site.hero.credit}

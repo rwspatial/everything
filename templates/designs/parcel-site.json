@@ -1,6 +1,6 @@
 {
   "id": "parcel-site",
-  "title": "Parcel site",
+  "title": "Parcel site analysis",
   "description": "One parcel and its land: farmland soils, drainage, slope and contours, current crops and land cover, wildfire fuels, wetlands and flood zones, with neighbouring parcels. Open it in the project workspace to run analyses such as agricultural potential and wildfire fuel hazard.",
   "geographies": [
     "parcel"

@@ -10,7 +10,9 @@ Processes live in `processes/`:
 
 | Process | Runtime | What it computes |
 |---|---|---|
-| `py.getis_ord_hotspots` | Python (PySAL `esda`) | Getis-Ord Gi* hot and cold spots of a numeric field |
+| `py.agricultural_potential` | Python | Agricultural potential of a parcel (SSURGO soils, terrain) |
+| `py.fire_risk` | Python | Wildfire fuel hazard of a parcel (LANDFIRE fuel models) |
+| `py.town_vulnerability` | Python (PostGIS) | Community vulnerability assessment of a town (flood and sea level rise exposure) |
 
 Add one: a Python module with `DESCRIPTOR` and `run(ctx, inputs)`, or a folder with `descriptor.json` and
 `run.R` (using `rlib/ctx.R`). Descriptors follow `contracts/process.v1.schema.json`. See docs/setup/09-ml-workers.md.

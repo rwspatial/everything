@@ -173,20 +173,27 @@ test.describe('signed in', () => {
 		};
 		const designs: { id: string; geographies: string[] }[] = await (await request.get('/api/admin/designs')).json();
 		expect(designs.length).toBeGreaterThanOrEqual(5);
+		// Every design, for every kind of place it serves (a design may vary its layers and charts by place).
 		for (const d of designs) {
-			let [unit, place] = places[d.geographies[0]] ?? [];
-			if (!unit) {
-				unit = d.geographies[0];
-				place = (await (await request.get(`/api/admin/units/${unit}/places?q=Bethel&limit=1`)).json())[0]?.key
-					?? (await (await request.get(`/api/admin/units/${unit}/places?county=23005&limit=1`)).json())[0].key;
+			for (const g of d.geographies) {
+				let [unit, place] = places[g] ?? [];
+				if (!unit) {
+					unit = g;
+					place = (await (await request.get(`/api/admin/units/${unit}/places?q=Bethel&limit=1`)).json())[0]?.key
+						?? (await (await request.get(`/api/admin/units/${unit}/places?county=23005&limit=1`)).json())[0].key;
+				}
+				const res = await request.post(`/api/admin/designs/${d.id}/manifest`, { data: { unit, place } });
+				expect(res.ok(), `${d.id} ${g}`).toBe(true);
+				const body = await res.json();
+				expect(body.report.errors, `${d.id} ${g}`).toEqual([]);
+				expect(body.missing_layers, `${d.id} ${g}`).toEqual([]);
+				expect(body.manifest.layers.at(-1).id, `${d.id} ${g}`).toBe('focus');
 			}
-			const res = await request.post(`/api/admin/designs/${d.id}/manifest`, { data: { unit, place } });
-			expect(res.ok(), d.id).toBe(true);
-			const body = await res.json();
-			expect(body.report.errors, d.id).toEqual([]);
-			expect(body.missing_layers, d.id).toEqual([]);
-			expect(body.manifest.layers.at(-1).id, d.id).toBe('focus');
 		}
+		// The Demographics design: towns for a county, the tract layers for a tract.
+		const county = await (await request.post('/api/admin/designs/demographics/manifest', { data: { unit: 'county', place: '23017' } })).json();
+		expect(county.manifest.layers.map((l: { id: string }) => l.id)).toEqual(expect.arrayContaining(['towns', 'town-boundaries']));
+		expect(county.manifest.title).toBe('Oxford County: demographics');
 		// A design only builds for its own geographies: the Town atlas refuses a county.
 		expect((await request.post('/api/admin/designs/town-atlas/manifest', { data: { unit: 'county', place: '23017' } })).status()).toBe(422);
 	});
@@ -297,37 +304,6 @@ test.describe('signed in', () => {
 		expect((await request.post('/api/projects', { data: base })).status()).toBe(405);
 	});
 
-	test('analysis: run hot spots (Getis-Ord Gi*) on Maine town income, preview, add to the sandbox', async ({ page, request }) => {
-		test.setTimeout(240_000);
-		const original = await (await request.get('/api/projects/analysis-sandbox')).json();
-		try {
-			await page.goto('/admin/analysis');
-			await page.getByLabel('Process', { exact: true }).selectOption('py.getis_ord_hotspots');
-			await page.getByLabel('Layer', { exact: true }).selectOption('pub.maine_overview__towns');
-			await page.getByLabel('Numeric field').selectOption('median_hh_income');
-			await page.getByLabel('Label field (popups) (optional)').selectOption('namelsad');
-			await page.getByRole('button', { name: 'Run' }).click();
-			const status = page.getByRole('region', { name: 'Job status' });
-			await expect(status).toContainText('succeeded', { timeout: 200_000 });
-			const jobId = Number((await status.getByText(/^Job \d+/).textContent())!.match(/\d+/)![0]);
-			await expect(status).toContainText('clusters');
-			await expect(page.getByLabel('Result preview').getByText(/Hot spot, 9\d % confidence/).first()).toBeVisible();
-			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
-			// The preview is a small map: count what it draws, which is most of the 496 towns once its tiles are in.
-			await expect.poll(() => page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId), { timeout: 45_000 }).toBeGreaterThan(250);
-			await shot(page, 'admin-6-analysis');
-
-			await page.getByRole('button', { name: 'Add to Analysis Sandbox' }).click();
-			await page.getByRole('link', { name: 'Open the Analysis Sandbox' }).click();
-			await expect(page).toHaveURL(/\/p\/analysis-sandbox/);
-			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
-			await expect.poll(() => page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId), { timeout: 20_000 }).toBeGreaterThan(400);
-		} finally {
-			// Put the sandbox back the way the file has it.
-			expect((await request.put('/api/admin/projects/analysis-sandbox', { data: original })).ok()).toBe(true);
-		}
-	});
-
 	test('dataset actions: dry run and update check on Maine towns, run by the dataset worker', async ({ page }) => {
 		test.setTimeout(120_000);
 		await page.goto('/admin/datasets/me_cousub');
@@ -346,10 +322,20 @@ test.describe('signed in', () => {
 		await expect(runs.getByRole('row').nth(1)).toContainText('admin:');
 	});
 
-	test('admin nav links to the Data API (tiPG), which is no longer in the site nav', async ({ page }) => {
+	test('admin nav: New project first, one Data section with three tabs; the API tab lists the collections', async ({ page }) => {
 		await page.goto('/admin');
-		await expect(page.getByRole('link', { name: 'Data API' })).toHaveAttribute('href', '/tiles/');
-		await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Data API' })).toHaveCount(0);
+		const nav = page.getByRole('navigation', { name: 'Admin' });
+		await expect(nav.getByRole('link').first()).toHaveText(/New project/);
+		await expect(nav.getByRole('link', { name: 'Data', exact: true })).toHaveAttribute('aria-current', 'page');
+		const data = page.getByRole('navigation', { name: 'Data' });
+		await expect(data.getByRole('link')).toHaveCount(3);
+		await data.getByRole('link', { name: /Tiles & features API/ }).click();
+		await expect(page.getByRole('heading', { name: 'Tiles & features API' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'pub.maine_water__stream_gauges' })).toHaveAttribute('href', /\/tiles\/collections\/pub\.maine_water__stream_gauges$/);
+		await expect(page.getByRole('navigation', { name: 'Data' }).getByRole('link', { name: /Tiles & features API/ })).toHaveAttribute('aria-current', 'page');
+		await shot(page, 'admin-data-api');
+		// The site's main nav does not offer the Data API.
+		await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: /Data API|Tiles/ })).toHaveCount(0);
 	});
 
 	test('jobs page shows recent runs', async ({ page }) => {
@@ -553,7 +539,7 @@ test.describe('signed in', () => {
 	});
 
 	test('accessibility: no serious or critical axe violations', async ({ page }) => {
-		for (const path of ['/admin', '/admin/datasets/me_boat_launches', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential', '/admin/methods/fire-risk']) {
+		for (const path of ['/admin', '/admin/datasets/me_boat_launches', '/admin/jobs', '/admin/new', '/admin/new/view', '/admin/analysis', '/admin/projects', '/admin/database', '/admin/data-api', '/admin/methods', '/admin/methods/settlements', '/admin/methods/agricultural-potential', '/admin/methods/fire-risk']) {
 			await page.goto(path);
 			if (path.includes('/datasets/')) await page.waitForFunction(() => window.__adminMap?.ready === true);
 			const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

@@ -122,7 +122,7 @@
 		{#if !analyses}
 			<p class="hint">
 				This project is not about one place, so there is nothing to analyse here. Build one from a design, e.g.
-				<a href="/admin/new?design=parcel-site">Parcel site</a>.
+				<a href="/admin/new?design=parcel-site">Parcel site analysis</a>.
 			</p>
 		{:else if !analyses.processes.length}
 			<p class="hint">No analyses run on a {analyses.place.unit} yet.</p>

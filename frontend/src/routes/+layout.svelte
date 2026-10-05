@@ -31,9 +31,6 @@
 {#if !fullBleed}
 	<footer class="site-foot">
 		<span>© {new Date().getFullYear()} {site.person || site.studio} · {site.location}</span>
-		<nav aria-label="Developer">
-			{#if !page.data.config?.publicMode}<a href="/new" aria-current={current('/new')}>Add a project</a>{/if}
-		</nav>
 	</footer>
 {/if}
 
@@ -63,5 +60,4 @@
 		color: var(--muted);
 		border-top: 1px solid var(--border);
 	}
-	.site-foot nav a { color: var(--muted); font-size: 0.8rem; }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	// About, services ("What I do") and contact ("Work with me") on one page; the landing page keeps the work.
+	// About, services ("What I do") and contact ("Work with me", beside the summary) on one page; the landing page keeps the work.
 	import { page } from '$app/state';
 	import { site, title } from '$lib/site';
 
@@ -31,7 +31,6 @@
 			<nav class="jump" aria-label="On this page">
 				<a href="#services">What I do</a>
 				<a href="#stack">How this site is built</a>
-				<a href="#contact">Work with me</a>
 			</nav>
 		</div>
 		{#if site.hero.image && site.hero.credit}
@@ -41,9 +40,20 @@
 		{/if}
 	</section>
 
-	<section class="wrap block" aria-label="About">
-		{#each site.about as para (para)}<p class="intro">{para}</p>{/each}
-	</section>
+	<div class="wrap contact-top">
+		<section id="contact" class="contact-card" aria-labelledby="contact-title">
+			<h2 id="contact-title">Work with me</h2>
+			{#if links.length}
+				<ul class="contact">
+					{#each links as l (l.label)}
+						<li><span>{l.label}</span><a href={l.href} rel={l.href.startsWith('http') ? 'external noopener' : undefined}>{l.text}</a></li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="todo">Contact details not set yet: add them to <code>frontend/src/lib/site.ts</code>.</p>
+			{/if}
+		</section>
+	</div>
 
 	<section id="services" class="band" aria-labelledby="services-title">
 		<div class="wrap block">
@@ -56,46 +66,37 @@
 		</div>
 	</section>
 
-	<section id="stack" class="wrap block" aria-labelledby="stack-title">
-		<h2 id="stack-title">How this site is built</h2>
-		<ul class="stack" aria-label="Technology">
-			{#each site.stack as t (t)}<li>{t}</li>{/each}
-		</ul>
-		<p class="small">
-			Vector layers come from PostGIS views through an OGC API{#if !page.data.config?.publicMode}{' '}(<a
-					href="/tiles/"
-					rel="external">browse the Data API</a
-				>){/if},
-			rasters are Cloud-Optimized GeoTIFFs rendered on the fly (locally or from S3), analyses run as R and Python jobs, and
-			charts are drawn with D3 from live queries. Maps are validated JSON manifests, so a new map, design or report is
-			configuration rather than code; browser tests check every page, and the whole stack runs in Docker, on a laptop or
-			on AWS.
-			<a href="/maps">See the live maps →</a>
-		</p>
-	</section>
-
-	<section id="contact" class="band dark" aria-labelledby="contact-title">
-		<div class="wrap block">
-			<h2 id="contact-title">Work with me</h2>
-			<p class="lede">Available for freelance projects and open to full-time geospatial roles.</p>
-			{#if links.length}
-				<ul class="contact">
-					{#each links as l (l.label)}
-						<li><span>{l.label}</span><a href={l.href} rel={l.href.startsWith('http') ? 'external noopener' : undefined}>{l.text}</a></li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="todo">Contact details not set yet: add them to <code>frontend/src/lib/site.ts</code>.</p>
-			{/if}
-		</div>
-	</section>
+	<!-- About this site on the left, how it is built on the right; stacked on narrow screens. -->
+	<div class="wrap block summary">
+		<section class="panel" aria-labelledby="about-site-title">
+			<h3 id="about-site-title">About this site</h3>
+			{#each site.about as para (para)}<p class="intro">{para}</p>{/each}
+		</section>
+		<section id="stack" class="panel" aria-labelledby="stack-title">
+			<h3 id="stack-title">How this site is built</h3>
+			<ul class="stack" aria-label="Technology">
+				{#each site.stack as t (t)}<li>{t}</li>{/each}
+			</ul>
+			<p class="intro">
+				Vector layers come from PostGIS views through an OGC API{#if !page.data.config?.publicMode}{' '}(<a
+						href="/tiles/"
+						rel="external">browse the Data API</a
+					>){/if},
+				rasters are Cloud-Optimized GeoTIFFs rendered on the fly (locally or from S3), analyses run as R and Python jobs, and
+				charts are drawn with D3 from live queries.
+			</p>
+			<p class="intro">
+				Maps are validated JSON manifests, so a new map, design or report is configuration rather than code; browser tests
+				check every page, and the whole stack runs in Docker, on a laptop or on AWS. <a href="/maps">See the live maps →</a>
+			</p>
+		</section>
+	</div>
 </main>
 
 <style>
 	.wrap { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
 	.block { padding-top: 3rem; padding-bottom: 3rem; }
 	h2 { font-size: 1.6rem; margin: 0 0 0.5rem; }
-	.lede { color: var(--muted); margin: 0 0 1.5rem; max-width: 62ch; }
 	.intro { max-width: 68ch; font-size: 1.1rem; margin: 0 0 1rem; }
 
 	.banner { position: relative; overflow: hidden; background: #13202c; color: #fff; }
@@ -121,14 +122,21 @@
 
 	.stack { list-style: none; padding: 0; margin: 0.8rem 0 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
 	.stack li { font-size: 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.65rem; }
-	.small { font-size: 0.9rem; color: var(--muted); max-width: 70ch; }
 
-	.dark { background: #13202c; color: #fff; border: 0; }
-	.dark .lede { color: #a9c7da; }
-	.contact { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
-	.contact li { display: flex; gap: 1rem; align-items: baseline; }
-	.contact span { width: 6.5rem; color: #a9c7da; font-size: 0.85rem; }
-	.contact a { color: #5cc8e6; font-weight: 600; }
+	/* Two panels side by side: about this site (left) and how it is built (right). */
+	.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: stretch; }
+	.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem 1.6rem; }
+	.panel h3 { font-size: 1.15rem; margin: 0 0 0.6rem; }
+	.panel .intro:last-child { margin-bottom: 0; }
+	.contact-top { padding-top: 2rem; padding-bottom: 2rem; }
+	@media (max-width: 900px) { .summary { grid-template-columns: 1fr; } }
+	.contact-card { background: #13202c; color: #fff; border-radius: 12px; padding: 1.4rem 1.5rem; }
+	.contact-card { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 2.5rem; }
+	.contact-card h2 { font-size: 1.3rem; margin: 0; }
+	.contact { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.6rem 2.5rem; }
+	.contact li { display: grid; gap: 0.05rem; }
+	.contact span { color: #a9c7da; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+	.contact a { color: #5cc8e6; font-weight: 600; overflow-wrap: anywhere; }
 	.todo { color: #f6d58e; }
 	.todo code { color: #fff; }
 </style>

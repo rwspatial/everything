@@ -36,7 +36,9 @@
 	<code>data/recipes/</code>.
 </p>
 
-<h2>Methods</h2>
+<div class="columns">
+<section class="col-methods" aria-labelledby="methods-h">
+<h2 id="methods-h">Methods</h2>
 {#if data.methods.length}
 	<ul class="list">
 		{#each data.methods as m (m.id)}
@@ -51,8 +53,9 @@
 {:else}
 	<p class="sub">No methods yet. Add a JSON file to <code>docs/methods/</code>.</p>
 {/if}
+</section>
 
-<section aria-labelledby="sources-h">
+<section class="col-sources" aria-labelledby="sources-h">
 	<div class="sources-head">
 		<h2 id="sources-h">Sources</h2>
 		<span class="sub">
@@ -88,6 +91,7 @@
 		</div>
 	{/each}
 </section>
+</div>
 
 <style>
 	h1 { margin: 0 0 0.3rem; font-size: 1.5rem; }
@@ -100,10 +104,15 @@
 	.list p { margin: 0.3rem 0 0; font-size: 0.9rem; max-width: 80ch; }
 	.sub { font-size: 0.75rem; color: var(--muted); margin-left: 0.5rem; }
 	code { font-size: 0.8rem; }
-	.sources-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 0.8rem; margin-top: 1.4rem; }
+	/* Two columns: methods on the left, sources on the right. */
+	.columns { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.4fr); gap: 1.5rem; align-items: start; }
+	.col-methods { position: sticky; top: 1rem; }
+	.col-methods h2, .sources-head h2 { margin-top: 0; }
+	@media (max-width: 1000px) { .columns { grid-template-columns: 1fr; } .col-methods { position: static; } }
+	.sources-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 0.8rem; margin-top: 0; }
 	.sources-head h2 { margin: 0; }
 	.sources-head .sub { margin-left: 0; }
-	.sources-head input { margin-left: auto; min-width: min(100%, 320px); font: inherit; font-size: 0.85rem; padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+	.sources-head input { margin-left: auto; min-width: min(100%, 260px); font: inherit; font-size: 0.85rem; padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
 	.count { font-size: 0.72rem; font-weight: 600; color: var(--muted); background: var(--surface-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 0.45rem; }
 	.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
 	table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
