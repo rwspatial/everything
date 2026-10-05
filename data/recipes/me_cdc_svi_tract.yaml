@@ -1,0 +1,29 @@
+name: me_cdc_svi_tract
+title: Social Vulnerability Index 2022 by census tract (CDC/ATSDR, Maine)
+description: 'CDC/ATSDR Social Vulnerability Index 2022: percentile rankings (0-1) of 16 census variables in four themes (socioeconomic
+  status, household characteristics, racial and ethnic minority status, housing type and transportation) and overall (RPL_THEMES),
+  ranked nationally, per census tract.'
+agency: Centers for Disease Control and Prevention / ATSDR
+source:
+  arcgis:
+    url: https://services3.arcgis.com/ZvidGQkLaDJxRSJ2/arcgis/rest/services/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/2
+    where: ST_ABBR='ME'
+    page_size: 100
+    params:
+      geometryPrecision: 6
+    by_ids: true
+upstream:
+  arcgis: https://services3.arcgis.com/ZvidGQkLaDJxRSJ2/arcgis/rest/services/CDC_ATSDR_Social_Vulnerability_Index_2022_USA/FeatureServer/2
+target: src_health.svi_tract
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 180d
+license: Public domain (CDC/ATSDR)
+attribution: CDC/ATSDR Social Vulnerability Index 2022
+group: maine
+coverage:
+  extent: Maine
+requires_keys: []
+enabled: true

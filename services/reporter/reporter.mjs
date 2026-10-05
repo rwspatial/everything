@@ -14,6 +14,7 @@ const OUT = process.env.REPORTS_DIR ?? '/reports';
 const ALIVE = '/tmp/reporter-alive';
 const ID = `reporter@${hostname()}:${process.pid}`;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const PAGES = { report: 'map report', assessment: 'vulnerability assessment' };
 
 const pool = new pg.Pool({ connectionString: DB, max: 3 });
 let browser = null;
@@ -59,12 +60,15 @@ const progress = (id, p, msg) =>
 async function render(job) {
 	const slug = job.params?.slug;
 	if (!SLUG.test(slug ?? '')) throw new Error(`invalid project slug ${JSON.stringify(slug)}`);
+	// Which page of the project: the map report (default) or the town vulnerability assessment.
+	const page_ = job.params?.page ?? 'report';
+	if (!PAGES[page_]) throw new Error(`invalid report page ${JSON.stringify(page_)}`);
 	browser ??= await chromium.launch();
 	const context = await browser.newContext({ viewport: { width: 1000, height: 1300 }, deviceScaleFactor: 2 });
 	const beat = setInterval(() => pool.query(`UPDATE app.jobs SET heartbeat_at = now() WHERE id = $1`, [job.id]).catch(() => {}), 15000);
 	try {
 		const page = await context.newPage();
-		await page.goto(`${SITE}/p/${slug}/report`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+		await page.goto(`${SITE}/p/${slug}/${page_}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
 		await progress(job.id, 0.3, 'drawing the map and charts');
 		await page.waitForFunction(() => window.__report?.ready === true || !!window.__report?.error, null, { timeout: 180000 });
 		const err = await page.evaluate(() => window.__report?.error);
@@ -78,7 +82,7 @@ async function render(job) {
 			displayHeaderFooter: true,
 			headerTemplate: '<span></span>',
 			footerTemplate: `<div style="font: 8px sans-serif; width: 100%; padding: 0 0.55in; color: #5b6670; display: flex; justify-content: space-between">
-				<span>Downeast Geospatial · ${title.replace(/[<>&]/g, '')} · map report</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`
+				<span>Downeast Geospatial · ${title.replace(/[<>&]/g, '')} · ${PAGES[page_]}</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`
 		});
 		const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page(?![s\w])/g) ?? []).length || null;
 		const rel = `${slug}/${job.id}.pdf`;

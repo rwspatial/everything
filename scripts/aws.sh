@@ -95,6 +95,11 @@ case "${1:-status}" in
       echo "code: this working tree (tracked + new files, nothing git ignores)"
       git -C "$REPO" ls-files -co --exclude-standard -z | tar -C "$REPO" --null -T - -czf - \
         | "${SSH[@]}" "$R" 'cd /srv/everything && tar -xzf -'
+      # tar only adds and updates: remove files the server's checkout tracks that this tree no longer has (deleted
+      # projects, seeds, recipes), so they are not seeded or synced again.
+      git -C "$REPO" ls-files -co --exclude-standard | "${SSH[@]}" "$R" \
+        'cd /srv/everything && keep=$(mktemp) && sort -u > "$keep" && git ls-files | sort | comm -23 - "$keep" \
+         | while IFS= read -r f; do [ -e "$f" ] && rm -f -- "$f" && echo "  removed $f"; done; rm -f "$keep"'
     else
       echo "code: origin/master"
       "${SSH[@]}" "$R" 'cd /srv/everything && git fetch -q origin && git reset -q --hard origin/master && git clean -fdq && git log --oneline -1'
@@ -114,6 +119,8 @@ case "${1:-status}" in
     "${SSH[@]}" "$R" 'set -e; cd /srv/everything
       [ -f scripts/present.sh ] && bash scripts/present.sh off >/dev/null
       docker compose up -d --build --remove-orphans 2>&1 | grep -E "Built|Recreated|Error" || true
+      # The proxy config is a mounted file and its admin endpoint is off: restart it so a changed Caddyfile applies.
+      docker compose restart proxy >/dev/null
       docker compose run --rm migrator migrate 2>&1 | grep -E "Applying|Error" || true
       docker compose run --rm migrator seed 2>&1 | grep -iE "error" || true
       docker compose restart tipg >/dev/null

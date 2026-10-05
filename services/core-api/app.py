@@ -783,23 +783,49 @@ def _report_out(r: dict) -> dict:
     return {**r, "url": f"/api/projects/{r['slug']}/reports/{r['id']}.pdf"}
 
 
+REPORT_PAGES = ("report", "assessment")  # /p/<slug>/<page>: the map report, or a vulnerability assessment
+
+
 @app.post("/api/admin/projects/{slug}/reports", dependencies=[Depends(require_admin)], status_code=201)
-def queue_report(slug: str, request: Request, response: Response) -> dict:
-    """Queue a PDF report of one project (deduplicated while one is queued or running)."""
+async def queue_report(slug: str, request: Request, response: Response) -> dict:
+    """Queue a PDF of one project (deduplicated while one is queued or running). Body (optional): {"page": "report"
+    (default, the map report) | "assessment" (the town vulnerability assessment, /p/<slug>/assessment)}."""
+    body = (await request.json()) if (await request.body()) else {}
+    page = (body or {}).get("page") or "report"
+    if page not in REPORT_PAGES:
+        raise HTTPException(422, f"page must be one of {', '.join(REPORT_PAGES)}")
     with projects_pool.connection() as conn:
         if not conn.execute("SELECT 1 FROM app.projects WHERE slug = %s", (slug,)).fetchone():
             raise HTTPException(404, f"no project {slug}")
-        key = f"report:{slug}"
+        key = f"report:{slug}" + ("" if page == "report" else f":{page}")
         row = conn.execute(
             f"""INSERT INTO app.jobs (kind, action, params, concurrency_class, max_attempts, dedupe_key, created_by)
                 VALUES ('report', 'render', %s, 'report', 2, %s, %s)
                 ON CONFLICT (dedupe_key) WHERE status IN ('queued', 'running') AND dedupe_key IS NOT NULL DO NOTHING
-                RETURNING {JOB_COLUMNS}""", (json.dumps({"slug": slug}), key, _caller(request))).fetchone()
+                RETURNING {JOB_COLUMNS}""", (json.dumps({"slug": slug, "page": page}), key, _caller(request))).fetchone()
         if row is None:
             row = conn.execute(f"SELECT {JOB_COLUMNS} FROM app.jobs WHERE dedupe_key = %s AND status IN ('queued', 'running')",
                                (key,)).fetchone()
             response.status_code = 200
             row["deduplicated"] = True
+    return row
+
+
+@app.get("/api/projects/{slug}/assessment")
+def project_assessment(slug: str, request: Request) -> dict:
+    """The latest finished vulnerability assessment (py.town_vulnerability) of this project's town: its report, for the
+    printable /p/<slug>/assessment page. Same visibility as the project (drafts are hidden on the public site)."""
+    with projects_pool.connection() as conn:
+        if not _project_visible(conn, request, slug):
+            raise HTTPException(404, f"no project {slug}")
+        _manifest, place = _project_place(conn, slug)
+        row = conn.execute(
+            """SELECT id AS job_id, finished_at, result->'report' AS report FROM app.jobs
+               WHERE kind = 'process' AND process_id = 'py.town_vulnerability' AND status = 'succeeded'
+                 AND inputs->>'unit' = %s AND inputs->>'place' = %s
+               ORDER BY id DESC LIMIT 1""", (place["unit"], place["key"])).fetchone()
+    if not row:
+        raise HTTPException(404, f"no vulnerability assessment has been run for {slug}")
     return row
 
 

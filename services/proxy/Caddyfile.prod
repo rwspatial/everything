@@ -76,33 +76,37 @@
 		-Server
 	}
 
-	# The admin dashboard, its API and the raw manifest files (drafts included) do not exist on the public site.
-	# Analysis results (pub.analysis_sandbox__job_*) are working data for admins, not part of the public Data API.
-	@hidden path /admin /admin/* /api/admin/* /projects/* /tiles/collections/pub.analysis_sandbox__*
-	handle @hidden {
-		respond "Not found" 404
-	}
+	# `route` keeps these handlers in the order written. Without it Caddy sorts `handle` blocks, and the path-matched
+	# `handle_path /tiles/*` (in shared) ran before the named-matcher guards below, so the guards never applied to /tiles.
+	route {
+		# The admin dashboard, its API and the raw manifest files (drafts included) do not exist on the public site.
+		# Analysis results (pub.analysis_sandbox__job_*) are working data for admins, not part of the public Data API.
+		@hidden path /admin /admin/* /api/admin/* /projects/* /tiles/collections/pub.analysis_sandbox__*
+		handle @hidden {
+			respond "Not found" 404
+		}
 
-	# The Data API (tiPG's catalogue, collection pages, docs) is an admin tool, reached through the admin listener.
-	# The public site passes only what its maps request: vector tiles and GeoJSON items of a collection.
-	@data_api {
-		path /tiles /tiles/*
-		not path_regexp ^/tiles/collections/[A-Za-z0-9_.]+/(tiles/[A-Za-z0-9]+/\d+/\d+/\d+|items)$
-	}
-	handle @data_api {
-		respond "Not found" 404
-	}
+		# The Data API (tiPG's catalogue, collection pages, docs) is an admin tool, reached through the admin listener.
+		# The public site passes only what its maps request: vector tiles and GeoJSON items of a collection.
+		@data_api {
+			path /tiles /tiles/*
+			not path_regexp ^/tiles/collections/[A-Za-z0-9_.]+/(tiles/[A-Za-z0-9]+/\d+/\d+/\d+|items)$
+		}
+		handle @data_api {
+			respond "Not found" 404
+		}
 
-	handle /config.json {
-		header Content-Type application/json
-		header Cache-Control "no-cache"
-		respond `{"tilesBase": "/tiles", "projectsBase": "/projects", "publicMode": true}` 200
-	}
+		handle /config.json {
+			header Content-Type application/json
+			header Cache-Control "no-cache"
+			respond `{"tilesBase": "/tiles", "projectsBase": "/projects", "publicMode": true}` 200
+		}
 
-	import shared
+		import shared
 
-	handle {
-		reverse_proxy frontend:80
+		handle {
+			reverse_proxy frontend:80
+		}
 	}
 }
 

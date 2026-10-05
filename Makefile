@@ -18,7 +18,7 @@ OPS     := bash scripts/ops.sh
         build-tools inspect import import-recipe import-all datasets cog \
         r py tools-sh \
         frontend frontend-install frontend-dev frontend-check e2e \
-        contracts contracts-check validate-styles projects-sync projects-check \
+        contracts contracts-check validate-styles vulnerability projects-sync projects-check \
         mcp-credentials mcp-build mcp-test \
         workers-up workers-logs \
         recipes-sync health-datasets freshness admin-credentials
@@ -222,6 +222,10 @@ contracts: check-env frontend/node_modules ## Regenerate frontend types from con
 
 contracts-check: check-env frontend/node_modules ## Fail if the generated frontend types are stale
 	@$(COMPOSE) run --rm -T node node scripts/contracts.mjs check
+
+vulnerability: check-env ## Town vulnerability assessments: project, analysis and PDF per town (towns="Bar Harbor, Castine")
+	@test -n "$(towns)" || { echo 'usage: make vulnerability towns="Bar Harbor, Castine"'; exit 2; }
+	@set -a; . ./.env; set +a; python3 scripts/vulnerability_batch.py "$(towns)"
 
 validate-styles: check-env frontend/node_modules ## MapLibre style-spec check of every project (p=<slug> for one)
 	@$(COMPOSE) run --rm -T node node scripts/validate-styles.mjs $(p)

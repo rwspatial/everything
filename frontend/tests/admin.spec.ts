@@ -395,6 +395,39 @@ test.describe('signed in', () => {
 		await shot(page, 'admin-methods-settlements');
 	});
 
+	test('vulnerability assessment: Castine from the design, run, printable assessment in the program order', async ({ page, request }) => {
+		test.setTimeout(300_000);
+		const slug = 'e2e-castine-vulnerability';
+		await request.delete(`/api/admin/projects/${slug}`);
+		const town = (await (await request.get('/api/admin/units/town/places?q=Castine&limit=5')).json()).find((r: { short_name: string }) => r.short_name === 'Castine');
+		const built = await (await request.post('/api/admin/designs/town-vulnerability/manifest', { data: { unit: 'town', place: town.key, slug } })).json();
+		expect(built.manifest.layers.map((l: { id: string }) => l.id)).toEqual(expect.arrayContaining(['slr-scenarios', 'tracts-svi', 'flood-zones']));
+		expect((await request.post('/api/admin/projects', { data: { ...built.manifest, slug } })).status()).toBe(201);
+		try {
+			const job = await (await request.post(`/api/admin/projects/${slug}/analyses`, { data: { process: 'py.town_vulnerability' } })).json();
+			await expect.poll(async () => (await (await request.get(`/api/admin/jobs/${job.id}`)).json()).status, { timeout: 240_000, intervals: [2000] }).toBe('succeeded');
+			const a = (await (await request.get(`/api/projects/${slug}/assessment`)).json()).report;
+			expect(a.town.coastal).toBe(true);
+			expect(a.scenarios.filter((s: { present: boolean }) => s.present).length).toBeGreaterThanOrEqual(4);
+			const bld = a.exposure.find((e: { asset: string }) => e.asset === 'Buildings');
+			expect(bld.total).toBeGreaterThan(500);
+			// Sea level exposure grows with the scenario.
+			expect(bld.by.slr_8_8.direct).toBeGreaterThanOrEqual(bld.by.slr_3_9.direct);
+			expect(bld.by.slr_3_9.direct).toBeGreaterThanOrEqual(bld.by.slr_1_6.direct);
+			expect(a.actions.length).toBeGreaterThan(2);
+			await page.goto(`/p/${slug}/assessment`);
+			await expect(page.getByRole('heading', { name: 'Castine town: vulnerability assessment' })).toBeVisible();
+			for (const h of ['1. Community goals', '2. Hazards, impacts and planning horizons', '3. Vulnerability of valued community assets',
+				'4. Relative risk of priority assets', '5. At-risk populations', '6. Recommendations', 'Methods and sources']) {
+				await expect(page.getByRole('heading', { name: h })).toBeVisible();
+			}
+			await page.waitForFunction(() => window.__report?.ready === true, undefined, { timeout: 60_000 });
+			await shot(page, 'assessment-castine');
+		} finally {
+			await request.delete(`/api/admin/projects/${slug}`);
+		}
+	});
+
 	test('settlement editor: a "remove" edit drops a Maine hamlet, shows in the editor, and deleting it restores it', async ({ page, request }) => {
 		const before = (await (await request.get('/api/admin/settlement-edits')).json()).stats;
 		// Refused: outside Maine, and not a polygon.

@@ -3,7 +3,7 @@
   "slug": "maine-coast",
   "status": "ready",
   "title": "Maine Coast",
-  "description": "Shellfish growing areas and NSSP classifications, aquaculture leases and LPA sites, and boat launches. Shellfish classifications are the 2022 NSSP edition, NOT real-time open/closed status. Check Maine DMR closure notices before harvesting.",
+  "description": "Shellfish growing areas and NSSP classifications, aquaculture leases and LPA sites, and boat launches. Shellfish classifications are the 2022 NSSP edition, NOT real-time open/closed status. Check Maine DMR closure notices before harvesting. Sea level rise and storm surge scenarios (Maine Geological Survey) show the land under water at today's highest tide plus 1.2 to 10.9 ft, including the Maine Climate Council's planning targets.",
   "tags": [
     "maine",
     "coast",
@@ -25,6 +25,129 @@
     "basemap": "positron"
   },
   "layers": [
+    {
+      "id": "slr-scenarios",
+      "title": "Sea level rise and storm surge scenarios (MGS)",
+      "group": "Hazards",
+      "minzoom": 7,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_coast__slr_scenarios",
+        "properties": [
+          "scenario",
+          "slr_ft",
+          "scenario_rank",
+          "planning_target",
+          "connectivity",
+          "acres"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "layout": {
+              "fill-sort-key": [
+                "-",
+                0,
+                [
+                  "get",
+                  "scenario_rank"
+                ]
+              ]
+            },
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "scenario_rank"
+                ],
+                0,
+                "#cfdbe6",
+                1,
+                "#08519c",
+                2,
+                "#2171b5",
+                3,
+                "#4292c6",
+                4,
+                "#6baed6",
+                5,
+                "#9ecae1",
+                6,
+                "#c6dbef",
+                "#c6dbef"
+              ],
+              "fill-opacity": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "scenario_rank"
+                  ],
+                  0
+                ],
+                0.25,
+                [
+                  "match",
+                  [
+                    "get",
+                    "connectivity"
+                  ],
+                  "Tidally connected",
+                  0.6,
+                  0.3
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Land under water at the Highest Astronomical Tide (HAT) plus … (darker: sooner; fainter: behind a barrier)",
+        "items": [
+          {
+            "label": "Today's highest tide (mostly water today)",
+            "color": "#cfdbe6"
+          },
+          {
+            "label": "HAT + 1.2 ft",
+            "color": "#08519c"
+          },
+          {
+            "label": "HAT + 1.6 ft (about 2050, commit to manage)",
+            "color": "#2171b5"
+          },
+          {
+            "label": "HAT + 3.9 ft (2100, commit to manage)",
+            "color": "#4292c6"
+          },
+          {
+            "label": "HAT + 6.1 ft",
+            "color": "#6baed6"
+          },
+          {
+            "label": "HAT + 8.8 ft (2100, prepare to manage)",
+            "color": "#9ecae1"
+          },
+          {
+            "label": "HAT + 10.9 ft",
+            "color": "#c6dbef"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{scenario}: {planning_target}. {connectivity}, {acres} acres"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine Geological Survey, Sea Level Rise / Storm Surge Scenarios (2018)"
+    },
     {
       "id": "growing-areas",
       "title": "Shellfish growing areas",

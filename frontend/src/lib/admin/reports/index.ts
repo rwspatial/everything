@@ -3,9 +3,11 @@ import type { Component } from 'svelte';
 import type { AnalysisRun } from '../api';
 import AgPotentialReport from './AgPotentialReport.svelte';
 import FireRiskReport from './FireRiskReport.svelte';
+import TownVulnerabilityReport from './TownVulnerabilityReport.svelte';
 import './report.css';
 
 export const REPORTS: Record<string, Component<{ run: AnalysisRun }>> = {
 	'py.agricultural_potential': AgPotentialReport,
-	'py.fire_risk': FireRiskReport
+	'py.fire_risk': FireRiskReport,
+	'py.town_vulnerability': TownVulnerabilityReport
 };

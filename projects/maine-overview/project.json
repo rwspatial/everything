@@ -1457,6 +1457,216 @@
       "attribution": "U.S. Census Bureau: ACS 2020-2024 5-year, TIGER/Line 2024"
     },
     {
+      "id": "tracts-nri",
+      "title": "Natural hazard risk by tract (FEMA National Risk Index)",
+      "group": "Vulnerability",
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__tract_vulnerability",
+        "properties": [
+          "name",
+          "county",
+          "population",
+          "svi_overall",
+          "svi_socioeconomic",
+          "svi_household",
+          "svi_minority",
+          "svi_housing_transport",
+          "pct_65_over",
+          "pct_below_150_poverty",
+          "pct_disability",
+          "pct_no_vehicle",
+          "nri_risk_rating",
+          "nri_risk_score",
+          "nri_social_vulnerability",
+          "nri_community_resilience",
+          "nri_coastal_flood_score",
+          "nri_inland_flood_score"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "match",
+                [
+                  "get",
+                  "nri_risk_rating"
+                ],
+                "Very High",
+                "#bd0026",
+                "Relatively High",
+                "#f03b20",
+                "Relatively Moderate",
+                "#fd8d3c",
+                "Relatively Low",
+                "#fecc5c",
+                "Very Low",
+                "#ffffb2",
+                "#d9d9d9"
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.4
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "NRI risk rating (relative to all U.S. tracts)",
+        "items": [
+          {
+            "label": "Very High",
+            "color": "#bd0026"
+          },
+          {
+            "label": "Relatively High",
+            "color": "#f03b20"
+          },
+          {
+            "label": "Relatively Moderate",
+            "color": "#fd8d3c"
+          },
+          {
+            "label": "Relatively Low",
+            "color": "#fecc5c"
+          },
+          {
+            "label": "Very Low",
+            "color": "#ffffb2"
+          },
+          {
+            "label": "no rating",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: risk {nri_risk_rating}; social vulnerability {nri_social_vulnerability}; community resilience {nri_community_resilience}; coastal flood score {nri_coastal_flood_score}, inland flood {nri_inland_flood_score}"
+        },
+        "inspect": true
+      },
+      "attribution": "FEMA National Risk Index"
+    },
+    {
+      "id": "tracts-svi",
+      "title": "Social vulnerability by tract (CDC SVI 2022)",
+      "group": "Vulnerability",
+      "visible": false,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_overview__tract_vulnerability",
+        "properties": [
+          "name",
+          "county",
+          "population",
+          "svi_overall",
+          "svi_socioeconomic",
+          "svi_household",
+          "svi_minority",
+          "svi_housing_transport",
+          "pct_65_over",
+          "pct_below_150_poverty",
+          "pct_disability",
+          "pct_no_vehicle",
+          "nri_risk_rating",
+          "nri_risk_score",
+          "nri_social_vulnerability",
+          "nri_community_resilience",
+          "nri_coastal_flood_score",
+          "nri_inland_flood_score"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": [
+                "case",
+                [
+                  "==",
+                  [
+                    "get",
+                    "svi_overall"
+                  ],
+                  null
+                ],
+                "#d9d9d9",
+                [
+                  "step",
+                  [
+                    "get",
+                    "svi_overall"
+                  ],
+                  "#fef0d9",
+                  0.25,
+                  "#fdcc8a",
+                  0.5,
+                  "#fc8d59",
+                  0.75,
+                  "#d7301f"
+                ]
+              ],
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 0.4
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Overall SVI, national percentile (CDC quartiles)",
+        "items": [
+          {
+            "label": "0–0.25 (lowest)",
+            "color": "#fef0d9"
+          },
+          {
+            "label": "0.25–0.50",
+            "color": "#fdcc8a"
+          },
+          {
+            "label": "0.50–0.75",
+            "color": "#fc8d59"
+          },
+          {
+            "label": "0.75–1 (highest)",
+            "color": "#d7301f"
+          },
+          {
+            "label": "not computed",
+            "color": "#d9d9d9"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{name}: SVI {svi_overall} (65+: {pct_65_over} %, below 150 % of poverty: {pct_below_150_poverty} %, no vehicle: {pct_no_vehicle} %)"
+        },
+        "inspect": true
+      },
+      "attribution": "CDC/ATSDR Social Vulnerability Index 2022"
+    },
+    {
       "id": "counties",
       "title": "Counties",
       "group": "Boundaries",

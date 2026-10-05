@@ -1,0 +1,29 @@
+name: me_mgs_slr_scenarios
+title: Sea level rise and storm surge scenarios 2018 (MGS)
+description: 'Maine Geological Survey inundation scenarios for the coast: the Highest Astronomical Tide (HAT) and HAT plus
+  1.2, 1.6, 3.9, 6.1, 8.8 and 10.9 ft of sea level rise / storm surge (field Scenario), with notes on connectivity (tidally
+  connected, low-lying unconnected, back-barrier wetland). Used for the Maine Climate Council planning targets.'
+agency: Maine Geological Survey
+source:
+  arcgis:
+    url: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Sea_Level_Rise_Storm_Surge_Scenarios_2018/FeatureServer/1
+    page_size: 100
+    by_ids: true
+    out_fields: OBJECTID,Scenario,NOTES
+    params:
+      geometryPrecision: 6
+upstream:
+  arcgis: https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/MGS_Sea_Level_Rise_Storm_Surge_Scenarios_2018/FeatureServer/1
+target: src_mgs.slr_scenarios
+srs: EPSG:4326
+fix_invalid: true
+freshness:
+  method: arcgis_item
+  every: 90d
+license: Public data (Maine Geological Survey)
+attribution: Maine Geological Survey, Sea Level Rise / Storm Surge Scenarios (2018)
+group: maine
+coverage:
+  extent: Maine coast
+requires_keys: []
+enabled: true

@@ -6,7 +6,7 @@
 set -u
 PUBLIC_URL="${PUBLIC_URL:-http://localhost:8090}"
 ADMIN_URL="${ADMIN_URL:-http://localhost:${ADMIN_PORT:-8081}}"
-DRAFT="${DRAFT_SLUG:-maine-lands}"        # a draft project that must stay hidden
+DRAFT="${DRAFT_SLUG:-world-overview}"     # a draft project that must stay hidden
 READY="${READY_SLUG:-maine-overview}"     # a published project with charts
 fails=0
 check() {  # check <name> <exit-code> [detail]
