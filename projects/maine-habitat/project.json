@@ -825,5 +825,95 @@
       "attribution": "U.S. Census Bureau: TIGER/Line 2024",
       "visible": true
     }
+  ],
+  "charts": [
+    {
+      "id": "habitat-glance",
+      "title": "Undeveloped habitat blocks",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_habitat__undeveloped_blocks",
+        "stats": [
+          {
+            "label": "Blocks",
+            "agg": "count",
+            "format": "count"
+          },
+          {
+            "label": "Land they cover",
+            "value": "acres",
+            "agg": "sum",
+            "format": "acres"
+          },
+          {
+            "label": "Median block",
+            "value": "acres",
+            "agg": "median",
+            "format": "acres"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rare-animals-by-status",
+      "title": "Rare animal records by state status",
+      "type": "donut",
+      "layer": "etsc",
+      "format": "count",
+      "description": "Endangered, threatened and special-concern animal observations (MDIFW). \"RARE ANIMAL\" records are sensitive species whose names are withheld.",
+      "data": {
+        "collection": "pub.maine_habitat__etsc_wildlife",
+        "category": "state_status"
+      }
+    },
+    {
+      "id": "rare-animals-by-species",
+      "title": "Most-recorded rare animals",
+      "type": "bar",
+      "layer": "etsc",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_habitat__etsc_wildlife",
+        "category": "common_name",
+        "limit": 12
+      }
+    },
+    {
+      "id": "tidal-waterfowl-by-habitat",
+      "title": "Tidal waterfowl & wading bird habitat, by type",
+      "type": "bar",
+      "layer": "twwh",
+      "format": "acres",
+      "data": {
+        "collection": "pub.maine_habitat__tidal_waterfowl",
+        "category": "habitat",
+        "value": "acres",
+        "agg": "sum"
+      }
+    },
+    {
+      "id": "vernal-pools-by-status",
+      "title": "Vernal pools by significance",
+      "type": "donut",
+      "layer": "vernal-pools",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_habitat__vernal_pools",
+        "category": "status"
+      }
+    },
+    {
+      "id": "at-risk-scores",
+      "title": "At-risk species concentration scores",
+      "type": "histogram",
+      "layer": "at-risk",
+      "format": "number",
+      "description": "Beginning with Habitat's score for concentrations of at-risk species and habitats: higher where more endangered, threatened and rare animals, rare plants, rare natural communities and significant habitats overlap.",
+      "data": {
+        "collection": "pub.maine_habitat__at_risk_concentrations",
+        "value": "score",
+        "bins": 12
+      }
+    }
   ]
 }

@@ -208,6 +208,48 @@ test.describe('signed in', () => {
 		await shot(page, 'admin-6-charts');
 	});
 
+	test('charts: Maine habitat charts (rare animals, tidal habitat, vernal pools, at-risk scores); stippled blocks', async ({ page }) => {
+		await page.goto('/p/maine-habitat');
+		await page.waitForFunction(() => window.__spatial?.ready === true, undefined, { timeout: 45_000 });
+		await page.getByRole('button', { name: 'Charts' }).click();
+		const panel = page.getByRole('complementary', { name: 'Charts' });
+		await expect(panel.getByText('Undeveloped habitat blocks')).toBeVisible();
+		await expect(panel.getByRole('button', { name: /^Endangered: / })).toBeVisible();
+		await expect(panel.getByRole('button', { name: /^Piping Plover: / })).toBeVisible();
+		expect(await panel.locator('figure[aria-label="Most-recorded rare animals"] path[role="button"]').count()).toBe(12);
+		await expect(panel.getByRole('button', { name: /^Significant: / })).toBeVisible();
+		await shot(page, 'habitat-charts');
+		// The stipple on undeveloped blocks, close up (softer dots: half strength, 0.75 px).
+		await page.evaluate(() => window.__spatial!.map!.jumpTo({ center: [-69.05, 45.2], zoom: 12 }));
+		await page.waitForFunction(() => window.__spatial?.idle === true, undefined, { timeout: 30_000 });
+		await shot(page, 'habitat-stipple');
+	});
+
+	test('charts: every published map has at least one chart, and every chart returns data', async ({ page, request }) => {
+		test.setTimeout(120_000);
+		const { projects }: { projects: { slug: string; status: string }[] } = await (await request.get('/api/projects')).json();
+		const published = projects.filter((p) => p.status === 'ready');
+		expect(published.length).toBeGreaterThan(10);
+		for (const p of published) {
+			const m = await (await request.get(`/api/projects/${p.slug}`)).json();
+			expect(m.charts?.length ?? 0, `${p.slug} has no charts`).toBeGreaterThan(0);
+			for (const c of m.charts) {
+				const r = await request.get(`/api/projects/${p.slug}/charts/${c.id}`);
+				expect(r.status(), `${p.slug}/${c.id}`).toBe(200);
+				const d = await r.json();
+				expect((d.rows?.length ?? 0) + (d.bins?.length ?? 0) + (d.stats?.length ?? 0) + (d.points?.length ?? 0), `${p.slug}/${c.id} is empty`).toBeGreaterThan(0);
+			}
+		}
+		// Raster maps chart class areas (src_raster.class_area): Maine Land Cover.
+		await page.goto('/p/maine-landcover');
+		await page.waitForFunction(() => window.__spatial?.ready === true, undefined, { timeout: 45_000 });
+		await page.getByRole('button', { name: 'Charts' }).click();
+		const panel = page.getByRole('complementary', { name: 'Charts' });
+		await expect(panel.getByRole('button', { name: /^Forest: / })).toBeVisible();
+		await expect(panel.getByRole('button', { name: /^Potatoes: / })).toBeVisible();
+		await shot(page, 'landcover-charts');
+	});
+
 	test('chart API: unknown chart fields are refused by validation', async ({ request }) => {
 		const m = await (await request.get('/api/projects/maine-overview')).json();
 		m.slug = 'zz-chart-check';
@@ -255,21 +297,21 @@ test.describe('signed in', () => {
 		expect((await request.post('/api/projects', { data: base })).status()).toBe(405);
 	});
 
-	test('analysis: run the R process (Local Moran\'s I) on Maine town income, preview, add to the sandbox', async ({ page, request }) => {
+	test('analysis: run hot spots (Getis-Ord Gi*) on Maine town income, preview, add to the sandbox', async ({ page, request }) => {
 		test.setTimeout(240_000);
 		const original = await (await request.get('/api/projects/analysis-sandbox')).json();
 		try {
 			await page.goto('/admin/analysis');
-			await page.getByLabel('Process', { exact: true }).selectOption('r.local_moran');
-			await page.getByLabel('Polygon layer').selectOption('pub.maine_overview__towns');
+			await page.getByLabel('Process', { exact: true }).selectOption('py.getis_ord_hotspots');
+			await page.getByLabel('Layer', { exact: true }).selectOption('pub.maine_overview__towns');
 			await page.getByLabel('Numeric field').selectOption('median_hh_income');
 			await page.getByLabel('Label field (popups) (optional)').selectOption('namelsad');
 			await page.getByRole('button', { name: 'Run' }).click();
 			const status = page.getByRole('region', { name: 'Job status' });
 			await expect(status).toContainText('succeeded', { timeout: 200_000 });
 			const jobId = Number((await status.getByText(/^Job \d+/).textContent())!.match(/\d+/)![0]);
-			await expect(status).toContainText('global_moran');
-			await expect(page.getByLabel('Result preview').getByText('High-High')).toBeVisible();
+			await expect(status).toContainText('clusters');
+			await expect(page.getByLabel('Result preview').getByText(/Hot spot, 9\d % confidence/).first()).toBeVisible();
 			await page.waitForFunction(() => window.__spatial?.ready === true && window.__spatial?.idle === true, undefined, { timeout: 30_000 });
 			// The preview is a small map: count what it draws, which is most of the 496 towns once its tiles are in.
 			await expect.poll(() => page.evaluate((id) => window.__spatial!.renderedCount(`job-${id}`), jobId), { timeout: 45_000 }).toBeGreaterThan(250);
@@ -339,6 +381,47 @@ test.describe('signed in', () => {
 		await page.getByText('SQL:').click();
 		await expect(page.locator('pre')).toContainText('ST_ClusterDBSCAN');
 		await shot(page, 'admin-methods-settlements');
+	});
+
+	test('settlement editor: a "remove" edit drops a Maine hamlet, shows in the editor, and deleting it restores it', async ({ page, request }) => {
+		const before = (await (await request.get('/api/admin/settlement-edits')).json()).stats;
+		// Refused: outside Maine, and not a polygon.
+		const square = (x: number, y: number, d: number) => ({
+			type: 'Polygon',
+			coordinates: [[[x - d, y - d], [x + d, y - d], [x + d, y + d], [x - d, y + d], [x - d, y - d]]]
+		});
+		const bad = await request.post('/api/admin/settlement-edits', { data: { type: 'Feature', geometry: square(-100, 40, 0.01), properties: { action: 'remove' } } });
+		expect(bad.status()).toBe(422);
+		expect((await bad.json()).detail).toContain('Maine');
+		expect((await request.post('/api/admin/settlement-edits', { data: { type: 'Feature', geometry: { type: 'Point', coordinates: [-69, 45] }, properties: { action: 'remove' } } })).status()).toBe(422);
+
+		// A computed hamlet, and a remove edit just around it.
+		const items = await (await request.get('/tiles/collections/pub.maine_places__settlements/items?size_class=Hamlet&source=computed&limit=1&f=geojson')).json();
+		const hamlet = items.features[0];
+		const pts = (hamlet.geometry.coordinates as number[][][][]).flat(2);
+		const [x, y] = [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+		const created = await request.post('/api/admin/settlement-edits', {
+			data: { type: 'Feature', geometry: square(x, y, 0.004), properties: { action: 'remove', note: 'e2e test: not a settlement' } }
+		});
+		expect(created.status()).toBe(201);
+		const { edit, stats } = await created.json();
+		try {
+			expect(stats.settlements).toBeLessThan(before.settlements);
+			expect(stats.edits.remove).toBe((before.edits.remove ?? 0) + 1);
+
+			await page.goto('/admin/methods/settlements');
+			await expect(page.getByRole('link', { name: 'Edit settlements' })).toHaveAttribute('href', '/admin/methods/settlements/edit');
+			await page.goto('/admin/methods/settlements/edit');
+			await expect(page.getByRole('heading', { name: 'Edit settlements' })).toBeVisible();
+			await expect(page.getByRole('status').filter({ hasText: 'edited' })).toContainText(stats.settlements.toLocaleString('en-US'));
+			await expect(page.getByLabel('Settlement edits')).toContainText('e2e test: not a settlement');
+			await expect(page.getByRole('toolbar', { name: 'Draw an edit' }).getByRole('button')).toHaveCount(3);
+			await shot(page, 'admin-settlement-editor');
+		} finally {
+			const del = await request.delete(`/api/admin/settlement-edits/${edit.id}`);
+			expect(del.status()).toBe(200);
+			expect((await del.json()).stats.settlements).toBe(before.settlements);
+		}
 	});
 
 	test('parcel site: pick a parcel on the map, open its workspace, run agricultural potential, tracked on the methods page', async ({ page, request }) => {

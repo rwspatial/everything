@@ -87,20 +87,110 @@ END
 $$;
 ANALYZE src_units.settlements;
 
+-- Manual edits (app.settlement_edits, drawn in /admin/methods/settlements/edit) applied on top of the computed
+-- settlements into src_units.settlements_final, which the map reads. Applying takes seconds (no re-clustering), so
+-- core-api calls it after every edit; it is SECURITY DEFINER because core-api cannot write src_units.
+--   remove   computed settlements are cut away inside the polygon
+--   replace  cut away likewise, then the drawn outline (exact, as drawn) becomes a settlement
+--   add      the drawn outline plus every computed settlement it overlaps, as one settlement
+-- What is left of a partly cut settlement stays a settlement when it is at least 1 acre; edited settlements get
+-- their building count and footprint recounted, and a name or size class from the edit when one was given.
+CREATE TABLE IF NOT EXISTS src_units.settlements_final (
+  id integer PRIMARY KEY, town_geoid text, buildings integer, footprint_acres float8,
+  source text NOT NULL, edit_id bigint, name text, size_class text, geom geometry(MultiPolygon, 4326));
+CREATE INDEX IF NOT EXISTS settlements_final_geom_idx ON src_units.settlements_final USING gist (geom);
+GRANT SELECT ON src_units.settlements_final TO src_reader;
+
+CREATE OR REPLACE FUNCTION src_units.apply_settlement_edits() RETURNS json
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE
+  acre CONSTANT float8 := 4046.8564224;
+  cut geometry;
+  result json;
+BEGIN
+  CREATE TEMP TABLE IF NOT EXISTS se_out (g geometry, buildings integer, footprint_acres float8, town_geoid text,
+                                          source text, edit_id bigint, name text, size_class text);
+  TRUNCATE se_out;
+  SELECT ST_Union(geom) INTO cut FROM app.settlement_edits WHERE action IN ('replace', 'remove');
+
+  -- Computed settlements: untouched ones as they are; partly cut ones keep their parts of 1 acre or more
+  -- (recounted below); those an "add" absorbs are left to that add.
+  INSERT INTO se_out (g, buildings, footprint_acres, town_geoid, source)
+  SELECT CASE WHEN touched THEN p.g ELSE s.geom END,
+         CASE WHEN touched THEN NULL ELSE s.buildings END,
+         CASE WHEN touched THEN NULL ELSE s.footprint_acres END,
+         CASE WHEN touched THEN NULL ELSE s.town_geoid END,
+         CASE WHEN touched THEN 'edited' ELSE 'computed' END
+  FROM src_units.settlements s
+  CROSS JOIN LATERAL (SELECT cut IS NOT NULL AND s.geom && cut AND ST_Intersects(s.geom, cut) AS touched) t
+  LEFT JOIN LATERAL (SELECT d.geom AS g FROM ST_Dump(ST_CollectionExtract(ST_Difference(s.geom, cut), 3)) d
+                     WHERE t.touched AND ST_Area(d.geom::geography) >= acre) p ON true
+  WHERE NOT EXISTS (SELECT 1 FROM app.settlement_edits a
+                    WHERE a.action = 'add' AND a.geom && s.geom AND ST_Intersects(a.geom, s.geom))
+    AND (NOT t.touched OR p.g IS NOT NULL);
+
+  -- Replaced outlines, exactly as drawn.
+  INSERT INTO se_out (g, source, edit_id, name, size_class)
+  SELECT geom, 'edited', id, name, size_class FROM app.settlement_edits WHERE action = 'replace';
+
+  -- Added settlements: the outline and the computed shapes it overlaps, less anything cut away.
+  INSERT INTO se_out (g, source, edit_id, name, size_class)
+  SELECT CASE WHEN cut IS NULL THEN u.g ELSE ST_Difference(u.g, cut) END, 'edited', a.id, a.name, a.size_class
+  FROM app.settlement_edits a
+  CROSS JOIN LATERAL (SELECT ST_Union(a.geom, coalesce(
+           (SELECT ST_Union(s.geom) FROM src_units.settlements s WHERE s.geom && a.geom AND ST_Intersects(s.geom, a.geom)),
+           a.geom)) AS g) u
+  WHERE a.action = 'add';
+
+  -- Recount what changed: buildings touching the outline, their footprint, and the town holding most of it.
+  UPDATE se_out o SET (buildings, footprint_acres) = (
+    SELECT count(*)::int, coalesce(sum(ST_Area(b.geom::geography)), 0) / acre
+    FROM src_overture.buildings b WHERE b.geom && o.g AND ST_Intersects(b.geom, o.g))
+  WHERE o.buildings IS NULL;
+  UPDATE se_out o SET town_geoid = c.geoid
+  FROM src_census.cousub c
+  WHERE o.town_geoid IS NULL AND ST_Intersects(c.geom, ST_PointOnSurface(o.g));
+
+  TRUNCATE src_units.settlements_final;
+  INSERT INTO src_units.settlements_final (id, town_geoid, buildings, footprint_acres, source, edit_id, name, size_class, geom)
+  SELECT row_number() OVER (ORDER BY buildings DESC NULLS LAST)::int, town_geoid, buildings, footprint_acres,
+         source, edit_id, name, size_class, ST_Multi(ST_CollectionExtract(g, 3))
+  FROM se_out WHERE g IS NOT NULL AND NOT ST_IsEmpty(g);
+  ANALYZE src_units.settlements_final;
+
+  SELECT json_build_object(
+           'settlements', (SELECT count(*) FROM src_units.settlements_final),
+           'edited_settlements', (SELECT count(*) FROM src_units.settlements_final WHERE source = 'edited'),
+           'computed', (SELECT count(*) FROM src_units.settlements),
+           'edits', (SELECT coalesce(json_object_agg(action, n), '{}'::json)
+                     FROM (SELECT action, count(*) AS n FROM app.settlement_edits GROUP BY action) x))
+    INTO result;
+  RETURN result;
+END
+$$;
+REVOKE ALL ON FUNCTION src_units.apply_settlement_edits() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION src_units.apply_settlement_edits() TO app_rw;
+-- core-api reports the counts in the editor (read only).
+GRANT USAGE ON SCHEMA src_units TO app_rw;
+GRANT SELECT ON src_units.settlements, src_units.settlements_final TO app_rw;
+SELECT src_units.apply_settlement_edits();
+
 DROP VIEW IF EXISTS pub.maine_places__settlements;
 CREATE VIEW pub.maine_places__settlements AS
 SELECT s.id,
-       coalesce(t.name, 'Unnamed') AS town,
+       coalesce(s.name, t.name, 'Unnamed') AS town,
        k.name AS county,
        s.buildings,
        (ST_Area(s.geom::geography) / 4046.8564224)::float8 AS acres,
        s.footprint_acres,
-       CASE WHEN s.buildings >= 1000 THEN 'City or large town'
-            WHEN s.buildings >= 250 THEN 'Town centre'
-            WHEN s.buildings >= 50 THEN 'Village'
-            ELSE 'Hamlet' END AS size_class,
+       coalesce(s.size_class,
+         CASE WHEN s.buildings >= 1000 THEN 'City or large town'
+              WHEN s.buildings >= 250 THEN 'Town centre'
+              WHEN s.buildings >= 50 THEN 'Village'
+              ELSE 'Hamlet' END) AS size_class,
+       s.source,
        s.geom
-FROM src_units.settlements s
+FROM src_units.settlements_final s
 LEFT JOIN src_census.cousub t ON t.geoid = s.town_geoid
 LEFT JOIN src_census.county k ON k.geoid = left(s.town_geoid, 5);
 

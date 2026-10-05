@@ -62,6 +62,10 @@
       "title": "Simplify, name and classify",
       "detail": "Simplified to 5 m (topology preserved). Town = the town containing a point on the settlement's surface. Size class from the building count.",
       "math": "\\text{class}(n) = \\begin{cases} \\text{City or large town} & n \\ge 1000 \\\\ \\text{Town centre} & 250 \\le n < 1000 \\\\ \\text{Village} & 50 \\le n < 250 \\\\ \\text{Hamlet} & 10 \\le n < 50 \\end{cases}"
+    },
+    {
+      "title": "Manual edits",
+      "detail": "Polygons drawn by hand in the settlement editor are applied last, on top of the computed outlines, so they survive rebuilds and method changes. Remove: computed settlements are cut away inside the polygon. Replace: cut away likewise, then the drawn outline, exactly as drawn, becomes the settlement. Add: the drawn outline and every computed settlement it overlaps become one settlement. A partly cut settlement keeps its remaining parts of 1 acre or more. Edited settlements get their buildings and footprint recounted, and may carry a name (instead of their town's) and a size class (instead of the class from the building count). Applying takes seconds, so the map updates as soon as an edit is saved."
     }
   ],
   "parameters": [
@@ -110,6 +114,16 @@
       "name": "Size classes",
       "value": "1000 / 250 / 50 buildings",
       "why": "Separates cities, service towns, villages and hamlets."
+    },
+    {
+      "name": "Edited remainder",
+      "value": "1 acre",
+      "why": "What is left of a computed settlement after a remove or replace cuts through it stays a settlement if it is at least an acre (about a house lot or two); smaller slivers along the drawn edge are dropped."
+    },
+    {
+      "name": "Drawn outlines",
+      "value": "used exactly as drawn",
+      "why": "The person drawing knows where the settlement ends; the outline is not snapped to the buildings or widened by the method's margin."
     }
   ],
   "caveats": [
@@ -119,6 +133,8 @@
     "acres is the outline's area; footprint_acres is the area of the buildings themselves.",
     "Rebuilt only when the number of building footprints or the method version (in the SQL) changes, about five minutes. An Overture update that keeps the same count is not picked up; to force a rebuild run TRUNCATE src_units.settlements_meta, then ./mapgen apply maine-places.",
     "Method history: v1 clustered one point per building (58 m, buffer 60/-35 m); large buildings were measured from their centre, which split towns around schools and mills and left 91 % of buildings over 5,000 m² outside every settlement.",
-    "Small parks, cemeteries and fields inside a settlement are drawn as built-up (holes under the threshold are filled)."
-  ]
+    "Small parks, cemeteries and fields inside a settlement are drawn as built-up (holes under the threshold are filled).",
+    "Manual edits are judgement calls recorded with a note; the map shows edited outlines with a darker, heavier line (the source column says computed or edited)."
+  ],
+  "editor": "/admin/methods/settlements/edit"
 }

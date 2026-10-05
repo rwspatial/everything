@@ -42,12 +42,14 @@ function draw(id: string): HTMLCanvasElement | null {
 		back();
 	} else if (kind === 'horiz') line(0, S / 2, S, S / 2);
 	else {
+		// Stipple: small, half-strength dots, a texture rather than a pattern that competes with the layers above.
+		g.globalAlpha = 0.55;
 		for (const [x, y] of [
 			[S / 4, S / 4],
 			[(3 * S) / 4, (3 * S) / 4]
 		]) {
 			g.beginPath();
-			g.arc(x, y, 1.1, 0, Math.PI * 2);
+			g.arc(x, y, 0.75, 0, Math.PI * 2);
 			g.fill();
 		}
 	}

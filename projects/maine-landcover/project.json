@@ -1448,5 +1448,76 @@
       "attribution": "U.S. Census Bureau: TIGER/Line 2024",
       "visible": true
     }
+  ],
+  "charts": [
+    {
+      "id": "land-cover-glance",
+      "title": "Maine land cover, 2025",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_landcover__land_cover",
+        "stats": [
+          {
+            "label": "Area mapped (land and water)",
+            "value": "acres",
+            "agg": "sum",
+            "format": "acres"
+          }
+        ]
+      }
+    },
+    {
+      "id": "land-cover-groups",
+      "title": "Land cover by group",
+      "type": "donut",
+      "format": "acres",
+      "description": "Annual NLCD 2025 classes grouped: forest, wetland, agriculture, developed, water and the rest. Areas are 30 m pixels counted by county.",
+      "data": {
+        "collection": "pub.maine_landcover__land_cover",
+        "category": "cover_group",
+        "value": "acres",
+        "agg": "sum"
+      }
+    },
+    {
+      "id": "land-cover-classes",
+      "title": "Land cover classes",
+      "type": "bar",
+      "format": "acres",
+      "data": {
+        "collection": "pub.maine_landcover__land_cover",
+        "category": "land_cover",
+        "value": "acres",
+        "agg": "sum",
+        "limit": 16
+      }
+    },
+    {
+      "id": "top-crops",
+      "title": "Largest crops (Cropland Data Layer 2025)",
+      "type": "bar",
+      "format": "acres",
+      "description": "Cropped and orchard classes only; forest, water, developed land, wetland, grass/pasture and shrub are left out.",
+      "data": {
+        "collection": "pub.maine_landcover__crops",
+        "category": "crop",
+        "value": "acres",
+        "agg": "sum",
+        "limit": 12
+      }
+    },
+    {
+      "id": "cropland-by-county",
+      "title": "Cropland by county",
+      "type": "bar",
+      "format": "acres",
+      "data": {
+        "collection": "pub.maine_landcover__crops",
+        "category": "county",
+        "value": "acres",
+        "agg": "sum",
+        "limit": 16
+      }
+    }
   ]
 }

@@ -35,7 +35,7 @@ server = MCPServer(
     title="Spatial analysis jobs (R and Python)",
     instructions=(
         "Run spatial statistics on published map layers. list_processes shows what is available (e.g. "
-        "py.getis_ord_hotspots: Gi* hot spots; r.local_moran: Local Moran's I clusters); describe_process gives the "
+        "py.getis_ord_hotspots: Gi* hot spots); describe_process gives the "
         "inputs (collection = a pub view such as pub.maine_overview__towns; field = one of its numeric columns, see "
         "the spatial-db or project-pipeline servers). submit_job returns a job id; job_result(job_id, wait_seconds) "
         "waits for it and returns the report and a ready-to-use LayerSpec. Results become layers on "

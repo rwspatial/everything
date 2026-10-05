@@ -337,6 +337,8 @@ export interface Method extends MethodSummary {
 	live: { collection: string; rows?: number; sums?: Record<string, number | null>; error?: string }[];
 	/** Analysis methods: the process's source file and how the method has been used. */
 	code?: string;
+	/** Methods with manual edits: the editor's page. */
+	editor?: string;
 	code_text?: string;
 	runs?: MethodRuns;
 }

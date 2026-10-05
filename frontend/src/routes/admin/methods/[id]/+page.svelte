@@ -4,6 +4,15 @@
 
 	let { data } = $props();
 	const m = $derived(data.m);
+	// Methods with manual edits (settlements): how many, and how they change the result.
+	let editStats: { settlements: number; edited_settlements: number; edits: Record<string, number> } | null = $state(null);
+	$effect(() => {
+		if (!m.editor) return;
+		fetch('/api/admin/settlement-edits', { cache: 'no-store' })
+			.then((r) => (r.ok ? r.json() : null))
+			.then((fc) => (editStats = fc?.stats ?? null))
+			.catch(() => (editStats = null));
+	});
 	const when = (s: string | null) => (s ? new Date(s).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'never');
 </script>
 
@@ -16,6 +25,19 @@
 	<p class="sub">
 		Project <a href="/admin/projects">{m.project}</a>{#if m.layer}, layer <code>{m.layer}</code>{/if}
 		· <a href="/p/{m.project}">open the map</a>
+	</p>
+{/if}
+
+{#if m.editor}
+	<p class="edit-cta">
+		<a class="btn" href={m.editor}>Edit settlements</a>
+		{#if editStats}
+			<span class="sub">
+				{Object.values(editStats.edits).reduce((a, b) => a + b, 0)} manual edits
+				({['replace', 'add', 'remove'].map((k) => `${editStats!.edits[k] ?? 0} ${k}`).join(', ')}) ·
+				{editStats.edited_settlements} edited settlements
+			</span>
+		{/if}
 	</p>
 {/if}
 
@@ -122,6 +144,9 @@
 
 <style>
 	.crumb { margin: 0 0 0.3rem; font-size: 0.85rem; }
+	.edit-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin: 0.8rem 0 0; }
+	.btn { padding: 0.4rem 0.85rem; border-radius: 6px; font-weight: 600; text-decoration: none; background: var(--accent); color: #fff; font-size: 0.9rem; }
+	.btn:hover { background: var(--accent-strong); color: #fff; }
 	h1 { margin: 0 0 0.3rem; font-size: 1.5rem; }
 	h2 { font-size: 1rem; margin: 1.4rem 0 0.5rem; }
 	.lead { color: var(--muted); margin: 0; max-width: 75ch; }

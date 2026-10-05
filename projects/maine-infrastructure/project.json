@@ -3,7 +3,7 @@
   "slug": "maine-infrastructure",
   "status": "ready",
   "title": "Maine Infrastructure",
-  "description": "E911 road centerlines and address points, and wind turbines (US Wind Turbine Database). Local roads appear from zoom 12 and address points from zoom 14 (798,422 points).",
+  "description": "E911 road centerlines and address points, wind turbines (US Wind Turbine Database) and tax parcels (Maine GeoLibrary). Local roads appear from zoom 12, parcels from zoom 13 and address points from zoom 14 (798,422 points).",
   "tags": [
     "maine",
     "roads",
@@ -25,6 +25,71 @@
     "basemap": "positron"
   },
   "layers": [
+    {
+      "id": "parcels",
+      "title": "Tax parcels",
+      "group": "Property",
+      "minzoom": 13,
+      "source": {
+        "type": "tipg-vector",
+        "collection": "pub.maine_lands__parcels",
+        "properties": [
+          "area",
+          "town",
+          "map_lot",
+          "acres",
+          "label"
+        ]
+      },
+      "style": {
+        "kind": "maplibre",
+        "layers": [
+          {
+            "type": "fill",
+            "paint": {
+              "fill-color": "#b07d2b",
+              "fill-opacity": 0.06
+            }
+          },
+          {
+            "type": "line",
+            "paint": {
+              "line-color": "#b07d2b",
+              "line-width": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                13,
+                0.5,
+                17,
+                1.5
+              ]
+            }
+          }
+        ]
+      },
+      "legend": {
+        "type": "categorical",
+        "title": "Parcels (zoom in to see)",
+        "items": [
+          {
+            "label": "Tax parcel",
+            "color": "#b07d2b"
+          }
+        ]
+      },
+      "interaction": {
+        "popup": {
+          "template": "{label}"
+        },
+        "inspect": true
+      },
+      "attribution": "Maine GeoLibrary (MEGIS) parcels; Maine Revenue Services (Unorganized Territory)"
+    },
     {
       "id": "roads-local",
       "title": "Local and other roads",
@@ -258,6 +323,70 @@
       },
       "attribution": "U.S. Census Bureau: TIGER/Line 2024",
       "visible": true
+    }
+  ],
+  "charts": [
+    {
+      "id": "wind-glance",
+      "title": "Wind turbines",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_infrastructure__wind_turbines",
+        "stats": [
+          {
+            "label": "Turbines",
+            "agg": "count",
+            "format": "count"
+          },
+          {
+            "label": "Capacity (kW)",
+            "value": "capacity_kw",
+            "agg": "sum",
+            "format": "count"
+          },
+          {
+            "label": "Median hub height (m)",
+            "value": "hub_height_m",
+            "agg": "median",
+            "format": "number"
+          }
+        ]
+      }
+    },
+    {
+      "id": "turbines-by-project",
+      "title": "Wind turbines by project",
+      "type": "bar",
+      "layer": "wind-turbines",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_infrastructure__wind_turbines",
+        "category": "project",
+        "limit": 12
+      }
+    },
+    {
+      "id": "turbines-by-manufacturer",
+      "title": "Wind turbines by manufacturer",
+      "type": "donut",
+      "layer": "wind-turbines",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_infrastructure__wind_turbines",
+        "category": "manufacturer"
+      }
+    },
+    {
+      "id": "addresses-by-town",
+      "title": "Most E911 addresses, by town",
+      "type": "bar",
+      "layer": "addresses",
+      "format": "count",
+      "data": {
+        "collection": "pub.maine_infrastructure__addresses",
+        "category": "town",
+        "limit": 12
+      }
     }
   ]
 }

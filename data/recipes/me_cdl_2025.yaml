@@ -11,6 +11,7 @@ source:
     fips: '23'
 target: cog:maine/cdl_2025
 nodata: 0
+class_stats: true   # acres per class per county -> src_raster.class_area (land cover charts)
 kind: raster
 srs: EPSG:26919
 resolution: 30

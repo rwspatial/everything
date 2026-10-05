@@ -341,5 +341,52 @@
       "attribution": "U.S. Census Bureau: TIGER/Line 2024",
       "visible": true
     }
+  ],
+  "charts": [
+    {
+      "id": "contours-glance",
+      "title": "Contours (100 ft)",
+      "type": "stats",
+      "data": {
+        "collection": "pub.maine_terrain__contours",
+        "stats": [
+          {
+            "label": "Contour lines",
+            "agg": "count",
+            "format": "count"
+          },
+          {
+            "label": "Highest contour (ft)",
+            "value": "elev_ft",
+            "agg": "max",
+            "format": "count"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lidar-by-quality",
+      "title": "Lidar collections by quality level",
+      "type": "donut",
+      "layer": "lidar-projects",
+      "format": "count",
+      "description": "USGS 3DEP quality levels: QL 1 and QL 2 are the dense, high-accuracy collections behind 1 m elevation models.",
+      "data": {
+        "collection": "pub.maine_terrain__lidar_projects",
+        "category": "ql"
+      }
+    },
+    {
+      "id": "lidar-by-year",
+      "title": "Lidar collections by year",
+      "type": "histogram",
+      "layer": "lidar-projects",
+      "format": "number",
+      "data": {
+        "collection": "pub.maine_terrain__lidar_projects",
+        "value": "year",
+        "bins": 9
+      }
+    }
   ]
 }

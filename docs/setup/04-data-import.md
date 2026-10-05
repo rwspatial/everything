@@ -197,6 +197,10 @@ touch them, and `make import-all` skips raster recipes unless you pass `rasters=
 
 Raster recipes also take:
 - `cutline_sql`: an SQL query returning the polygon to clip to (e.g. Maine's towns), run against PostGIS.
+- `class_stats: true` (categorical rasters): after the COG is built, the acres of each class in each Maine county are
+  written to `src_raster.class_area`, which projects publish as views for charts (rasters are files, so charts cannot
+  read them directly; see `projects/maine-landcover/sql/010_class_area.sql`). Rerun for an existing COG with
+  `docker compose run --rm geotools python scripts/geoimport.py class-stats <recipe>`.
 - `cog_options`: extra COG creation options, e.g. `[PREDICTOR=YES]` for elevation.
 
 `depends_on: [recipe, …]` orders `make import-all`, so derived layers are built after their source.

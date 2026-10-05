@@ -11,7 +11,6 @@ Processes live in `processes/`:
 | Process | Runtime | What it computes |
 |---|---|---|
 | `py.getis_ord_hotspots` | Python (PySAL `esda`) | Getis-Ord Gi* hot and cold spots of a numeric field |
-| `r.local_moran` | R (`spdep`) | Local Moran's I clusters (High-High, Low-Low, outliers) of a numeric field |
 
 Add one: a Python module with `DESCRIPTOR` and `run(ctx, inputs)`, or a folder with `descriptor.json` and
 `run.R` (using `rlib/ctx.R`). Descriptors follow `contracts/process.v1.schema.json`. See docs/setup/09-ml-workers.md.

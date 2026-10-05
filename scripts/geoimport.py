@@ -63,7 +63,7 @@ RECIPE_KEYS = {"name", "description", "source", "target", "srs", "src_srs", "mod
                "kind", "group", "title", "agency", "attribution", "upstream", "vintage", "coverage", "parts",
                "requires_keys", "outputs", "steps", "depends_on", "freshness", "retention", "concurrency",
                "estimate", "rules", "where", "spat", "ogr_args", "analysis_srs", "resolution", "resampling", "nodata",
-               "cutline_sql", "cog_options"}
+               "cutline_sql", "cog_options", "class_stats"}
 DOWNLOADED_BYTES = 0
 REDOWNLOAD = False  # recipe --redownload: ignore cached downloads
 
@@ -1314,7 +1314,69 @@ def run_raster_recipe(r: dict) -> dict:
         conn.commit()
     print(f"OK data/cog/{name}.tif: {raster['width']}x{raster['height']} {raster['dtype']}, {raster['crs']}, "
           f"{raster['resolution'][0]:g} m, values {mn:.2f} .. {mx:.2f}")
+    if r.get("class_stats"):
+        class_stats(name)
     return {"row_count": None, "raster": raster}
+
+
+def class_stats(name: str) -> int:
+    """Acres of each class of a categorical COG per Maine county -> src_raster.class_area (the raster's rows replaced).
+
+    Rasters are files, so charts cannot aggregate them; this table is what projects publish for charts (e.g. land
+    cover by class). Counties are burned into a grid matching the COG once, then the COG is read block by block and
+    (county, class) pairs counted. A pixel belongs to the county containing its centre; nodata is skipped.
+    """
+    import numpy as np
+    import rasterio
+    import rasterio.features
+    import rasterio.windows
+
+    path = COG_DIR / f"{name}.tif"
+    if not path.is_file():
+        raise ImportError_(f"data/cog/{name}.tif does not exist; build its recipe first")
+    with rasterio.open(path) as ds, psycopg.connect(LOADER) as conn:
+        if not ds.dtypes[0].startswith(("uint", "int")):
+            raise ImportError_(f"{name}: class_stats needs an integer (categorical) raster, not {ds.dtypes[0]}")
+        epsg = ds.crs.to_epsg()
+        counties = conn.execute(
+            f"SELECT geoid, ST_AsGeoJSON(ST_Transform(geom, {int(epsg)}))::json FROM src_census.county "
+            "WHERE statefp = '23' ORDER BY geoid").fetchall()
+        if not counties:
+            raise ImportError_("no Maine counties in src_census.county (make recipe r=me_counties)")
+        ids = rasterio.features.rasterize(
+            ((g, i + 1) for i, (_, g) in enumerate(counties)), out_shape=(ds.height, ds.width),
+            transform=ds.transform, fill=0, dtype="uint8")
+        nodata = ds.nodata
+        totals: dict[tuple[int, int], int] = {}
+        for _, win in ds.block_windows(1):
+            v = ds.read(1, window=win).astype("int64")
+            c = ids[rasterio.windows.Window.toslices(win)]
+            keep = c > 0
+            if nodata is not None:
+                keep &= v != int(nodata)
+            if not keep.any():
+                continue
+            keys, n = np.unique(c[keep].astype("int64") * 1_000_000 + v[keep], return_counts=True)
+            for k, cnt in zip(keys.tolist(), n.tolist()):
+                key = (k // 1_000_000, k % 1_000_000)
+                totals[key] = totals.get(key, 0) + cnt
+        px_acres = abs(ds.transform.a * ds.transform.e) / 4046.8564224
+        rows = [(name, counties[ci - 1][0], val, n, n * px_acres) for (ci, val), n in sorted(totals.items())]
+        conn.execute("DELETE FROM src_raster.class_area WHERE cog = %s", (name,))
+        with conn.cursor() as cur:
+            cur.executemany("INSERT INTO src_raster.class_area (cog, county_geoid, value, pixels, acres) "
+                            "VALUES (%s, %s, %s, %s, %s)", rows)
+        conn.commit()
+    print(f"OK class stats data/cog/{name}.tif: {len({r[2] for r in rows})} classes in {len(counties)} counties, "
+          f"{sum(r[4] for r in rows):,.0f} acres -> src_raster.class_area")
+    return len(rows)
+
+
+def cmd_class_stats(args) -> None:
+    r = load_recipe(args.name)
+    if r.get("kind") != "raster" or not str(r.get("target", "")).startswith("cog:"):
+        raise ImportError_(f"{args.name} is not a raster recipe")
+    class_stats(r["target"][4:])
 
 
 def cmd_recipe(args) -> None:
@@ -1579,6 +1641,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--force", action="store_true")
     p.add_argument("--redownload", action="store_true", help="ignore the cached download and fetch it again")
     p.set_defaults(func=cmd_recipe)
+
+    p = sub.add_parser("class-stats", help="acres of each class per county of a raster recipe's COG (charts)")
+    p.add_argument("name")
+    p.set_defaults(func=cmd_class_stats)
 
     p = sub.add_parser("plan", help="dry run: what an import would download and replace")
     p.add_argument("name")

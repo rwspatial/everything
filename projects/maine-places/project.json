@@ -39,7 +39,8 @@
           "county",
           "buildings",
           "acres",
-          "size_class"
+          "size_class",
+          "source"
         ]
       },
       "style": {
@@ -67,7 +68,16 @@
           {
             "type": "line",
             "paint": {
-              "line-color": "#c47f12",
+              "line-color": [
+                "match",
+                [
+                  "get",
+                  "source"
+                ],
+                "edited",
+                "#7a3e00",
+                "#c47f12"
+              ],
               "line-width": [
                 "interpolate",
                 [
@@ -77,9 +87,27 @@
                   "zoom"
                 ],
                 7,
-                0.3,
+                [
+                  "match",
+                  [
+                    "get",
+                    "source"
+                  ],
+                  "edited",
+                  0.8,
+                  0.3
+                ],
                 12,
-                1
+                [
+                  "match",
+                  [
+                    "get",
+                    "source"
+                  ],
+                  "edited",
+                  2.2,
+                  1
+                ]
               ],
               "line-opacity": 0.8
             }
@@ -93,7 +121,7 @@
       },
       "interaction": {
         "popup": {
-          "template": "{size_class}, {town}: {buildings} buildings on {acres} acres"
+          "template": "{size_class}, {town}: {buildings} buildings on {acres} acres ({source} outline)"
         },
         "inspect": true
       },

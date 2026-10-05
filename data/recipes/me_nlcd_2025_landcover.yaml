@@ -12,6 +12,7 @@ source:
   stream: true
 target: cog:maine/nlcd_2025_landcover
 nodata: 250
+class_stats: true   # acres per class per county -> src_raster.class_area (land cover charts)
 kind: raster
 srs: EPSG:26919
 resolution: 30

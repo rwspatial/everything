@@ -1,6 +1,15 @@
 # Classification & derived layers — Plan
 
-Status: **deferred (2026-10-03)**: ideas parked for later, not scheduled.
+Status: **§1 built (2026-10-04/05), uncommitted until reviewed.** What shipped differs from the draft below:
+- Edits live in the database (`app.settlement_edits`, migration `20261004000100`), not a GeoJSON file in git; the
+  in-app editor (`/admin/methods/settlements/edit`, terra-draw) came first. A `make edits-export` to GeoJSON is a
+  possible follow-up if git history of edits is wanted. On AWS, edits travel with `make aws-deploy data=1`.
+- `src_units.apply_settlement_edits()` writes `src_units.settlements_final` (seconds); core-api calls it after every
+  create/update/delete (`/api/admin/settlement-edits`), so no checksum-triggered rebuild is needed.
+- Decisions taken (§1.5): replace outlines are used **exactly as drawn**; a partly cut computed settlement keeps its
+  remaining parts of **1 acre or more**. Edits can also set a name and a size class (the classification override).
+- Map: `source` = computed | edited; edited outlines draw darker and heavier on Maine Places.
+- Open: §1.5 item 3 (the same pattern for other classification layers).
 Covers derived classification layers (computed from source data by a documented method, e.g. settlements) and how
 people correct them. Related: `docs/methods/*.json` (method write-ups shown on /admin/methods),
 `project-builder.plan.md` (units, analyses).

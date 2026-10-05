@@ -31,16 +31,15 @@ reported in two minutes.
 | Process | Runtime | Inputs | Output fields |
 |---|---|---|---|
 | `py.getis_ord_hotspots`: hot spots (Getis-Ord Gi*) | Python, PySAL `esda` | layer (polygons or points), numeric field, label field, neighbours (`queen` or `knn` + `k`) | `value`, `gi_z`, `gi_p`, `cluster`: hot/cold spot at 90/95/99 % confidence |
-| `r.local_moran`: clusters and outliers (Local Moran's I) | R, `spdep` | polygon layer, numeric field, label field, significance level | `value`, `local_i`, `p_value`, `cluster`: High-High, Low-Low, High-Low, Low-High; the report adds global Moran's I |
+| `py.agricultural_potential`: agricultural potential of a parcel | Python, SSURGO + titiler zonal statistics | a parcel (place analysis, run from the project workspace) | each soil unit's `score`, `class`, `limits`; method: `/admin/methods/agricultural-potential` |
+| `py.fire_risk`: wildfire fuel hazard of a parcel | Python, LANDFIRE FBFM40 via titiler | a parcel (place analysis, run from the project workspace) | each fuel type's `hazard`, `class`; method: `/admin/methods/fire-risk` |
 
-Both use 999 permutations with a fixed seed, so a rerun gives the same answer. Features with a null value are
-skipped, and the report counts them. A polygon with no neighbours (an island) gets its nearest neighbour (Gi*) or
-is labelled "No neighbours" (Moran's I).
+Gi\* uses 999 permutations with a fixed seed, so a rerun gives the same answer. Features with a null value are
+skipped, and the report counts them. A polygon with no neighbours (an island) gets its nearest neighbour.
 
 On Maine town median household income (ACS 2020-2024), for example:
 - **Gi\*:** finds 99 % hot spots in Cumberland, York, Sagadahoc, Lincoln and Androscoggin (mean $96,000) and
   cold spots across Aroostook, Washington, Piscataquis, Somerset, Franklin and Penobscot (mean $61,000).
-- **Local Moran's I:** gives global I = 0.41 (p < 10⁻⁴⁸), with 17 High-High and 22 Low-Low towns.
 
 ## In the browser: /admin/analysis
 
@@ -56,7 +55,7 @@ To keep that version in git, run `./mapgen export analysis-sandbox`.
 | Method | Path | |
 |---|---|---|
 | GET | `/api/admin/processes` | descriptors, `worker_online` |
-| POST | `/api/admin/jobs` | `{"process": "r.local_moran", "inputs": {...}}`. Returns 201 with the job, 422 with `{errors: [{input, message}]}`, or 200 with `deduplicated: true` when the same job is already queued or running |
+| POST | `/api/admin/jobs` | `{"process": "py.getis_ord_hotspots", "inputs": {...}}`. Returns 201 with the job, 422 with `{errors: [{input, message}]}`, or 200 with `deduplicated: true` when the same job is already queued or running |
 | GET | `/api/admin/jobs/{id}` | status, progress, `result` (`collection`, `layerSpec`, `report`) or `error` (`message`, `log_tail`) |
 | POST | `/api/admin/jobs/{id}/cancel` | a queued job is cancelled at once; a running one within seconds |
 | POST | `/api/admin/jobs/{id}/promote` | admin only: `{"project": "analysis-sandbox"}` adds the layer to that project |
@@ -86,7 +85,8 @@ def run(ctx, inputs):
 ```
 
 R: add `workers/processes/<name>/descriptor.json` and `run.R`, using `rlib/ctx.R`: `ctx_open()`,
-`ctx_read_collection()`, `ctx_progress()`, `ctx_write_layer()` and `ctx_result()`. See `r_local_moran/`.
+`ctx_read_collection()`, `ctx_progress()`, `ctx_write_layer()` and `ctx_result()` (no R process ships at the moment;
+the helpers and the R runtime in the worker image stay ready for one).
 
 Descriptors follow `contracts/process.v1.schema.json`; the worker refuses to start with an invalid one. The
 returned `style` and `legend` must pass the project manifest contract, as any hand-written layer must. Then

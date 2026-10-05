@@ -44,10 +44,10 @@ async def main() -> None:
         check("tools listed", tools == ["cancel_job", "describe_process", "job_result", "job_status", "list_processes", "submit_job"],
               ", ".join(tools))
         procs = {p["id"]: p for p in payload(await s.call_tool("list_processes", {}))}
-        check("both processes listed, a worker online", set(procs) >= {"py.getis_ord_hotspots", "r.local_moran"}
+        check("processes listed, a worker online", "py.getis_ord_hotspots" in procs
               and all(p["worker_online"] for p in procs.values()), ", ".join(procs))
-        d = payload(await s.call_tool("describe_process", {"process_id": "r.local_moran"}))
-        check("describe_process keeps the input order", list(d.get("inputs", {})) == ["collection", "field", "label", "alpha"],
+        d = payload(await s.call_tool("describe_process", {"process_id": "py.getis_ord_hotspots"}))
+        check("describe_process keeps the input order", list(d.get("inputs", {})) == ["collection", "field", "label", "weights", "k"],
               str(list(d.get("inputs", {}))))
 
         res = await s.call_tool("submit_job", {"process_id": "py.getis_ord_hotspots",
@@ -68,9 +68,9 @@ async def main() -> None:
         check("job_result: a LayerSpec on the published view", spec.get("source", {}).get("collection") == f"pub.analysis_sandbox__job_{jid}",
               spec.get("source", {}).get("collection", ""))
 
-        # Cancel: queue an R job and cancel it straight away.
-        j = payload(await s.call_tool("submit_job", {"process_id": "r.local_moran", "inputs": {
-            "collection": TOWNS, "field": "pop", "label": "namelsad", "alpha": 0.01}}))
+        # Cancel: queue a job and cancel it straight away.
+        j = payload(await s.call_tool("submit_job", {"process_id": "py.getis_ord_hotspots", "inputs": {
+            "collection": TOWNS, "field": "pop", "label": "namelsad"}}))
         c = payload(await s.call_tool("cancel_job", {"job_id": j["job_id"]}))
         r = payload(await s.call_tool("job_result", {"job_id": j["job_id"], "wait_seconds": 60}))
         check("cancel_job stops a job", c.get("status") in ("cancelled", "cancel_requested") and r.get("status") == "cancelled",

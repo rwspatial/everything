@@ -1332,6 +1332,129 @@ async def dataset_action(name: str, request: Request, response: Response) -> dic
     return job
 
 
+# ---- settlement edits (plan: classification §1; admin) ------------------------------------------------------
+# Polygons an admin draws over the computed settlements: replace (the outline becomes the settlement), add (a missed
+# settlement, merging what it overlaps) or remove (not a settlement), with an optional name and size class. Every
+# change re-applies all edits (src_units.apply_settlement_edits(), seconds) and returns the new counts.
+
+SETTLEMENT_ACTIONS = ("replace", "add", "remove")
+SETTLEMENT_CLASSES = ("City or large town", "Town centre", "Village", "Hamlet")
+MAINE_BBOX = (-71.2, 42.9, -66.8, 47.6)
+
+
+def _settlement_edit_values(body: Any, partial: bool = False) -> dict:
+    """A GeoJSON Feature (or its properties) -> checked column values; 422 with the reason otherwise."""
+    if not isinstance(body, dict):
+        raise HTTPException(422, "body must be a GeoJSON Feature")
+    props = body.get("properties") or {}
+    out: dict = {}
+    if "action" in props or not partial:
+        if props.get("action") not in SETTLEMENT_ACTIONS:
+            raise HTTPException(422, f"action must be one of {', '.join(SETTLEMENT_ACTIONS)}")
+        out["action"] = props["action"]
+    for key, limit in (("name", 120), ("note", 1000)):
+        if key in props:
+            v = (props.get(key) or "").strip() or None
+            if v and len(v) > limit:
+                raise HTTPException(422, f"{key} is longer than {limit} characters")
+            out[key] = v
+    if "size_class" in props:
+        v = props.get("size_class") or None
+        if v is not None and v not in SETTLEMENT_CLASSES:
+            raise HTTPException(422, f"size_class must be one of {', '.join(SETTLEMENT_CLASSES)} (or empty)")
+        out["size_class"] = v
+    geom = body.get("geometry")
+    if geom is not None or not partial:
+        if not isinstance(geom, dict) or geom.get("type") not in ("Polygon", "MultiPolygon"):
+            raise HTTPException(422, "geometry must be a Polygon or MultiPolygon")
+        out["geometry"] = json.dumps(geom)
+    return out
+
+
+def _settlement_stats(conn) -> dict:
+    return conn.execute(
+        """SELECT (SELECT count(*) FROM src_units.settlements_final) AS settlements,
+                  (SELECT count(*) FROM src_units.settlements_final WHERE source = 'edited') AS edited_settlements,
+                  (SELECT count(*) FROM src_units.settlements) AS computed,
+                  (SELECT coalesce(json_object_agg(action, n), '{}'::json)
+                     FROM (SELECT action, count(*) AS n FROM app.settlement_edits GROUP BY action) x) AS edits""").fetchone()
+
+
+GEOM_IN = ("ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(%(geometry)s), 4326)), 3))")
+
+
+def _check_settlement_geom(conn, geometry: str) -> None:
+    row = conn.execute(f"""SELECT ST_Area(g::geography) / 1e6 AS km2, ST_XMin(g) AS x0, ST_YMin(g) AS y0,
+                                  ST_XMax(g) AS x1, ST_YMax(g) AS y1, ST_IsEmpty(g) AS empty
+                           FROM (SELECT {GEOM_IN} AS g) x""", {"geometry": geometry}).fetchone()
+    if row["empty"]:
+        raise HTTPException(422, "the polygon is empty or invalid")
+    w, s_, e, n = MAINE_BBOX
+    if row["x0"] < w or row["y0"] < s_ or row["x1"] > e or row["y1"] > n:
+        raise HTTPException(422, "the polygon must be in Maine")
+    if row["km2"] > 500:
+        raise HTTPException(422, f"the polygon covers {row['km2']:.0f} km²; draw settlements one at a time (500 km² at most)")
+
+
+def _settlement_feature(r: dict) -> dict:
+    return {"type": "Feature", "id": r["id"], "geometry": r["geometry"],
+            "properties": {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in r.items()
+                           if k not in ("geometry",)}}
+
+
+SETTLEMENT_COLUMNS = ("id, action, name, size_class, note, created_by, created_at, updated_at, "
+                      "ST_AsGeoJSON(geom, 7)::json AS geometry")
+
+
+@app.get("/api/admin/settlement-edits", dependencies=[Depends(require_admin)])
+def list_settlement_edits() -> dict:
+    with projects_pool.connection() as conn:
+        rows = conn.execute(f"SELECT {SETTLEMENT_COLUMNS} FROM app.settlement_edits ORDER BY id").fetchall()
+        return {"type": "FeatureCollection", "features": [_settlement_feature(r) for r in rows],
+                "stats": _settlement_stats(conn)}
+
+
+@app.post("/api/admin/settlement-edits", dependencies=[Depends(require_admin)], status_code=201)
+async def create_settlement_edit(request: Request) -> dict:
+    v = _settlement_edit_values(await request.json())
+    with projects_pool.connection() as conn:
+        _check_settlement_geom(conn, v["geometry"])
+        row = conn.execute(
+            f"""INSERT INTO app.settlement_edits (action, name, size_class, note, geom, created_by)
+                VALUES (%(action)s, %(name)s, %(size_class)s, %(note)s, {GEOM_IN}, %(who)s)
+                RETURNING {SETTLEMENT_COLUMNS}""",
+            {"name": None, "size_class": None, "note": None, **v, "who": _admin_user(request)}).fetchone()
+        stats = conn.execute("SELECT src_units.apply_settlement_edits() AS s").fetchone()["s"]
+    return {"edit": _settlement_feature(row), "stats": stats}
+
+
+@app.put("/api/admin/settlement-edits/{edit_id}", dependencies=[Depends(require_admin)])
+async def update_settlement_edit(edit_id: int, request: Request) -> dict:
+    v = _settlement_edit_values(await request.json(), partial=True)
+    sets = [sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder(k)) for k in v if k != "geometry"]
+    if "geometry" in v:
+        sets.append(sql.SQL("geom = " + GEOM_IN))
+    sets.append(sql.SQL("updated_at = now()"))
+    with projects_pool.connection() as conn:
+        if "geometry" in v:
+            _check_settlement_geom(conn, v["geometry"])
+        row = conn.execute(sql.SQL("UPDATE app.settlement_edits SET {} WHERE id = %(id)s RETURNING {}").format(
+            sql.SQL(", ").join(sets), sql.SQL(SETTLEMENT_COLUMNS)), {**v, "id": edit_id}).fetchone()
+        if not row:
+            raise HTTPException(404, f"no settlement edit {edit_id}")
+        stats = conn.execute("SELECT src_units.apply_settlement_edits() AS s").fetchone()["s"]
+    return {"edit": _settlement_feature(row), "stats": stats}
+
+
+@app.delete("/api/admin/settlement-edits/{edit_id}", dependencies=[Depends(require_admin)])
+def delete_settlement_edit(edit_id: int) -> dict:
+    with projects_pool.connection() as conn:
+        if not conn.execute("DELETE FROM app.settlement_edits WHERE id = %s RETURNING id", (edit_id,)).fetchone():
+            raise HTTPException(404, f"no settlement edit {edit_id}")
+        stats = conn.execute("SELECT src_units.apply_settlement_edits() AS s").fetchone()["s"]
+    return {"stats": stats}
+
+
 # ---- methods: how derived layers are calculated (docs/methods/<id>.json) ------------------------------------
 # Admin only. Each file describes one calculation (inputs, steps, parameters, caveats, optional LaTeX in `math`);
 # the detail view adds the SQL that builds it (read from the projects tree) and live counts from its pub views.
